@@ -1,0 +1,35 @@
+# Dynamic configuration (dynamic_conf.yml)
+http:
+  routers:
+    api-router:
+      rule: "PathPrefix(`/`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https
+
+    api-secure-router:
+      rule: "PathPrefix(`/`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+
+    dashboard:
+      rule: "Host(`traefik.localhost`)"
+      service: api@internal
+      entryPoints:
+        - traefik
+
+  middlewares:
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  services:
+    api-service:
+      loadBalancer:
+        servers:
+          - url: "http://qr_generator_api:8000" 

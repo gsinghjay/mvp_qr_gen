@@ -1,0 +1,63 @@
+# Static configuration (traefik.yml)
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+log:
+  level: INFO
+
+# Access Logs Configuration
+accessLog:
+  filePath: "/var/log/traefik/access.log"
+  format: json
+  bufferingSize: 100
+  filters:
+    statusCodes:
+      - "400-499"
+      - "500-599"
+    retryAttempts: true
+    minDuration: "10ms"
+
+# Metrics Configuration
+metrics:
+  prometheus:
+    entryPoint: metrics
+    addEntryPointsLabels: true
+    addServicesLabels: true
+    buckets:
+      - 0.1
+      - 0.3
+      - 1.2
+      - 5.0
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+  traefik:
+    address: ":8080"
+  metrics:
+    address: ":8082"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: qr_generator_network
+  file:
+    filename: /etc/traefik/dynamic_conf.yml
+    watch: true
+
+api:
+  dashboard: true
+  insecure: true  # For local development ONLY
+
+certificatesResolvers:
+  default:
+    acme:
+      email: "admin@localhost"  # Change in production
+      storage: "acme.json"
+      httpChallenge:
+        entryPoint: web
+      tlsChallenge: true 
