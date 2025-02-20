@@ -55,6 +55,9 @@ logs/
 .docker/
 docker-compose.override.yml
 
+# Traefik
+certificates/
+
 # Operating System
 .DS_Store
 Thumbs.db
