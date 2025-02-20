@@ -121,10 +121,14 @@ class QRCodeService:
             return StreamingResponse(
                 buf,
                 media_type=IMAGE_FORMATS[image_format],
-                headers={"Content-Disposition": f'inline; filename="qr.{image_format}"'},
+                headers={
+                    "Content-Disposition": f'inline; filename="qr.{image_format}"'
+                },
             )
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error generating QR code: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Error generating QR code: {str(e)}"
+            )
 
     @staticmethod
     def generate_qr_image(
@@ -159,7 +163,9 @@ class QRCodeService:
             raise
 
     @staticmethod
-    def update_scan_count(db: Session, qr_id: str, timestamp: datetime | None = None) -> None:
+    def update_scan_count(
+        db: Session, qr_id: str, timestamp: datetime | None = None
+    ) -> None:
         """Update the scan count and last scan timestamp for a QR code."""
         try:
             if timestamp is None:

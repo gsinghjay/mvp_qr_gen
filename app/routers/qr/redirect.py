@@ -12,8 +12,9 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from ...core.config import settings
+from ...database import get_db_with_logging
 from ...models import QRCode
-from .common import get_db_with_logging, logger
+from .common import logger
 
 router = APIRouter(
     tags=["redirects"],
@@ -22,7 +23,9 @@ router = APIRouter(
 
 
 @router.get("/r/{short_id}")
-async def redirect_qr(short_id: str, request: Request, db: Session = Depends(get_db_with_logging)):
+async def redirect_qr(
+    short_id: str, request: Request, db: Session = Depends(get_db_with_logging)
+):
     """Redirect endpoint for dynamic QR codes."""
     try:
         qr = db.query(QRCode).filter(QRCode.content == f"/r/{short_id}").first()

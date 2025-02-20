@@ -2,14 +2,14 @@
 API version 1 router.
 """
 
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from ...database import get_db_with_logging
 from ...models import QRCode
 from ...schemas import QRCodeList, QRCodeResponse, QRCodeUpdate
-from ..qr.common import get_db_with_logging, get_qr_by_id, logger, qr_service
+from ..qr.common import get_qr_by_id, logger, qr_service
 
 router = APIRouter(
     prefix="/api/v1",
@@ -31,17 +31,25 @@ async def list_qr_codes(
             query = query.filter(QRCode.qr_type == qr_type)
 
         total = query.count()
-        qr_codes = query.order_by(QRCode.created_at.desc()).offset(skip).limit(limit).all()
+        qr_codes = (
+            query.order_by(QRCode.created_at.desc()).offset(skip).limit(limit).all()
+        )
 
-        response = QRCodeList(items=qr_codes, total=total, page=skip // limit + 1, page_size=limit)
+        response = QRCodeList(
+            items=qr_codes, total=total, page=skip // limit + 1, page_size=limit
+        )
 
         return response
     except SQLAlchemyError as e:
         logger.error("Database error listing QR codes", extra={"error": str(e)})
-        raise HTTPException(status_code=500, detail="Error listing QR codes: database error")
+        raise HTTPException(
+            status_code=500, detail="Error listing QR codes: database error"
+        )
     except Exception:
         logger.exception("Unexpected error listing QR codes")
-        raise HTTPException(status_code=500, detail="Error listing QR codes: unexpected error")
+        raise HTTPException(
+            status_code=500, detail="Error listing QR codes: unexpected error"
+        )
 
 
 @router.get("/qr/{qr_id}", response_model=QRCodeResponse)
@@ -96,7 +104,9 @@ async def update_qr(
 
         # Only dynamic QR codes can be updated
         if qr.qr_type != "dynamic":
-            raise HTTPException(status_code=400, detail="Only dynamic QR codes can be updated")
+            raise HTTPException(
+                status_code=400, detail="Only dynamic QR codes can be updated"
+            )
 
         # Update only the redirect_url field
         if qr_update.redirect_url is not None:

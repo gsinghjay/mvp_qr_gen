@@ -6,7 +6,7 @@ import re
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field, HttpUrl, validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 
 class QRType(str, Enum):
@@ -49,8 +49,9 @@ class QRCodeBase(BaseModel):
     size: int = Field(default=10, ge=1, le=100)
     border: int = Field(default=4, ge=0, le=20)
 
-    @validator("fill_color", "back_color")
-    def validate_color(cls, v):
+    @field_validator("fill_color", "back_color")
+    @classmethod
+    def validate_color(cls, v: str) -> str:
         """Validate color fields."""
         if not ColorValidator.is_valid_color(v):
             raise ValueError("Invalid hex color format. Must be in #RRGGBB format")
@@ -79,14 +80,12 @@ class QRCodeResponse(QRCodeBase):
     scan_count: int
     last_scan_at: datetime | None = None
 
-    class Config:
-        """Pydantic model configuration."""
-
-        from_attributes = True
-        json_encoders = {
-            # Ensure datetime fields are serialized with timezone info
-            datetime: lambda dt: dt.astimezone().isoformat()
-        }
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={
+            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
+        },
+    )
 
 
 class QRCodeList(BaseModel):
@@ -97,7 +96,4 @@ class QRCodeList(BaseModel):
     page: int
     page_size: int
 
-    class Config:
-        """Pydantic model configuration."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

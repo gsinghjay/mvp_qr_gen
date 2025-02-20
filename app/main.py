@@ -44,7 +44,8 @@ def setup_middleware(app: FastAPI) -> None:
             # Handle built-in FastAPI middleware
             if middleware_class == "fastapi.middleware.gzip.GZipMiddleware":
                 app.add_middleware(
-                    GZipMiddleware, minimum_size=middleware["kwargs"].get("minimum_size", 1000)
+                    GZipMiddleware,
+                    minimum_size=middleware["kwargs"].get("minimum_size", 1000),
                 )
             elif middleware_class == "app.middleware.create_cors_middleware":
                 app.add_middleware(
@@ -81,7 +82,9 @@ def setup_middleware(app: FastAPI) -> None:
                 },
             )
         except Exception as e:
-            logger.error(f"Failed to initialize middleware {middleware_class}: {str(e)}")
+            logger.error(
+                f"Failed to initialize middleware {middleware_class}: {str(e)}"
+            )
             raise
 
 
@@ -141,7 +144,11 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     return JSONResponse(
         status_code=exc.status_code,
         content=jsonable_encoder(
-            {"detail": exc.detail, "status_code": exc.status_code, "path": request.url.path}
+            {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+                "path": request.url.path,
+            }
         ),
     )
 
@@ -214,7 +221,11 @@ async def general_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=jsonable_encoder(
-            {"detail": "Internal server error", "path": request.url.path, "method": request.method}
+            {
+                "detail": "Internal server error",
+                "path": request.url.path,
+                "method": request.method,
+            }
         ),
     )
 

@@ -21,7 +21,9 @@ def get_qr_by_id(qr_id: str, db: Session) -> QRCode:
     try:
         qr = db.query(QRCode).filter(QRCode.id == qr_id).first()
         if not qr:
-            raise HTTPException(status_code=404, detail=f"QR code with ID {qr_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"QR code with ID {qr_id} not found"
+            )
         return qr
     except SQLAlchemyError as e:
         logger.error(f"Database error getting QR code {qr_id}", extra={"error": str(e)})
@@ -31,7 +33,9 @@ def get_qr_by_id(qr_id: str, db: Session) -> QRCode:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error getting QR code {qr_id}", extra={"error": str(e)})
+        logger.error(
+            f"Unexpected error getting QR code {qr_id}", extra={"error": str(e)}
+        )
         raise HTTPException(
             status_code=500, detail="Unexpected error occurred while retrieving QR code"
         )

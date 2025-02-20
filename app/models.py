@@ -57,7 +57,9 @@ class QRCode(Base):
 
     __tablename__ = "qr_codes"
 
-    id: str = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    id: str = Column(
+        String, primary_key=True, default=lambda: str(uuid.uuid4()), index=True
+    )
     content: str = Column(String(2048), nullable=False, index=True)
     qr_type: str = Column(String(50), nullable=False, index=True)
     redirect_url: str = Column(Text, nullable=True)
@@ -101,7 +103,9 @@ class QRCode(Base):
             "redirect_url": self.redirect_url if self.qr_type == "dynamic" else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "scan_count": self.scan_count,
-            "last_scan_at": self.last_scan_at.isoformat() if self.last_scan_at else None,
+            "last_scan_at": (
+                self.last_scan_at.isoformat() if self.last_scan_at else None
+            ),
             "fill_color": self.fill_color,
             "back_color": self.back_color,
             "size": self.size,

@@ -11,8 +11,9 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from ...database import get_db_with_logging
 from ...models import QRCode
-from ..qr.common import get_db_with_logging, logger
+from ..qr.common import logger
 
 
 # Configure templates with context processors
@@ -58,7 +59,9 @@ async def home(request: Request, db: Session = Depends(get_db_with_logging)):
     try:
         # Get total QR code count for the dashboard
         total_qr_codes = db.query(QRCode).count()
-        recent_qr_codes = db.query(QRCode).order_by(QRCode.created_at.desc()).limit(5).all()
+        recent_qr_codes = (
+            db.query(QRCode).order_by(QRCode.created_at.desc()).limit(5).all()
+        )
 
         return templates.TemplateResponse(
             name="index.html",

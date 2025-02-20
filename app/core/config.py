@@ -2,7 +2,6 @@
 Core configuration module for the FastAPI application.
 """
 
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

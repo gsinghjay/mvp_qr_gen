@@ -8,9 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from ...database import get_db_with_logging
 from ...models import QRCode
 from ...schemas import QRCodeCreate, QRCodeResponse
-from .common import get_db_with_logging, logger
+from .common import logger
 
 router = APIRouter(
     prefix="/api/v1/qr/static",
@@ -20,7 +21,9 @@ router = APIRouter(
 
 
 @router.post("", response_model=QRCodeResponse)
-async def create_static_qr(data: QRCodeCreate, db: Session = Depends(get_db_with_logging)):
+async def create_static_qr(
+    data: QRCodeCreate, db: Session = Depends(get_db_with_logging)
+):
     """Create a new static QR code."""
     try:
         if data.redirect_url:
@@ -48,8 +51,12 @@ async def create_static_qr(data: QRCodeCreate, db: Session = Depends(get_db_with
     except SQLAlchemyError as e:
         db.rollback()
         logger.error("Database error creating static QR code", extra={"error": str(e)})
-        raise HTTPException(status_code=500, detail="Error creating QR code: database error")
+        raise HTTPException(
+            status_code=500, detail="Error creating QR code: database error"
+        )
     except Exception:
         db.rollback()
         logger.exception("Unexpected error creating static QR code")
-        raise HTTPException(status_code=500, detail="Error creating QR code: unexpected error")
+        raise HTTPException(
+            status_code=500, detail="Error creating QR code: unexpected error"
+        )

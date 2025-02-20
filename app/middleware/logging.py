@@ -59,7 +59,8 @@ def setup_logging():
     # Create formatters
     json_formatter = JSONFormatter()
     console_formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - [%(name)s] - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+        "%(asctime)s - %(levelname)s - [%(name)s] - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     # Create and configure handlers
@@ -71,7 +72,9 @@ def setup_logging():
             log_dir / ERROR_LOG, maxBytes=MAX_LOG_SIZE, backupCount=LOG_BACKUP_COUNT
         ),
         "performance": logging.handlers.RotatingFileHandler(
-            log_dir / PERFORMANCE_LOG, maxBytes=MAX_LOG_SIZE, backupCount=LOG_BACKUP_COUNT
+            log_dir / PERFORMANCE_LOG,
+            maxBytes=MAX_LOG_SIZE,
+            backupCount=LOG_BACKUP_COUNT,
         ),
         "console": logging.StreamHandler(),
     }
@@ -133,7 +136,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         }
 
         # Log request start
-        loggers["access"].info("Request started", extra={**log_data, "event": "request_start"})
+        loggers["access"].info(
+            "Request started", extra={**log_data, "event": "request_start"}
+        )
 
         # Process request and capture response
         try:
