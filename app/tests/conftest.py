@@ -5,8 +5,8 @@ import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from ..database import Base, SessionLocal
-from ..main import app, get_db_with_logging
+from ..database import Base, SessionLocal, get_db_with_logging
+from ..main import app
 from fastapi.testclient import TestClient
 import os
 from datetime import datetime, timezone
