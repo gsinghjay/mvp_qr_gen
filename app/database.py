@@ -108,16 +108,27 @@ class Base(DeclarativeBase):
 
 @contextmanager
 def get_db():
-    """Provide a transactional scope around a series of operations."""
-    session = SessionLocal()
+    """Get database session with proper cleanup."""
+    db = SessionLocal()
     try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
+        yield db
+    finally:
+        db.close()
+
+def get_db_with_logging():
+    """Get database session with proper error handling and logging."""
+    db = None
+    try:
+        db = SessionLocal()
+        yield db
+    except Exception as e:
+        logger.exception("Database session error", extra={"error": str(e)})
+        if db:
+            db.rollback()
         raise
     finally:
-        session.close()
+        if db:
+            db.close()
 
 def init_db():
     """
