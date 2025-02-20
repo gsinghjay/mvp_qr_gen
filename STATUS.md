@@ -1,6 +1,6 @@
-1. **API Endpoint Refactoring** - ⏳ In Progress (68% Coverage)
-   - ❌ Routes are still in `main.py` (262 lines), need to be moved to separate modules
-   - ❌ Need to create `app/routes/` directory with separate route modules
+1. **API Endpoint Refactoring** - ✅ Complete (85% Coverage)
+   - ✅ Routes moved from `main.py` to separate modules in `app/routes/`
+   - ✅ Created and organized `app/routes/` directory with modular route handlers
    - ✅ Proper dependency injection for database sessions exists
    - ✅ Enhanced error handling with specific error types is implemented
 
@@ -10,13 +10,13 @@
    - ❌ Need to add caching for frequently accessed QR codes
    - ⚠️ Service layer needs better test coverage (currently at 61%)
 
-3. **Database Optimization** - 🟡 Partially Done (40% Coverage)
+3. **Database Optimization** - 🟡 Partially Done (37% Coverage)
    - ✅ Basic database connection pooling is implemented
    - ✅ Proper transaction management exists
    - ✅ Database migration versioning with Alembic is set up
    - ❌ Need to add database health checks
    - ❌ Need to optimize queries with additional indexing
-   - ⚠️ Database layer needs significantly better test coverage (currently at 40%)
+   - ⚠️ Database layer needs significantly better test coverage (currently at 37%)
 
 4. **Frontend Modernization** - 🟡 Partially Done
    - ✅ Basic module structure exists in `static/js/`
@@ -33,9 +33,10 @@
    - ⏳ Need to enhance test coverage (currently at 77% overall)
    - ❌ Need to add API contract tests
    - ⚠️ Key areas needing coverage improvement:
-     - Database layer (40%)
+     - Database layer (37%)
      - QR Service (61%)
-     - Main application code (68%)
+     - Router modules (47-78%)
+     - Main application code (85%)
 
 6. **Security Improvements** - 🟡 Partially Done (85% Coverage)
    - ✅ Basic security headers middleware implemented
@@ -60,18 +61,21 @@
    - ❌ Need to enhance deployment strategy
 
 **Technical Debt Items:**
-1. Pydantic Deprecation Warnings:
+1. Pydantic Deprecation Warnings (Confirmed by test output):
    - Need to migrate from V1 style `@validator` to V2 style `@field_validator`
    - Update class-based config to use ConfigDict
    - Replace deprecated `json_encoders`
 
 **Next Steps (in priority order):**
 
-1. Move route handlers from `main.py` to separate route modules
+1. ✅ Move route handlers from `main.py` to separate route modules
 2. Implement health check middleware
 3. Configure Traefik-level rate limiting
 4. Add proper module bundling for frontend
 5. Enhance test coverage and add performance tests
+   - Focus on database layer (37% coverage)
+   - Improve QR Service coverage (61%)
+   - Enhance router modules coverage (47-78%)
 6. Implement backup strategy
 7. Set up CI/CD pipeline
 8. Address Pydantic deprecation warnings
