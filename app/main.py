@@ -1,31 +1,33 @@
 """
 Main FastAPI application module for the QR code generator.
 """
-from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.encoders import jsonable_encoder
-from sqlalchemy.exc import SQLAlchemyError
-import logging
-import uuid
-import os
+
 import importlib
+import logging
+import os
+import uuid
 from contextlib import asynccontextmanager
 
-from .core.config import settings, MIDDLEWARE_CONFIG
+from fastapi import FastAPI, Request, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import SQLAlchemyError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from .core.config import MIDDLEWARE_CONFIG, settings
 from .database import init_db
 from .middleware import logging as logging_middleware
 from .middleware import metrics as metrics_middleware
-from .middleware import security as security_middleware
 from .routers import routers
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
 
 def setup_middleware(app: FastAPI) -> None:
     """
@@ -35,15 +37,14 @@ def setup_middleware(app: FastAPI) -> None:
     for middleware in reversed(MIDDLEWARE_CONFIG):
         if not middleware["enabled"]:
             continue
-            
+
         try:
             middleware_class = middleware["class"]
-            
+
             # Handle built-in FastAPI middleware
             if middleware_class == "fastapi.middleware.gzip.GZipMiddleware":
                 app.add_middleware(
-                    GZipMiddleware,
-                    minimum_size=middleware["kwargs"].get("minimum_size", 1000)
+                    GZipMiddleware, minimum_size=middleware["kwargs"].get("minimum_size", 1000)
                 )
             elif middleware_class == "app.middleware.create_cors_middleware":
                 app.add_middleware(
@@ -69,19 +70,20 @@ def setup_middleware(app: FastAPI) -> None:
                 app.add_middleware(metrics_middleware.MetricsMiddleware)
             elif middleware_class == "app.middleware.LoggingMiddleware":
                 app.add_middleware(logging_middleware.LoggingMiddleware)
-            
+
             logger.info(
                 f"Initialized middleware: {middleware_class}",
                 extra={
                     "enabled": middleware["enabled"],
                     "is_decorator": middleware.get("is_decorator", False),
                     "args": middleware.get("args", []),
-                    "kwargs": middleware.get("kwargs", {})
-                }
+                    "kwargs": middleware.get("kwargs", {}),
+                },
             )
         except Exception as e:
             logger.error(f"Failed to initialize middleware {middleware_class}: {str(e)}")
             raise
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -92,6 +94,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown (if needed)
 
+
 # Create FastAPI app with lifespan
 app = FastAPI(
     title="QR Code Generator API",
@@ -100,7 +103,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
-    root_path=""  # Ensure root path is empty for Traefik
+    root_path="",  # Ensure root path is empty for Traefik
 )
 
 # Initialize middleware
@@ -113,6 +116,7 @@ for router in routers:
 # Configure static files - ensure correct directory in Docker context
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/static")
 
+
 # Add middleware to force HTTPS for static files
 @app.middleware("http")
 async def force_https_static(request: Request, call_next):
@@ -122,11 +126,13 @@ async def force_https_static(request: Request, call_next):
         response.headers["Content-Security-Policy"] = "upgrade-insecure-requests"
     return response
 
+
 # Mount static files with HTTPS configuration
 app.mount("/static", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 # Load environment variables
 TRUSTED_HOSTS = os.getenv("TRUSTED_HOSTS", "localhost").split(",")
+
 
 # Exception handlers
 @app.exception_handler(StarletteHTTPException)
@@ -134,12 +140,11 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Handle HTTP exceptions with detailed error messages."""
     return JSONResponse(
         status_code=exc.status_code,
-        content=jsonable_encoder({
-            "detail": exc.detail,
-            "status_code": exc.status_code,
-            "path": request.url.path
-        }),
+        content=jsonable_encoder(
+            {"detail": exc.detail, "status_code": exc.status_code, "path": request.url.path}
+        ),
     )
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -148,39 +153,43 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     if len(exc.errors()) == 1 and exc.errors()[0]["type"] == "json_invalid":
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=jsonable_encoder({
-                "detail": "Invalid JSON format",
-                "path": request.url.path,
-                "method": request.method
-            }),
+            content=jsonable_encoder(
+                {
+                    "detail": "Invalid JSON format",
+                    "path": request.url.path,
+                    "method": request.method,
+                }
+            ),
         )
-    
+
     # For other validation errors, return 422 with detailed error information
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder({
-            "detail": exc.errors(),
-            "body": exc.body,
-            "path": request.url.path,
-            "method": request.method
-        }),
+        content=jsonable_encoder(
+            {
+                "detail": exc.errors(),
+                "body": exc.body,
+                "path": request.url.path,
+                "method": request.method,
+            }
+        ),
     )
+
 
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError):
     """Handle ValueError with proper error details."""
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder({
-            "detail": [{
-                "loc": ["body"],
-                "msg": str(exc),
-                "type": "value_error"
-            }],
-            "path": request.url.path,
-            "method": request.method
-        }),
+        content=jsonable_encoder(
+            {
+                "detail": [{"loc": ["body"], "msg": str(exc), "type": "value_error"}],
+                "path": request.url.path,
+                "method": request.method,
+            }
+        ),
     )
+
 
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
@@ -188,12 +197,15 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
     logger.error(f"Database error: {str(exc)}", exc_info=exc)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=jsonable_encoder({
-            "detail": "Database error occurred",
-            "path": request.url.path,
-            "method": request.method
-        }),
+        content=jsonable_encoder(
+            {
+                "detail": "Database error occurred",
+                "path": request.url.path,
+                "method": request.method,
+            }
+        ),
     )
+
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
@@ -201,12 +213,11 @@ async def general_exception_handler(request: Request, exc: Exception):
     logger.error("Unexpected error occurred", exc_info=exc)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=jsonable_encoder({
-            "detail": "Internal server error",
-            "path": request.url.path,
-            "method": request.method
-        }),
+        content=jsonable_encoder(
+            {"detail": "Internal server error", "path": request.url.path, "method": request.method}
+        ),
     )
+
 
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
@@ -215,6 +226,7 @@ async def add_request_id(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
+
 
 """
 @app.get("/", response_class=HTMLResponse)
@@ -248,4 +260,4 @@ async def home(
             },
             status_code=500
         )
-""" 
+"""
