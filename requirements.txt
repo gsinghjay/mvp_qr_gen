@@ -21,3 +21,8 @@ Faker>=22.5.1
 types-SQLAlchemy>=1.4.0
 types-Pillow>=10.1.0
 types-PyYAML>=6.0.0
+
+# Development tools
+black>=24.2.0  # Code formatting
+ruff>=0.3.0  # Fast Python linter
+mypy>=1.8.0  # Static type checking
