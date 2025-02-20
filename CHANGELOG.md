@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.3.1 (2025-02-20)
+
+### Bug Fixes
+
+- **db**: Ensure database initialization completes before app startup
+  ([`c703557`](https://github.com/gsinghjay/mvp_qr_gen/commit/c703557e11c5c0e6219f8f8658f2646ca39f1f47))
+
+
 ## v0.3.0 (2025-02-20)
 
 ### Chores
