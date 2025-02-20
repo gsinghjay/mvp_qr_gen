@@ -59,9 +59,7 @@ async def home(request: Request, db: Session = Depends(get_db_with_logging)):
     try:
         # Get total QR code count for the dashboard
         total_qr_codes = db.query(QRCode).count()
-        recent_qr_codes = (
-            db.query(QRCode).order_by(QRCode.created_at.desc()).limit(5).all()
-        )
+        recent_qr_codes = db.query(QRCode).order_by(QRCode.created_at.desc()).limit(5).all()
 
         return templates.TemplateResponse(
             name="index.html",

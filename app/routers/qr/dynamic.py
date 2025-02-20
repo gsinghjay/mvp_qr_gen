@@ -22,15 +22,11 @@ router = APIRouter(
 
 
 @router.post("", response_model=QRCodeResponse)
-async def create_dynamic_qr(
-    data: QRCodeCreate, db: Session = Depends(get_db_with_logging)
-):
+async def create_dynamic_qr(data: QRCodeCreate, db: Session = Depends(get_db_with_logging)):
     """Create a new dynamic QR code."""
     try:
         if not data.redirect_url:
-            raise HTTPException(
-                status_code=422, detail="Dynamic QR codes must have a redirect URL"
-            )
+            raise HTTPException(status_code=422, detail="Dynamic QR codes must have a redirect URL")
 
         # Generate a short unique identifier for the redirect path
         short_id = str(uuid.uuid4())[:8]
@@ -55,15 +51,11 @@ async def create_dynamic_qr(
     except SQLAlchemyError as e:
         db.rollback()
         logger.error("Database error creating dynamic QR code", extra={"error": str(e)})
-        raise HTTPException(
-            status_code=500, detail="Error creating QR code: database error"
-        )
+        raise HTTPException(status_code=500, detail="Error creating QR code: database error")
     except Exception:
         db.rollback()
         logger.exception("Unexpected error creating dynamic QR code")
-        raise HTTPException(
-            status_code=500, detail="Error creating QR code: unexpected error"
-        )
+        raise HTTPException(status_code=500, detail="Error creating QR code: unexpected error")
 
 
 @router.put("/{qr_id}", response_model=QRCodeResponse)
@@ -94,14 +86,10 @@ async def update_dynamic_qr(
         except Exception as e:
             db.rollback()
             logger.error(f"Database error updating QR code: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail="Database error while updating QR code"
-            )
+            raise HTTPException(status_code=500, detail="Database error while updating QR code")
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error updating QR code: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail="Unexpected error while updating QR code"
-        )
+        raise HTTPException(status_code=500, detail="Unexpected error while updating QR code")

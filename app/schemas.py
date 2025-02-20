@@ -82,9 +82,7 @@ class QRCodeResponse(QRCodeBase):
 
     model_config = ConfigDict(
         from_attributes=True,
-        json_encoders={
-            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
-        },
+        json_encoders={datetime: lambda dt: dt.astimezone().isoformat() if dt else None},
     )
 
 

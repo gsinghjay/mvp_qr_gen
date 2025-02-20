@@ -74,14 +74,10 @@ def create_test_qr_code(client: TestClient, qr_type: QRType = QRType.STATIC) -> 
 
         try:
             last_scan_at = datetime.fromisoformat(last_scan_at_str)
-            assert (
-                last_scan_at.tzinfo is not None
-            ), "last_scan_at should be timezone-aware"
+            assert last_scan_at.tzinfo is not None, "last_scan_at should be timezone-aware"
             assert last_scan_at.tzinfo == UTC, "last_scan_at should be in UTC"
         except ValueError as e:
-            pytest.fail(
-                f"Invalid last_scan_at format: {last_scan_at_str}. Error: {str(e)}"
-            )
+            pytest.fail(f"Invalid last_scan_at format: {last_scan_at_str}. Error: {str(e)}")
 
     return data
 
@@ -99,9 +95,7 @@ def test_create_static_qr(client: TestClient, test_db: Session):
     json_payload = jsonable_encoder(payload)
 
     response = client.post("/api/v1/qr/static", json=json_payload)
-    assert (
-        response.status_code == 200
-    ), f"Failed to create static QR code: {response.text}"
+    assert response.status_code == 200, f"Failed to create static QR code: {response.text}"
     data = response.json()
 
     # Verify response data
@@ -121,9 +115,7 @@ def test_create_static_qr(client: TestClient, test_db: Session):
     db_qr = test_db.query(QRCode).filter(QRCode.id == data["id"]).first()
     assert db_qr is not None
     assert db_qr.content == "https://example.com"
-    assert (
-        db_qr.created_at.tzinfo is not None
-    ), "Database created_at should be timezone-aware"
+    assert db_qr.created_at.tzinfo is not None, "Database created_at should be timezone-aware"
 
 
 def test_create_dynamic_qr(client: TestClient, test_db: Session):
@@ -140,9 +132,7 @@ def test_create_dynamic_qr(client: TestClient, test_db: Session):
     json_payload = jsonable_encoder(payload)
 
     response = client.post("/api/v1/qr/dynamic", json=json_payload)
-    assert (
-        response.status_code == 200
-    ), f"Failed to create dynamic QR code: {response.text}"
+    assert response.status_code == 200, f"Failed to create dynamic QR code: {response.text}"
     data = response.json()
 
     # Verify response data
@@ -242,11 +232,9 @@ async def test_dynamic_qr_redirect(client: TestClient, test_db: Session):
     # Compare URLs ignoring scheme (http vs https)
     redirect_url = response.headers["location"]
     expected_url = created_qr["redirect_url"]
-    assert redirect_url.replace("https://", "").replace(
-        "http://", ""
-    ) == expected_url.replace("https://", "").replace(
-        "http://", ""
-    ), f"Redirect URL mismatch: got {redirect_url}, expected {expected_url}"
+    assert redirect_url.replace("https://", "").replace("http://", "") == expected_url.replace(
+        "https://", ""
+    ).replace("http://", ""), f"Redirect URL mismatch: got {redirect_url}, expected {expected_url}"
 
     # Verify scan count and timestamp are updated
     db_qr = test_db.query(QRCode).filter(QRCode.id == created_qr["id"]).first()
@@ -262,9 +250,7 @@ def test_update_dynamic_qr(client: TestClient, test_db: Session):
 
     # Update redirect URL
     new_url = "https://github.com/new-example"
-    response = client.put(
-        f"/api/v1/qr/{created_qr['id']}", json={"redirect_url": new_url}
-    )
+    response = client.put(f"/api/v1/qr/{created_qr['id']}", json={"redirect_url": new_url})
     assert response.status_code == 200, f"Failed to update QR code: {response.text}"
     data = response.json()
 
@@ -289,15 +275,11 @@ def test_update_dynamic_qr(client: TestClient, test_db: Session):
 
     # Test updating static QR code
     static_qr = create_test_qr_code(client, QRType.STATIC)
-    response = client.put(
-        f"/api/v1/qr/{static_qr['id']}", json={"redirect_url": new_url}
-    )
+    response = client.put(f"/api/v1/qr/{static_qr['id']}", json={"redirect_url": new_url})
     assert response.status_code == 400
 
     # Test invalid redirect URL
-    response = client.put(
-        f"/api/v1/qr/{created_qr['id']}", json={"redirect_url": "not-a-url"}
-    )
+    response = client.put(f"/api/v1/qr/{created_qr['id']}", json={"redirect_url": "not-a-url"})
     assert response.status_code == 422
 
 
@@ -375,9 +357,7 @@ def test_qr_code_color_validation(client: TestClient, test_db: Session, color):
         "content": fake.url(),
         "qr_type": QRType.STATIC,
         "fill_color": color,
-        "back_color": (
-            "#000000" if color == "#FFFFFF" else "#FFFFFF"
-        ),  # Ensure different colors
+        "back_color": ("#000000" if color == "#FFFFFF" else "#FFFFFF"),  # Ensure different colors
         "size": 10,
         "border": 4,
     }
@@ -409,9 +389,7 @@ async def test_concurrent_qr_code_access(client: TestClient, test_db: Session):
     # Simulate concurrent access
     async def access_qr():
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as async_client:
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as async_client:
             response = await async_client.get(f"/r/{short_id}", follow_redirects=False)
             return response.status_code
 
@@ -421,9 +399,7 @@ async def test_concurrent_qr_code_access(client: TestClient, test_db: Session):
     results = await asyncio.gather(*tasks)
 
     # Verify all requests were successful
-    assert all(
-        status == 302 for status in results
-    ), f"Not all redirects were successful: {results}"
+    assert all(status == 302 for status in results), f"Not all redirects were successful: {results}"
 
     # Verify the scan count was updated correctly
     db_qr = test_db.query(QRCode).filter(QRCode.id == created_qr["id"]).first()

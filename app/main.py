@@ -82,9 +82,7 @@ def setup_middleware(app: FastAPI) -> None:
                 },
             )
         except Exception as e:
-            logger.error(
-                f"Failed to initialize middleware {middleware_class}: {str(e)}"
-            )
+            logger.error(f"Failed to initialize middleware {middleware_class}: {str(e)}")
             raise
 
 
