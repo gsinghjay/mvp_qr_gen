@@ -228,105 +228,64 @@
                     </div>
 
                     <!-- QR Codes List Section -->
-                    <div class="card rounded-0 shadow-sm" id="qr-list">
-                        <div class="card-header bg-dark text-white rounded-0 py-3 d-flex justify-content-between align-items-center">
-                            <h2 class="card-title h5 mb-0 d-flex align-items-center">
-                                <i class="bi bi-list-ul me-2"></i>
-                                Existing QR Codes
-                                <span class="badge bg-primary rounded-0 ms-2">{{ total_qr_codes }}</span>
-                            </h2>
+                    <div class="card shadow-sm" id="qr-list">
+                        <div class="qr-list-header">
                             <div class="d-flex align-items-center">
-                                <div class="input-group input-group-sm rounded-0 me-2" style="width: 200px;">
-                                    <span class="input-group-text rounded-0"><i class="bi bi-search"></i></span>
-                                    <input type="text" class="form-control rounded-0" id="qr-search" placeholder="Search QR codes...">
+                                <i class="bi bi-list-ul me-2"></i>
+                                <span class="h5 mb-0">Existing QR Codes</span>
+                                <span class="badge ms-2">0</span>
+                            </div>
+                            <div class="qr-search-container">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="qr-search" placeholder="Search QR codes...">
                                 </div>
-                                <button class="btn btn-sm btn-outline-light rounded-0" id="refresh-list">
+                                <button class="btn btn-outline-light" id="refresh-list">
                                     <i class="bi bi-arrow-clockwise"></i>
                                 </button>
                             </div>
                         </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-hover mb-0" id="qr-code-list">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="border-0 px-4">
-                                                <i class="bi bi-key me-1"></i>
-                                                ID
-                                            </th>
-                                            <th class="border-0">
-                                                <i class="bi bi-link-45deg me-1"></i>
-                                                Destination URL
-                                            </th>
-                                            <th class="border-0">
-                                                <i class="bi bi-calendar me-1"></i>
-                                                Created
-                                            </th>
-                                            <th class="border-0">
-                                                <i class="bi bi-bar-chart me-1"></i>
-                                                Scans
-                                            </th>
-                                            <th class="border-0 text-end px-4">
-                                                <i class="bi bi-gear me-1"></i>
-                                                Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% if total_qr_codes == 0 %}
-                                        <tr id="empty-state">
-                                            <td colspan="5" class="text-center py-4 text-muted">
-                                                <i class="bi bi-inbox display-1 d-block mb-3"></i>
-                                                No QR codes found
-                                                <button class="btn btn-sm btn-dark rounded-0 d-block mx-auto mt-3">
-                                                    <i class="bi bi-plus-circle me-2"></i>
-                                                    Create your first QR code
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        {% else %}
-                                            {% for qr in recent_qr_codes %}
-                                            <tr>
-                                                <td class="align-middle px-4">
-                                                    <code>{{ qr.id }}</code>
-                                                </td>
-                                                <td class="align-middle">
-                                                    <a href="{{ qr.redirect_url }}" class="text-decoration-none text-truncate d-inline-block" style="max-width: 300px;">
-                                                        {{ qr.redirect_url }}
-                                                    </a>
-                                                </td>
-                                                <td class="align-middle">
-                                                    <small class="text-muted">{{ qr.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
-                                                </td>
-                                                <td class="align-middle">
-                                                    <span class="badge bg-primary rounded-0">{{ qr.scan_count }}</span>
-                                                </td>
-                                                <td class="align-middle text-end px-4">
-                                                    <div class="btn-group rounded-0">
-                                                        <button type="button" class="btn btn-sm btn-outline-dark rounded-0 view-qr" 
-                                                                title="View QR Code" data-qr-id="{{ qr.id }}">
-                                                            <i class="bi bi-eye"></i>
-                                                        </button>
-                                                        <button type="button" class="btn btn-sm btn-outline-dark rounded-0 edit-qr" 
-                                                                title="Edit QR Code" data-qr-id="{{ qr.id }}">
-                                                            <i class="bi bi-pencil"></i>
-                                                        </button>
-                                                        <button type="button" class="btn btn-sm btn-outline-dark rounded-0 stats-qr" 
-                                                                title="View Statistics" data-qr-id="{{ qr.id }}">
-                                                            <i class="bi bi-graph-up"></i>
-                                                        </button>
-                                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-0 delete-qr" 
-                                                                title="Delete QR Code" data-qr-id="{{ qr.id }}">
-                                                            <i class="bi bi-trash"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        {% endif %}
-                                    </tbody>
-                                </table>
-                            </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="qr-code-list">
+                                <thead>
+                                    <tr>
+                                        <th>
+                                            <i class="bi bi-key me-2"></i>
+                                            ID
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-link-45deg me-2"></i>
+                                            Destination URL
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-calendar me-2"></i>
+                                            Created
+                                        </th>
+                                        <th>
+                                            <i class="bi bi-bar-chart me-2"></i>
+                                            Scans
+                                        </th>
+                                        <th class="text-end">
+                                            <i class="bi bi-gear me-2"></i>
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr id="empty-state">
+                                        <td colspan="5">
+                                            <i class="bi bi-inbox"></i>
+                                            <p>No QR codes found</p>
+                                            <button class="btn" onclick="location.href='#create-qr'">
+                                                <i class="bi bi-plus-circle"></i>
+                                                Create your first QR code
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
