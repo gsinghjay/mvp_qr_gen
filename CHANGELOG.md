@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.3.3 (2025-02-20)
+
+### Bug Fixes
+
+- **security**: Enforce HTTPS for static files and standardize code formatting
+  ([`6c8237e`](https://github.com/gsinghjay/mvp_qr_gen/commit/6c8237e85e4397391230fd64767db9aaf7324536))
+
+### Chores
+
+- Add development tools (black, ruff, mypy) with configurations
+  ([`700ffc4`](https://github.com/gsinghjay/mvp_qr_gen/commit/700ffc48d764a68cb8838ae5b177a2d805dd54a6))
+
+
 ## v0.3.2 (2025-02-20)
 
 ### Bug Fixes
