@@ -113,8 +113,17 @@ for router in routers:
 # Configure static files - ensure correct directory in Docker context
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/static")
 
-# Mount static files
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+# Add middleware to force HTTPS for static files
+@app.middleware("http")
+async def force_https_static(request: Request, call_next):
+    """Force HTTPS for static file URLs."""
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Content-Security-Policy"] = "upgrade-insecure-requests"
+    return response
+
+# Mount static files with HTTPS configuration
+app.mount("/static", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 # Load environment variables
 TRUSTED_HOSTS = os.getenv("TRUSTED_HOSTS", "localhost").split(",")
