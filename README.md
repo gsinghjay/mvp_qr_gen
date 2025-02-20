@@ -1,160 +1,163 @@
-## QR Code Generator API Documentation
+## QR Code Generator Repository Documentation
 
-### 1. Overview
+### What is it?
 
-This repository provides a REST API for generating and managing QR codes.
-It supports both static and dynamic QR codes.
-Dynamic QR codes offer redirect functionality and scan tracking.
-The API is built with FastAPI and uses a SQLite database.
-It includes features like middleware for logging, metrics, and security.
+This repository provides an API and web interface for generating and managing QR codes. It supports both static and dynamic QR codes. Dynamic QR codes offer redirect URLs and scan tracking. The API is built with FastAPI and uses a SQLite database.
 
-### 2. Quick Start
+### Quick Start
 
-**Installation:**
+To run the QR Code Generator locally using Docker Compose:
 
 1.  Ensure Docker and Docker Compose are installed.
 2.  Clone the repository.
 3.  Navigate to the repository directory in your terminal.
-4.  Run `docker-compose up --build` to build and start the application.
+4.  Run: `docker-compose up --build`
 
-**Basic Usage:**
+This command builds the Docker image and starts the application along with Traefik.
+Access the application at `https://localhost`.
+The API documentation is available at `https://localhost/docs`.
 
-1.  Access the API documentation at `http://localhost:8080/docs` (or `https://your-domain/docs` if deployed with Traefik).
-2.  Use the `/api/v1/qr/static` endpoint to create static QR codes.
-    -   Provide `content` in the request body.
-    -   Optionally customize `fill_color`, `back_color`, `size`, and `border`.
-3.  Use the `/api/v1/qr/dynamic` endpoint to create dynamic QR codes.
-    -   Provide `redirect_url` in the request body.
-    -   Optionally customize `fill_color`, `back_color`, `size`, and `border`.
-4.  Retrieve QR code images using the `/api/v1/qr/{qr_id}/image` endpoint.
-    -   Specify `qr_id` and optionally `image_format` and `image_quality` as query parameters.
-5.  Access dynamic QR codes via the `/r/{short_id}` redirect endpoint.
+### Configuration
 
-### 3. Configuration
+The application can be configured via environment variables and configuration files.
 
-The application is configured via environment variables and configuration files.
+#### Environment Variables
 
-**Environment Variables:**
+Environment variables are set in `.env` file or directly in your environment.
 
-*   `DATABASE_URL`:  Database connection string. Defaults to `sqlite:///./data/qr_codes.db`.
-*   `ENVIRONMENT`:  Environment mode (`development` or `production`). Defaults to `development`.
-*   `DEBUG`:  Debug mode for FastAPI. Defaults to `False`.
-*   `TRUSTED_HOSTS`:  List of trusted hosts. Defaults to `*`.
-*   `CORS_ORIGINS`:  List of allowed CORS origins. Defaults to `*`.
-*   `CORS_HEADERS`:  List of allowed CORS headers. Defaults to `*`.
-*   `ENABLE_GZIP`:  Enable GZip middleware. Defaults to `True`.
-*   `GZIP_MIN_SIZE`:  Minimum size for GZip compression. Defaults to `1000`.
-*   `ENABLE_METRICS`:  Enable metrics middleware. Defaults to `True`.
-*   `ENABLE_LOGGING`:  Enable logging middleware. Defaults to `True`.
-*   `METRICS_ENDPOINT`:  Metrics endpoint path. Defaults to `/metrics`.
-*   `LOG_LEVEL`:  Application log level. Defaults to `INFO`.
+*   **`DATABASE_URL`**:  Database connection string. Defaults to `sqlite:///./data/qr_codes.db`. For in-memory testing use `sqlite:///:memory:`.
+*   **`ENVIRONMENT`**:  Environment mode, `development` or `production`. Defaults to `development`.
+*   **`DEBUG`**: Enable debug mode. Defaults to `False`.
+*   **`TRUSTED_HOSTS`**:  List of trusted hosts. Defaults to `*`.
+*   **`CORS_ORIGINS`**: List of allowed CORS origins. Defaults to `*`.
+*   **`CORS_HEADERS`**: List of allowed CORS headers. Defaults to `*`.
+*   **`ENABLE_GZIP`**: Enable GZip compression. Defaults to `True`.
+*   **`GZIP_MIN_SIZE`**: Minimum size for GZip compression. Defaults to `1000`.
+*   **`ENABLE_METRICS`**: Enable metrics endpoint. Defaults to `True`.
+*   **`ENABLE_LOGGING`**: Enable request logging. Defaults to `True`.
+*   **`METRICS_ENDPOINT`**: Metrics endpoint path. Defaults to `/metrics`.
+*   **`LOG_LEVEL`**: Application log level. Defaults to `INFO`.
 
-**Configuration Files:**
+#### `app/core/config.py`
 
-*   `dynamic_conf.yml`: Traefik dynamic configuration for routing and services.
-*   `traefik.yml`: Traefik static configuration for providers, entrypoints, and certificates.
-*   `alembic.ini`: Alembic configuration for database migrations.
-*   `pyproject.toml`: Python project configuration, including dependencies.
-*   `package.json`: Node.js project configuration, mainly for development tools.
+This file defines application settings using Pydantic. It loads settings from environment variables and `.env` file. Refer to this file for detailed configuration options and defaults.
 
-### 4. API Documentation
+#### `dynamic_conf.yml`
 
-The API documentation is automatically generated using Swagger UI and is accessible at `/docs` endpoint of your application.
+This Traefik dynamic configuration file defines routing rules and middleware. It sets up:
 
-**API Endpoints:**
+*   Routers for API and dashboard.
+*   Middleware for HTTPS redirection.
+*   Service for the API application.
 
-*   **`/api/v1/qr`**:
-    *   `GET`: List QR codes with pagination and optional filtering by `qr_type`.
-        *   Query parameters: `skip`, `limit`, `qr_type`.
-    *   `GET /{qr_id}`: Get QR code data by ID.
-    *   `GET /{qr_id}/image`: Get QR code image by ID.
-        *   Query parameters: `image_format`, `image_quality`.
-    *   `PUT /{qr_id}`: Update QR code data by ID (Dynamic QR codes only, updates `redirect_url`).
-        *   Request body: `QRCodeUpdate` schema.
+#### `traefik.yml`
 
-*   **`/api/v1/qr/static`**:
-    *   `POST`: Create a new static QR code.
-        *   Request body: `QRCodeCreate` schema.
+This Traefik static configuration file sets up:
 
-*   **`/api/v1/qr/dynamic`**:
-    *   `POST`: Create a new dynamic QR code.
-        *   Request body: `QRCodeCreate` schema.
-    *   `PUT /{qr_id}`: Update a dynamic QR code's redirect URL.
-        *   Request body: `QRCodeUpdate` schema.
+*   Entrypoints for web (port 80), websecure (port 443), traefik (dashboard port 8080), and metrics (port 8082).
+*   Providers for Docker and file-based dynamic configuration.
+*   API dashboard and insecure access enabled (for development).
+*   Access logs and Prometheus metrics enabled.
+*   TLS configuration with a self-signed certificate for development.
 
-*   **`/r/{short_id}`**:
-    *   `GET`: Redirect endpoint for dynamic QR codes.
+### Package Summary
 
-*   **`/metrics`**:
-    *   `GET`: Prometheus metrics endpoint.
+This repository provides a FastAPI application to generate and manage QR codes.
+The core functionalities are encapsulated within the `app` directory, creating a single deployable package.
 
-*   **`/`**:
-    *   `GET`: Home page, renders the web UI.
+### API Documentation
 
-### 5. Dependencies and Requirements
+The API is structured into several routers:
 
-**Python Dependencies:**
+#### API Version 1 (`/api/v1`)
 
-*   `fastapi`
-*   `uvicorn`
-*   `SQLAlchemy`
-*   `alembic`
-*   `qrcode`
-*   `python-multipart`
-*   `pydantic`
-*   `pydantic-settings`
-*   `prometheus-client`
-*   `Jinja2`
+*   **`GET /api/v1/qr`**: List QR codes with pagination and optional filtering by `qr_type`.
+    *   Query Parameters:
+        *   `skip` (int, optional):  Number of items to skip for pagination.
+        *   `limit` (int, optional): Maximum number of items per page.
+        *   `qr_type` (str, optional): Filter by QR code type (`static` or `dynamic`).
+    *   Response Model: `QRCodeList`
+*   **`GET /api/v1/qr/{qr_id}`**: Get QR code data by ID.
+    *   Path Parameter:
+        *   `qr_id` (str):  QR code identifier.
+    *   Response Model: `QRCodeResponse`
+*   **`GET /api/v1/qr/{qr_id}/image`**: Get QR code image by ID.
+    *   Path Parameter:
+        *   `qr_id` (str): QR code identifier.
+    *   Query Parameters:
+        *   `image_format` (str, optional):  Image format (`png`, `jpeg`, `jpg`, `svg`, `webp`). Defaults to `png`.
+        *   `image_quality` (int, optional): Image quality for JPEG and WebP (1-100).
+*   **`PUT /api/v1/qr/{qr_id}`**: Update QR code data by ID. Currently only updates `redirect_url` for dynamic QR codes.
+    *   Path Parameter:
+        *   `qr_id` (str): QR code identifier.
+    *   Request Body: `QRCodeUpdate`
+    *   Response Model: `QRCodeResponse`
 
-These dependencies are listed in `requirements.txt` and `pyproject.toml`.
+#### Dynamic QR Code Router (`/api/v1/qr/dynamic`)
 
-**Node.js Dependencies (Development Tools):**
+*   **`POST /api/v1/qr/dynamic`**: Create a new dynamic QR code.
+    *   Request Body: `QRCodeCreate` (must include `redirect_url`)
+    *   Response Model: `QRCodeResponse`
+*   **`PUT /api/v1/qr/dynamic/{qr_id}`**: Update a dynamic QR code's redirect URL.
+    *   Path Parameter:
+        *   `qr_id` (str): QR code identifier.
+    *   Request Body: `QRCodeUpdate` (must include `redirect_url`)
+    *   Response Model: `QRCodeResponse`
 
-*   `@browserbasehq/stagehand`
-*   `playwright`
-*   `cursor-tools`
+#### Static QR Code Router (`/api/v1/qr/static`)
 
-These are listed in `package.json`.
+*   **`POST /api/v1/qr/static`**: Create a new static QR code.
+    *   Request Body: `QRCodeCreate` (`redirect_url` must be None)
+    *   Response Model: `QRCodeResponse`
 
-**System Requirements:**
+#### Redirect Router (`/r`)
 
-*   Docker
-*   Docker Compose
+*   **`GET /r/{short_id}`**: Redirect endpoint for dynamic QR codes.
+    *   Path Parameter:
+        *   `short_id` (str): Short identifier from the dynamic QR code content.
 
-### 6. Advanced Usage Examples
+#### Web Pages Router (`/`)
 
-**Customizing QR Code Appearance:**
+*   **`GET /`**: Renders the home page with dashboard information.
 
-When creating static or dynamic QR codes, you can customize the appearance using the following parameters:
+### Dependencies and Requirements
 
-*   `fill_color`:  Set the color of the QR code pattern. Example: `#008000` (green).
-*   `back_color`: Set the background color. Example: `#F0F0F0` (light gray).
-*   `size`:  Adjust the size of the QR code by changing the box size. Values from 1 to 100.
-*   `border`:  Control the border around the QR code. Values from 0 to 20.
+*   Python 3.12+
+*   Dependencies listed in `requirements.txt` or `pyproject.toml`:
+    *   `alembic`
+    *   `fastapi`
+    *   `pydantic`
+    *   `pydantic-settings`
+    *   `prometheus-client`
+    *   `qrcode`
+    *   `SQLAlchemy`
+    *   `uvicorn`
 
-**Example (using curl to create a customized static QR code):**
+### Advanced Usage Examples
+
+#### Database Management
+
+The `app/scripts/manage_db.py` script provides tools for database management:
+
+*   `--init`: Initializes a fresh database, removing existing data.
+*   `--migrate`: Runs database migrations to the latest version.
+*   `--check`: Checks if migrations are needed.
+*   `--validate`: Validates the database structure.
+
+These commands can be executed inside the Docker container. For example, to initialize the database:
 
 ```bash
-curl -X POST \
-  -H "Content-Type: application/json" \
-  -d '{
-        "content": "Custom QR Code",
-        "fill_color": "#0000FF",
-        "back_color": "#F0F0F0",
-        "size": 12,
-        "border": 2
-      }' \
-  http://localhost:8000/api/v1/qr/static
+docker-compose exec api /app/scripts/manage_db.py --init
 ```
 
-**Monitoring and Metrics:**
+#### Production Deployment with Traefik
 
-The application exposes Prometheus metrics at the `/metrics` endpoint.
-Traefik also provides its own metrics, offering a comprehensive monitoring solution.
-Application-level metrics complement Traefik's edge-level metrics.
+The provided `docker-compose.yml`, `Dockerfile`, `dynamic_conf.yml`, and `traefik.yml` are configured for production deployment using Traefik as a reverse proxy and TLS termination.
 
-**Logging:**
+To deploy in production:
 
-Detailed application logs are available in JSON format within the `/logs/api` directory inside the Docker container.
-Traefik access logs are also configured and stored in `/logs/traefik`.
-Logging middleware captures request details, response status, and performance metrics.
+1.  Set `ENVIRONMENT` environment variable to `production`.
+2.  Ensure proper TLS certificate configuration in `traefik.yml` for HTTPS.
+3.  Build and run the application using `docker-compose up --build -d`.
+
+Traefik automatically handles routing and HTTPS, and the application runs with production settings (e.g., hot-reloading disabled, multiple workers).
