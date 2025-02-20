@@ -136,7 +136,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         }
 
         # Log request start
-        loggers["access"].info("Request started", extra={**log_data, "event": "request_start"})
+        loggers["access"].info(
+            "Request started", extra={**log_data, "event": "request_start"}
+        )
 
         # Process request and capture response
         try:

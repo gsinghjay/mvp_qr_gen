@@ -23,7 +23,9 @@ router = APIRouter(
 
 
 @router.get("/r/{short_id}")
-async def redirect_qr(short_id: str, request: Request, db: Session = Depends(get_db_with_logging)):
+async def redirect_qr(
+    short_id: str, request: Request, db: Session = Depends(get_db_with_logging)
+):
     """Redirect endpoint for dynamic QR codes."""
     try:
         qr = db.query(QRCode).filter(QRCode.content == f"/r/{short_id}").first()

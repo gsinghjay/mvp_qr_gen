@@ -19,7 +19,9 @@ def create_security_headers_middleware(app):
     """
 
     @app.middleware("http")
-    async def security_headers_middleware(request: Request, call_next: Callable) -> Response:
+    async def security_headers_middleware(
+        request: Request, call_next: Callable
+    ) -> Response:
         response = await call_next(request)
 
         # Add security headers not handled by Traefik
@@ -29,7 +31,9 @@ def create_security_headers_middleware(app):
 
         # Only add HSTS header in production
         if os.getenv("ENVIRONMENT", "development") == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
 
         return response
 

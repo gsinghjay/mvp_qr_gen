@@ -31,17 +31,25 @@ async def list_qr_codes(
             query = query.filter(QRCode.qr_type == qr_type)
 
         total = query.count()
-        qr_codes = query.order_by(QRCode.created_at.desc()).offset(skip).limit(limit).all()
+        qr_codes = (
+            query.order_by(QRCode.created_at.desc()).offset(skip).limit(limit).all()
+        )
 
-        response = QRCodeList(items=qr_codes, total=total, page=skip // limit + 1, page_size=limit)
+        response = QRCodeList(
+            items=qr_codes, total=total, page=skip // limit + 1, page_size=limit
+        )
 
         return response
     except SQLAlchemyError as e:
         logger.error("Database error listing QR codes", extra={"error": str(e)})
-        raise HTTPException(status_code=500, detail="Error listing QR codes: database error")
+        raise HTTPException(
+            status_code=500, detail="Error listing QR codes: database error"
+        )
     except Exception:
         logger.exception("Unexpected error listing QR codes")
-        raise HTTPException(status_code=500, detail="Error listing QR codes: unexpected error")
+        raise HTTPException(
+            status_code=500, detail="Error listing QR codes: unexpected error"
+        )
 
 
 @router.get("/qr/{qr_id}", response_model=QRCodeResponse)
@@ -96,7 +104,9 @@ async def update_qr(
 
         # Only dynamic QR codes can be updated
         if qr.qr_type != "dynamic":
-            raise HTTPException(status_code=400, detail="Only dynamic QR codes can be updated")
+            raise HTTPException(
+                status_code=400, detail="Only dynamic QR codes can be updated"
+            )
 
         # Update only the redirect_url field
         if qr_update.redirect_url is not None:
