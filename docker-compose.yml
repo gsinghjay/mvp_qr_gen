@@ -23,7 +23,15 @@ services:
       - "traefik.http.routers.api.rule=PathPrefix(`/`)"
       - "traefik.http.services.api.loadbalancer.server.port=8000"
       - "traefik.http.routers.api.entrypoints=web,websecure"
-      - "traefik.http.routers.api-secure.tls=true"
+      - "traefik.http.routers.api.tls=true"
+      # Force HTTPS redirect
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+      - "traefik.http.middlewares.cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS"
+      - "traefik.http.middlewares.cors.headers.accesscontrolalloworiginlist=https://localhost"
+      - "traefik.http.middlewares.cors.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.cors.headers.addvaryheader=true"
+      - "traefik.http.routers.api.middlewares=redirect-to-https@docker,cors@docker"
 
   traefik:
     image: traefik:v2.10
@@ -35,11 +43,17 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--entrypoints.traefik.address=:8080"
       - "--entrypoints.metrics.address=:8082"
-      # Enable TLS
+      # Enable TLS with self-signed certificate
       - "--entrypoints.websecure.http.tls=true"
-      # Auto TLS with self-signed certificate for local development
+      - "--entrypoints.websecure.http.tls.certresolver=default"
+      # Use self-signed certificate for local development
+      - "--certificatesresolvers.default.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.default.acme.email=dev@localhost"
+      - "--certificatesresolvers.default.acme.storage=/certificates/acme.json"
       - "--certificatesresolvers.default.acme.tlschallenge=true"
-      - "--certificatesresolvers.default.acme.httpchallenge.entrypoint=web"
+      # Force HTTP to HTTPS redirect
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
       # Enable dashboard
       - "--api.dashboard=true"
       - "--api.insecure=true"
@@ -57,6 +71,8 @@ services:
       - "8082:8082"  # Metrics endpoint
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./certificates:/certificates  # Mount certificates directory
+      - ./logs/traefik:/logs/traefik  # Mount logs directory
     restart: unless-stopped
 
 networks:

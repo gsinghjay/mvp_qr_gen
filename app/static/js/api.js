@@ -34,11 +34,28 @@ import { showError } from './utils.js';
  * @returns {Promise} - JSON response or throws error
  */
 async function handleResponse(response) {
+    const data = await response.json();
     if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'API request failed');
+        throw new Error(data.detail || 'API request failed');
     }
-    return response.json();
+    return data;
+}
+
+/**
+ * Creates fetch options with proper configuration for development/production
+ * @param {Object} options - Fetch options to extend
+ * @returns {Object} - Extended fetch options
+ */
+function createFetchOptions(options = {}) {
+    // In development, we need to accept self-signed certificates
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return {
+            ...options,
+            mode: 'cors',
+            credentials: 'same-origin',
+        };
+    }
+    return options;
 }
 
 export const api = {
@@ -55,11 +72,28 @@ export const api = {
             const params = new URLSearchParams({ skip: skip.toString(), limit: limit.toString() });
             if (qr_type) params.append('qr_type', qr_type);
             
-            const response = await fetch(`${config.API.BASE_URL}${config.API.ENDPOINTS.QR_LIST}?${params}`);
-            return handleResponse(response);
+            const response = await fetch(
+                `${config.API.BASE_URL}${config.API.ENDPOINTS.QR_LIST}?${params}`,
+                createFetchOptions()
+            );
+            const data = await handleResponse(response);
+            
+            // Ensure we always return an object with items array
+            return {
+                items: data.items || [],
+                total: data.total || 0,
+                page: data.page || 1,
+                page_size: data.page_size || limit
+            };
         } catch (error) {
-            showError(`Error fetching QR codes: ${error.message}`);
-            throw error;
+            console.error(`Error fetching QR codes: ${error.message}`);
+            // Return empty result set on error
+            return {
+                items: [],
+                total: 0,
+                page: 1,
+                page_size: limit
+            };
         }
     },
 
@@ -70,7 +104,10 @@ export const api = {
      */
     async getQR(id) {
         try {
-            const response = await fetch(`${config.API.BASE_URL}/api/v1/qr/${id}`);
+            const response = await fetch(
+                `${config.API.BASE_URL}/api/v1/qr/${id}`,
+                createFetchOptions()
+            );
             return handleResponse(response);
         } catch (error) {
             showError(`Error fetching QR code: ${error.message}`);
@@ -85,13 +122,16 @@ export const api = {
      */
     async createStaticQR(data) {
         try {
-            const response = await fetch(`${config.API.BASE_URL}/api/v1/qr/static`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+            const response = await fetch(
+                `${config.API.BASE_URL}/api/v1/qr/static`,
+                createFetchOptions({
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+            );
             return handleResponse(response);
         } catch (error) {
             showError(`Error creating static QR code: ${error.message}`);
@@ -106,13 +146,16 @@ export const api = {
      */
     async createDynamicQR(data) {
         try {
-            const response = await fetch(`${config.API.BASE_URL}${config.API.ENDPOINTS.QR_DYNAMIC}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+            const response = await fetch(
+                `${config.API.BASE_URL}${config.API.ENDPOINTS.QR_DYNAMIC}`,
+                createFetchOptions({
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+            );
             return handleResponse(response);
         } catch (error) {
             showError(`Error creating dynamic QR code: ${error.message}`);
@@ -128,13 +171,16 @@ export const api = {
      */
     async updateQR(id, data) {
         try {
-            const response = await fetch(`${config.API.BASE_URL}/api/v1/qr/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
+            const response = await fetch(
+                `${config.API.BASE_URL}/api/v1/qr/${id}`,
+                createFetchOptions({
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+            );
             return handleResponse(response);
         } catch (error) {
             showError(`Error updating QR code: ${error.message}`);
@@ -150,13 +196,16 @@ export const api = {
      */
     async updateDynamicQR(id, redirectUrl) {
         try {
-            const response = await fetch(`${config.API.BASE_URL}/api/v1/qr/dynamic/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ redirect_url: redirectUrl })
-            });
+            const response = await fetch(
+                `${config.API.BASE_URL}/api/v1/qr/dynamic/${id}`,
+                createFetchOptions({
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ redirect_url: redirectUrl })
+                })
+            );
             return handleResponse(response);
         } catch (error) {
             showError(`Error updating dynamic QR code: ${error.message}`);

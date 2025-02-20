@@ -81,10 +81,11 @@ async function handleDelete(event) {
  */
 async function refreshQRList() {
     try {
-        const qrCodes = await api.fetchQRCodes();
-        ui.renderQRList(qrCodes);
+        const response = await api.fetchQRCodes();
+        ui.renderQRList(response.items);
     } catch (error) {
         console.error('Error refreshing QR codes:', error);
+        ui.renderQRList([]); // Render empty list on error
     }
 }
 

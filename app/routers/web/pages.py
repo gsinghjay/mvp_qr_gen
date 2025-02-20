@@ -20,6 +20,10 @@ def get_base_template_context(request: Request) -> dict:
     Includes common data like app version, environment info, etc.
     """
     from ...core.config import settings
+    
+    # Force HTTPS for all URLs
+    request.scope["scheme"] = "https"
+    
     return {
         "request": request,  # Required by Jinja2Templates
         "app_version": "1.0.0",

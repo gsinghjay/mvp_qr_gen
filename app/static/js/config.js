@@ -4,7 +4,8 @@
  */
 export const config = {
     API: {
-        BASE_URL: window.location.origin,  // Use the current origin (protocol + host)
+        // Force HTTPS for all API calls when using Traefik with TLS
+        BASE_URL: window.location.origin.replace('http://', 'https://'),
         ENDPOINTS: {
             QR_LIST: '/api/v1/qr',
             QR_DYNAMIC: '/api/v1/qr/dynamic',

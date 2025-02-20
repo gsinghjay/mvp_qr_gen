@@ -9,7 +9,12 @@
  */
 export function isValidUrl(string) {
     try {
-        const url = new URL(string);
+        // First try to format the URL if it doesn't have a protocol
+        const urlToCheck = !string.startsWith('http://') && !string.startsWith('https://')
+            ? `https://${string}`
+            : string;
+
+        const url = new URL(urlToCheck);
         
         // Ensure URL has a valid protocol (http or https)
         if (!url.protocol || !['http:', 'https:'].includes(url.protocol)) {
@@ -21,14 +26,9 @@ export function isValidUrl(string) {
             return false;
         }
         
-        // Optional: Check against allowed domains
-        // const allowedDomains = ['example.com', 'yourdomain.com'];
-        // if (!allowedDomains.some(domain => url.hostname.endsWith(domain))) {
-        //     return false;
-        // }
-        
         // Prevent localhost and private IP redirects in production
-        if (process.env.NODE_ENV === 'production') {
+        // Note: We're checking window.location.protocol instead of process.env
+        if (window.location.protocol === 'https:') {
             const hostname = url.hostname.toLowerCase();
             if (hostname === 'localhost' || hostname === '127.0.0.1' || 
                 /^192\.168\.|^10\.|^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)) {
@@ -76,8 +76,8 @@ export function formatUrl(url) {
         return `https://${url}`;
     }
     
-    // Force HTTPS in production
-    if (process.env.NODE_ENV === 'production' && url.startsWith('http://')) {
+    // Force HTTPS when the page is served over HTTPS
+    if (window.location.protocol === 'https:' && url.startsWith('http://')) {
         return `https://${url.substring(7)}`;
     }
     
