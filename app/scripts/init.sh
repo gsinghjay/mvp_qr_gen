@@ -23,10 +23,12 @@ backup_database() {
 }
 
 # Ensure data directory has correct permissions
+echo "Setting up data directory..."
 mkdir -p "/app/data"
 chmod -R 777 "/app/data"
 
-# Check if database exists and is valid
+# Initialize or validate database before starting the application
+echo "Checking database status..."
 if [ ! -f "/app/data/qr_codes.db" ]; then
     echo "Fresh installation detected."
     initialize_database
@@ -46,11 +48,9 @@ else
     fi
 fi
 
-# Start the FastAPI application
-# echo "Starting FastAPI application..."
-# exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --workers ${WORKERS:-4} --timeout-keep-alive ${TIMEOUT_KEEP_ALIVE:-65} 
+echo "Database setup complete."
 
-# Start the FastAPI application with reload enabled for development
+# Start the FastAPI application based on environment
 if [ "${ENVIRONMENT}" = "development" ]; then
     echo "Starting FastAPI application in development mode with hot-reload..."
     exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --reload --workers 1 --timeout-keep-alive ${TIMEOUT_KEEP_ALIVE:-65}
