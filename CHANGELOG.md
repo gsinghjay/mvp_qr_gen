@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v0.3.2 (2025-02-20)
+
+### Bug Fixes
+
+- **backend**: Enforce HTTPS for static files and template URLs
+  ([`d6279ea`](https://github.com/gsinghjay/mvp_qr_gen/commit/d6279ea5837b48fa300378e40373df4782ef19eb))
+
+- **frontend**: Update API calls and URL handling for HTTPS support
+  ([`566c6ad`](https://github.com/gsinghjay/mvp_qr_gen/commit/566c6ad6b18786ead4ae968d110214ad60e64fbd))
+
+- **infra**: Configure traefik for HTTPS and CORS handling
+  ([`a99faa0`](https://github.com/gsinghjay/mvp_qr_gen/commit/a99faa0cab94e48089b3c4ea158c7f16d2cabe23))
+
+### Chores
+
+- Ignore certificates directory for local development
+  ([`df07a97`](https://github.com/gsinghjay/mvp_qr_gen/commit/df07a97dc92e0894fecb4fc87e76835061457660))
+
+
 ## v0.3.1 (2025-02-20)
 
 ### Bug Fixes
