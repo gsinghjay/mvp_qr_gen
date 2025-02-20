@@ -1,6 +1,29 @@
 # CHANGELOG
 
 
+## v0.3.0 (2025-02-20)
+
+### Chores
+
+- Updated project status
+  ([`23f72d1`](https://github.com/gsinghjay/mvp_qr_gen/commit/23f72d1202a0c29f58c8bf8bd01265ec854699a0))
+
+### Code Style
+
+- **ui**: Optimize CSS with better table styling and empty state improvements
+  ([`4da8113`](https://github.com/gsinghjay/mvp_qr_gen/commit/4da8113479349dae22e395f8c9716d98c91c4867))
+
+### Features
+
+- **api**: Enhance API service with comprehensive TypeScript documentation and error handling
+  ([`f79a141`](https://github.com/gsinghjay/mvp_qr_gen/commit/f79a141f0e3ddaab2d8447bd801d086bc07293bb))
+
+### Refactoring
+
+- **ui**: Streamline QR list section with improved header and search functionality
+  ([`5f037e4`](https://github.com/gsinghjay/mvp_qr_gen/commit/5f037e438c304fad373324aa31df9ae3866d817e))
+
+
 ## v0.2.0 (2025-02-20)
 
 ### Features
