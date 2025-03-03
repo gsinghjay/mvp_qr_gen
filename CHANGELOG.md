@@ -1,6 +1,36 @@
 # CHANGELOG
 
 
+## v0.5.1 (2025-03-03)
+
+### Bug Fixes
+
+- **api**: Improve test reliability for background tasks
+  ([`e48a250`](https://github.com/gsinghjay/mvp_qr_gen/commit/e48a2500adc20db32af3e9b426d16fdd0e4e7bbe))
+
+- **api**: Resolve dependency import issues and optimize database operations
+  ([`ad0c6d2`](https://github.com/gsinghjay/mvp_qr_gen/commit/ad0c6d2c353a63bd691a85cfda299b105bea46b0))
+
+- Fix import path for get_db dependency in redirect router - Implement optimized database operations
+  with retry functionality - Enhance error handling for database operations - Improve concurrency
+  handling with SQLite
+
+### Chores
+
+- Added curl test workflow
+  ([`2e8dca9`](https://github.com/gsinghjay/mvp_qr_gen/commit/2e8dca9e8eea26aec9b9dc66c6b218870a9b719e))
+
+### Refactoring
+
+- Reorganize models and schemas into modular directory structure
+  ([`80ceae6`](https://github.com/gsinghjay/mvp_qr_gen/commit/80ceae651afb2a64d02db880500a08e8fe94054e))
+
+### Testing
+
+- Add tests for refactored models and schemas
+  ([`f5a6813`](https://github.com/gsinghjay/mvp_qr_gen/commit/f5a681318a9a9983dee13bbf64de8488687ed018))
+
+
 ## v0.5.0 (2025-03-03)
 
 ### Bug Fixes
