@@ -1,6 +1,89 @@
 # CHANGELOG
 
 
+## v0.4.0 (2025-03-03)
+
+### Bug Fixes
+
+- **database**: Resolve database initialization and connection issues
+  ([`81d0aed`](https://github.com/gsinghjay/mvp_qr_gen/commit/81d0aed872a39427ce6619a09f683461dd1a9b47))
+
+- **schemas**: Update QRCodeCreate schema to include qr_type field
+  ([`c977c39`](https://github.com/gsinghjay/mvp_qr_gen/commit/c977c394f1b64afa93bb884a53cc66f47e33acc6))
+
+- **scripts**: Enhance database management script for reliability
+  ([`ddea10e`](https://github.com/gsinghjay/mvp_qr_gen/commit/ddea10eb5cab91e901cc70fc4c00351c2bcc960d))
+
+- **web**: Update web pages router to use new dependency injection pattern
+  ([`1ba68d3`](https://github.com/gsinghjay/mvp_qr_gen/commit/1ba68d30e04bb591d9b2cfbc8d7efc7d5f8f9672))
+
+### Chores
+
+- Added SPEC.md and formatted files with black
+  ([`224f01a`](https://github.com/gsinghjay/mvp_qr_gen/commit/224f01ad3e0e17f767d705e14e617e3f7774f72e))
+
+- Formatted more files with black
+  ([`0cc520a`](https://github.com/gsinghjay/mvp_qr_gen/commit/0cc520a8bf59bd79c9b9217c9b287a7bcb419859))
+
+### Documentation
+
+- Add static folder documentation and update main README
+  ([`65b9a0f`](https://github.com/gsinghjay/mvp_qr_gen/commit/65b9a0f9d00a36d21e7179d0a944b7b844675c8a))
+
+- Update main README with project changes
+  ([`0ff5630`](https://github.com/gsinghjay/mvp_qr_gen/commit/0ff56304d459df90f3ee56487c7362762c8a2be8))
+
+- **infrastructure**: Update infrastructure documentation
+  ([`a86cdf1`](https://github.com/gsinghjay/mvp_qr_gen/commit/a86cdf1016ad29a0aba50734033dadefad1cbf04))
+
+- **story**: Update story to reflect the status of the project
+  ([`b453d98`](https://github.com/gsinghjay/mvp_qr_gen/commit/b453d9834aa81889dc804ccfadc2b37c7bac45c6))
+
+### Features
+
+- **api**: Implement health check endpoint and improve error handling
+  ([`3560143`](https://github.com/gsinghjay/mvp_qr_gen/commit/356014394e5a6b7d2ce9f86f8ccd30115f359c20))
+
+- **api**: Implement QRCodeService for service-layer dependency injection
+  ([`9a1e259`](https://github.com/gsinghjay/mvp_qr_gen/commit/9a1e25951f7074138e67948a4429c542ab0499cb))
+
+### Refactoring
+
+- **api**: Update API endpoints to use QRCodeService
+  ([`9569d11`](https://github.com/gsinghjay/mvp_qr_gen/commit/9569d1164bcc87abc21b559be4ae942f62a20ece))
+
+- **middleware**: Optimize middleware configuration and implementation
+  ([`c2bb364`](https://github.com/gsinghjay/mvp_qr_gen/commit/c2bb364bd1fdb9d8155898cda1e11d25e8e4a086))
+
+- **models**: Update database models for improved schema integrity
+  ([`bb64fb2`](https://github.com/gsinghjay/mvp_qr_gen/commit/bb64fb2c231e5de970a94edf54537323949dca24))
+
+- **routers**: Update QR routers to use service layer
+  ([`cbddae0`](https://github.com/gsinghjay/mvp_qr_gen/commit/cbddae03ab594311ea658d9425a4295f10265133))
+
+- **security**: Enforce HTTPS and improve code quality
+  ([`3e304ea`](https://github.com/gsinghjay/mvp_qr_gen/commit/3e304ea7d968e1e07adb25e49b8d064f7d263f79))
+
+- feat(security): enforce HTTPS for all routes and redirects - refactor(schemas): update to Pydantic
+  V2 style validators - refactor(imports): fix incorrect database dependency imports -
+  style(formatting): apply Black code formatting - style(lint): fix Ruff linting issues -
+  docs(comments): improve docstrings and comments
+
+- **service**: Remove deprecated service file in favor of new service layer
+  ([`8717ec9`](https://github.com/gsinghjay/mvp_qr_gen/commit/8717ec9f5208c3c449efb0619b5ed800ed18b1f3))
+
+### Testing
+
+- **api**: Add service layer tests and integration tests
+  ([`5d1ec4e`](https://github.com/gsinghjay/mvp_qr_gen/commit/5d1ec4e8da6a758d00cdc4b0defae0aa5db842f1))
+
+- **api**: Refactor API tests to use proper dependency injection
+  ([`cb8ad76`](https://github.com/gsinghjay/mvp_qr_gen/commit/cb8ad764704eed63d809c662149f76ab5c832b57))
+
+- **integration**: Update integration tests to use test database session
+  ([`eace9b9`](https://github.com/gsinghjay/mvp_qr_gen/commit/eace9b9cd9d4c989f24b4e18726697907a2a25f3))
+
+
 ## v0.3.3 (2025-02-20)
 
 ### Bug Fixes
