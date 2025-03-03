@@ -1,6 +1,41 @@
 # CHANGELOG
 
 
+## v0.5.0 (2025-03-03)
+
+### Bug Fixes
+
+- **database**: Resolve dependency injection pattern for FastAPI compatibility
+  ([`adc806c`](https://github.com/gsinghjay/mvp_qr_gen/commit/adc806c3d26d775c7521d4a30f3ea7ee0860a379))
+
+### Chores
+
+- **deps**: Add psutil dependency for system metrics collection
+  ([`e95135f`](https://github.com/gsinghjay/mvp_qr_gen/commit/e95135f35a518e8494f68f8e65478a8fc030d1ed))
+
+- **services**: Update service module initialization
+  ([`21af576`](https://github.com/gsinghjay/mvp_qr_gen/commit/21af576017e5b033af6dd56b0a2269c890599ab2))
+
+### Features
+
+- **app**: Configure health check endpoints and exception handling
+  ([`3818fa7`](https://github.com/gsinghjay/mvp_qr_gen/commit/3818fa723169bfb91120d29703d16425d662a94b))
+
+- **health**: Implement synchronous health check service and endpoints
+  ([`c42cf07`](https://github.com/gsinghjay/mvp_qr_gen/commit/c42cf07120dd1e62715dd615f1f8da15cf052013))
+
+- **routers**: Register health check router in the application
+  ([`0cfe182`](https://github.com/gsinghjay/mvp_qr_gen/commit/0cfe18210b3d18916d76b0761213c73fa1d50ede))
+
+- **schemas**: Add health check response models and status enums
+  ([`08f36e3`](https://github.com/gsinghjay/mvp_qr_gen/commit/08f36e35c5e10c749394b2838697a741d3ecb35e))
+
+### Testing
+
+- **health**: Add tests for health check endpoints
+  ([`856e535`](https://github.com/gsinghjay/mvp_qr_gen/commit/856e5356b6b0a68b673bcc4c5dca26d6c03dd758))
+
+
 ## v0.4.0 (2025-03-03)
 
 ### Bug Fixes
