@@ -13,12 +13,13 @@ from faker import Faker
 from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from unittest.mock import patch
 
 from ..database import Base, engine
 from ..dependencies import get_qr_service
 from ..main import app
 from ..models import QRCode
-from ..schemas import QRType
+from ..schemas import QRType, HealthResponse, HealthStatus, ServiceCheck, ServiceStatus, SystemMetrics
 from ..services.qr_service import QRCodeService
 from .conftest import get_test_db
 
@@ -507,3 +508,105 @@ async def test_concurrent_qr_code_access(client: TestClient, test_db: Session):
 
     # Clean up
     app.dependency_overrides.clear()
+
+
+def test_health_check_endpoint(client: TestClient):
+    """Test the health check endpoint."""
+    with patch('app.services.health.HealthService.get_health_status') as mock_health:
+        # Configure the mock to return a healthy response
+        mock_health.return_value = HealthResponse(
+            status=HealthStatus.HEALTHY,
+            version="1.0.0",
+            uptime_seconds=100.0,
+            system_metrics=SystemMetrics(
+                cpu_usage=10.0,
+                memory_usage=20.0,
+                disk_usage=30.0
+            ),
+            checks={
+                "database": ServiceCheck(
+                    status=ServiceStatus.PASS,
+                    latency_ms=5.0,
+                    message="Database connection successful",
+                    last_checked=datetime.now()
+                )
+            }
+        )
+        
+        # Make a request to the health check endpoint
+        response = client.get("/health")
+        
+        # Verify response
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert "version" in data
+        assert "uptime_seconds" in data
+        assert "system_metrics" in data
+        assert "checks" in data
+        assert "database" in data["checks"]
+
+
+def test_health_check_degraded(client: TestClient):
+    """Test the health check endpoint when service is degraded."""
+    with patch('app.services.health.HealthService.get_health_status') as mock_health:
+        # Configure the mock to return a degraded response
+        mock_health.return_value = HealthResponse(
+            status=HealthStatus.DEGRADED,
+            version="1.0.0",
+            uptime_seconds=100.0,
+            system_metrics=SystemMetrics(
+                cpu_usage=92.0,  # High CPU usage
+                memory_usage=20.0,
+                disk_usage=30.0
+            ),
+            checks={
+                "database": ServiceCheck(
+                    status=ServiceStatus.WARN,
+                    latency_ms=500.0,  # High latency
+                    message="Database connection slow",
+                    last_checked=datetime.now()
+                )
+            }
+        )
+        
+        # Make a request to the health check endpoint
+        response = client.get("/health")
+        
+        # Degraded still returns 200 OK but with degraded status
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "degraded"
+
+
+def test_health_check_unhealthy(client: TestClient):
+    """Test the health check endpoint when service is unhealthy."""
+    with patch('app.services.health.HealthService.get_health_status') as mock_health:
+        # Configure the mock to return an unhealthy response
+        mock_health.return_value = HealthResponse(
+            status=HealthStatus.UNHEALTHY,
+            version="1.0.0",
+            uptime_seconds=100.0,
+            system_metrics=SystemMetrics(
+                cpu_usage=10.0,
+                memory_usage=20.0,
+                disk_usage=30.0
+            ),
+            checks={
+                "database": ServiceCheck(
+                    status=ServiceStatus.FAIL,
+                    latency_ms=0.0,
+                    message="Database connection failed",
+                    last_checked=datetime.now()
+                )
+            }
+        )
+        
+        # Make a request to the health check endpoint
+        response = client.get("/health")
+        
+        # Unhealthy returns 503 Service Unavailable
+        assert response.status_code == 503
+        data = response.json()
+        assert "detail" in data
+        assert "Service is currently unhealthy" in data["detail"]

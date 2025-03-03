@@ -230,17 +230,12 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
-    """Add X-Request-ID header to all responses."""
-    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    """Add a unique request ID to each request."""
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
-
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint for the application."""
-    return {"status": "ok"}
 
 
 """
