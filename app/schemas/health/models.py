@@ -4,7 +4,7 @@ Health check Pydantic models.
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -39,6 +39,7 @@ class ServiceCheck(BaseModel):
     latency: float = 0.0
     message: Optional[str] = None
     last_check: datetime = Field(default_factory=datetime.now)
+    details: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(
         populate_by_name=True,

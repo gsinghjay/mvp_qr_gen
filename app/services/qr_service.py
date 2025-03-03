@@ -6,18 +6,25 @@ import logging
 import uuid
 from datetime import UTC, datetime
 from io import BytesIO
+from typing import List, Optional, Tuple, Dict, Any
 
 import qrcode
 import qrcode.image.svg
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy import update
+from sqlalchemy import update, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from pydantic import AnyUrl, ValidationError
+from zoneinfo import ZoneInfo
 
 from ..models.qr import QRCode
 from ..schemas.common import QRType
 from ..schemas.qr.models import QRCodeCreate, QRCodeUpdate
+from ..database import with_retry
+
+# Configure UTC timezone
+UTC = ZoneInfo("UTC")
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -174,9 +181,11 @@ class QRCodeService:
             logger.exception(f"Unexpected error creating dynamic QR code: {str(e)}")
             raise HTTPException(status_code=500, detail="Error creating QR code: unexpected error")
 
+    @with_retry(max_retries=3, retry_delay=0.2)
     def update_dynamic_qr(self, qr_id: str, data: QRCodeUpdate) -> QRCode:
         """
         Update a dynamic QR code's redirect URL.
+        Uses retry mechanism with exponential backoff to handle concurrent updates.
 
         Args:
             qr_id: The ID of the QR code to update
@@ -208,32 +217,35 @@ class QRCodeService:
                 logger.info(f"Updated QR code {qr_id} with new redirect URL")
                 return qr
 
-            except Exception as e:
+            except SQLAlchemyError as e:
                 self.db.rollback()
-                logger.error(f"Database error updating QR code: {str(e)}")
+                logger.error(f"Database error updating QR code {qr_id}: {str(e)}")
                 raise HTTPException(status_code=500, detail="Database error while updating QR code")
 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error updating QR code: {str(e)}")
+            logger.error(f"Unexpected error updating QR code {qr_id}: {str(e)}")
             raise HTTPException(status_code=500, detail="Unexpected error while updating QR code")
 
+    @with_retry(max_retries=5, retry_delay=0.1)
     def update_scan_count(self, qr_id: str, timestamp: datetime | None = None) -> None:
         """
         Update the scan count and last scan timestamp for a QR code.
+        Uses retry mechanism with exponential backoff to handle concurrent updates.
 
         Args:
             qr_id: The ID of the QR code to update
             timestamp: The timestamp of the scan (defaults to current time)
 
         Raises:
-            Exception: If there is an error updating the scan count
+            Exception: If there is an error updating the scan count after retries
         """
         try:
             if timestamp is None:
                 timestamp = datetime.now(UTC)
 
+            # Use direct SQL update to avoid race conditions
             stmt = (
                 update(QRCode)
                 .where(QRCode.id == qr_id)
@@ -242,8 +254,11 @@ class QRCodeService:
             self.db.execute(stmt)
             self.db.commit()
 
+            # Log at debug level for high-volume operations
+            logger.debug(f"Updated scan count for QR code: {qr_id}")
+
         except Exception as e:
-            logger.error(f"Error updating scan count: {e}")
+            logger.error(f"Error updating scan count for QR code {qr_id}: {e}")
             self.db.rollback()
             raise
 
@@ -409,43 +424,40 @@ class QRCodeService:
             raise HTTPException(status_code=500, detail=f"Error generating QR code: {str(e)}")
 
     def list_qr_codes(
-        self, skip: int = 0, limit: int = 100, qr_type: str | None = None
-    ) -> tuple[list[QRCode], int]:
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        qr_type: Optional[str] = None,
+    ) -> Tuple[List[QRCode], int]:
         """
         List QR codes with pagination and optional filtering.
 
         Args:
             skip: Number of records to skip (for pagination)
             limit: Maximum number of records to return
-            qr_type: Optional filter by QR code type (static or dynamic)
+            qr_type: Filter QR codes by type
 
         Returns:
-            A tuple containing a list of QR codes and the total count
+            A tuple containing the list of QR codes and the total count
 
         Raises:
-            HTTPException: If there is an error retrieving the QR codes
+            HTTPException: If there is a database error
         """
         try:
-            # Base query
+            # Start with base query
             query = self.db.query(QRCode)
 
-            # Apply filter if QR type is specified
+            # Apply type filter if provided
             if qr_type:
                 query = query.filter(QRCode.qr_type == qr_type)
 
-            # Get total count
-            total = query.count()
+            # Get total count for pagination
+            total_count = query.count()
 
-            # Apply pagination
-            query = query.order_by(QRCode.created_at.desc()).offset(skip).limit(limit)
+            # Apply pagination and fetch results
+            qr_codes = query.order_by(QRCode.created_at.desc()).offset(skip).limit(limit).all()
 
-            # Execute query
-            qr_codes = query.all()
-
-            return qr_codes, total
-        except SQLAlchemyError as e:
-            logger.error(f"Database error listing QR codes: {str(e)}")
-            raise HTTPException(status_code=500, detail="Database error while listing QR codes")
+            return qr_codes, total_count
         except Exception as e:
-            logger.error(f"Unexpected error listing QR codes: {str(e)}")
-            raise HTTPException(status_code=500, detail="Unexpected error while listing QR codes")
+            logger.error(f"Error listing QR codes: {str(e)}")
+            raise HTTPException(status_code=500, detail="Database error while listing QR codes")
