@@ -17,11 +17,7 @@ SQLITE_URL = os.getenv("DATABASE_URL")
 if not SQLITE_URL:
     # If DATABASE_URL is not set, use in-memory for tests, file for development
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-    SQLITE_URL = (
-        "sqlite:///:memory:"
-        if ENVIRONMENT == "test"
-        else "sqlite:///./data/qr_codes.db"
-    )
+    SQLITE_URL = "sqlite:///:memory:" if ENVIRONMENT == "test" else "sqlite:///./data/qr_codes.db"
 
 logger.info(f"Using database URL: {SQLITE_URL}")
 
@@ -104,9 +100,7 @@ event.listen(engine, "connect", configure_sqlite_connection)
 event.listen(engine, "connect", add_sqlite_functions)
 
 # Create sessionmaker with timezone-aware settings
-SessionLocal = sessionmaker(
-    bind=engine, autocommit=False, autoflush=False, class_=Session
-)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
 
 
 # Define Base class using new SQLAlchemy 2.0 style

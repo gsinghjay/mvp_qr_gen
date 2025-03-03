@@ -9,33 +9,38 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from ...models import QRCode
-from ...qr_service import QRCodeService
 
-logger = logging.getLogger(__name__)
-
-qr_service = QRCodeService()
+# Configure logger for QR code routes
+logger = logging.getLogger("app.qr")
 
 
 def get_qr_by_id(qr_id: str, db: Session) -> QRCode:
-    """Get QR code by ID with proper error handling."""
+    """
+    Legacy function to get a QR code by ID directly from the database.
+
+    Note: This function is maintained for backward compatibility but should be
+    replaced with QRCodeService.get_qr_by_id in new code.
+
+    Args:
+        qr_id: The ID of the QR code to retrieve
+        db: The database session
+
+    Returns:
+        The QR code if found
+
+    Raises:
+        HTTPException: If the QR code is not found or there is a database error
+    """
     try:
         qr = db.query(QRCode).filter(QRCode.id == qr_id).first()
         if not qr:
-            raise HTTPException(
-                status_code=404, detail=f"QR code with ID {qr_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"QR code {qr_id} not found")
         return qr
     except SQLAlchemyError as e:
-        logger.error(f"Database error getting QR code {qr_id}", extra={"error": str(e)})
-        raise HTTPException(
-            status_code=500, detail="Database error occurred while retrieving QR code"
-        )
+        logger.error(f"Database error retrieving QR code {qr_id}: {e}")
+        raise HTTPException(status_code=500, detail="Database error while retrieving QR code")
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            f"Unexpected error getting QR code {qr_id}", extra={"error": str(e)}
-        )
-        raise HTTPException(
-            status_code=500, detail="Unexpected error occurred while retrieving QR code"
-        )
+        logger.error(f"Unexpected error retrieving QR code {qr_id}: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected error while retrieving QR code")

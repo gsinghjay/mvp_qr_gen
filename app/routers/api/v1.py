@@ -3,13 +3,11 @@ API version 1 router.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
-from ...database import get_db_with_logging
-from ...models import QRCode
+from ...dependencies import get_qr_service
 from ...schemas import QRCodeList, QRCodeResponse, QRCodeUpdate
-from ..qr.common import get_qr_by_id, logger, qr_service
+from ...services.qr_service import QRCodeService
+from ..qr.common import logger
 
 router = APIRouter(
     prefix="/api/v1",
@@ -22,41 +20,49 @@ async def list_qr_codes(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=10, ge=1, le=100),
     qr_type: str | None = Query(default=None, pattern="^(static|dynamic)$"),
-    db: Session = Depends(get_db_with_logging),
+    qr_service: QRCodeService = Depends(get_qr_service),
 ):
-    """List QR codes with pagination and optional filtering."""
-    try:
-        query = db.query(QRCode)
-        if qr_type:
-            query = query.filter(QRCode.qr_type == qr_type)
+    """
+    List QR codes with pagination and optional filtering.
 
-        total = query.count()
-        qr_codes = (
-            query.order_by(QRCode.created_at.desc()).offset(skip).limit(limit).all()
-        )
+    Args:
+        skip: Number of records to skip (for pagination)
+        limit: Maximum number of records to return
+        qr_type: Optional filter by QR code type (static or dynamic)
+        qr_service: The QR code service (injected)
+
+    Returns:
+        A paginated list of QR codes
+    """
+    try:
+        qr_codes, total = qr_service.list_qr_codes(skip=skip, limit=limit, qr_type=qr_type)
 
         response = QRCodeList(
-            items=qr_codes, total=total, page=skip // limit + 1, page_size=limit
+            items=qr_codes, total=total, page=skip // limit + 1 if limit else 1, page_size=limit
         )
 
         return response
-    except SQLAlchemyError as e:
-        logger.error("Database error listing QR codes", extra={"error": str(e)})
-        raise HTTPException(
-            status_code=500, detail="Error listing QR codes: database error"
-        )
-    except Exception:
+    except HTTPException:
+        raise
+    except Exception as e:
         logger.exception("Unexpected error listing QR codes")
-        raise HTTPException(
-            status_code=500, detail="Error listing QR codes: unexpected error"
-        )
+        raise HTTPException(status_code=500, detail=f"Error listing QR codes: {str(e)}")
 
 
 @router.get("/qr/{qr_id}", response_model=QRCodeResponse)
-async def get_qr(qr_id: str, db: Session = Depends(get_db_with_logging)):
-    """Get QR code data by ID."""
+async def get_qr(qr_id: str, qr_service: QRCodeService = Depends(get_qr_service)):
+    """
+    Get QR code data by ID.
+
+    Args:
+        qr_id: The ID of the QR code to retrieve
+        qr_service: The QR code service (injected)
+
+    Returns:
+        The QR code data
+    """
     try:
-        qr = get_qr_by_id(qr_id, db)
+        qr = qr_service.get_qr_by_id(qr_id)
         return qr
     except HTTPException:
         raise
@@ -70,11 +76,23 @@ async def get_qr_image(
     qr_id: str,
     image_format: str = Query(default="png", pattern="^(png|jpeg|jpg|svg|webp)$"),
     image_quality: int | None = Query(default=None, ge=1, le=100),
-    db: Session = Depends(get_db_with_logging),
+    qr_service: QRCodeService = Depends(get_qr_service),
 ):
-    """Get QR code image by ID."""
+    """
+    Get QR code image by ID.
+
+    Args:
+        qr_id: The ID of the QR code to retrieve
+        image_format: The format of the image (png, jpeg, jpg, svg, webp)
+        image_quality: The quality of the image (1-100, for lossy formats)
+        qr_service: The QR code service (injected)
+
+    Returns:
+        The QR code image
+    """
     try:
-        qr = get_qr_by_id(qr_id, db)
+        # Get the QR code
+        qr = qr_service.get_qr_by_id(qr_id)
 
         # Generate QR code
         return qr_service.generate_qr(
@@ -96,31 +114,27 @@ async def get_qr_image(
 
 @router.put("/qr/{qr_id}", response_model=QRCodeResponse)
 async def update_qr(
-    qr_id: str, qr_update: QRCodeUpdate, db: Session = Depends(get_db_with_logging)
+    qr_id: str,
+    qr_update: QRCodeUpdate,
+    qr_service: QRCodeService = Depends(get_qr_service),
 ):
-    """Update QR code data by ID."""
+    """
+    Update QR code data by ID.
+
+    Args:
+        qr_id: The ID of the QR code to update
+        qr_update: The QR code data to update
+        qr_service: The QR code service (injected)
+
+    Returns:
+        The updated QR code
+    """
     try:
-        qr = get_qr_by_id(qr_id, db)
-
-        # Only dynamic QR codes can be updated
-        if qr.qr_type != "dynamic":
-            raise HTTPException(
-                status_code=400, detail="Only dynamic QR codes can be updated"
-            )
-
-        # Update only the redirect_url field
-        if qr_update.redirect_url is not None:
-            qr.redirect_url = str(qr_update.redirect_url)
-
-        db.commit()
-        db.refresh(qr)
+        # Only dynamic QR codes can be updated, which is enforced by the service
+        qr = qr_service.update_dynamic_qr(qr_id, qr_update)
         return qr
-
     except HTTPException:
         raise
-    except SQLAlchemyError as e:
-        logger.error(f"Database error updating QR code: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error updating QR code")
     except Exception as e:
         logger.error(f"Error updating QR code: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error updating QR code")
+        raise HTTPException(status_code=500, detail=f"Error updating QR code: {str(e)}")

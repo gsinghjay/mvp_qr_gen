@@ -22,9 +22,9 @@ flowchart TD
         end
         
         subgraph runtime["Runtime Stage"]
-            R["python:3.11-slim + curl, sqlite3 + application code + scripts"]
+            R["python:3.12-slim + curl, sqlite3 + application code + scripts"]
             ENV["ENV: PORT=8000, WORKERS=4, PYTHONPATH=/app"]
-            HEALTH["Healthcheck: /docs endpoint (30s interval)"]
+            HEALTH["Healthcheck: /health endpoint (30s interval)"]
         end
         
         builder --> runtime
@@ -36,7 +36,6 @@ flowchart TD
         direction LR
         subgraph services["Services"]
             API["API Service"] 
-            TEST["Test Service"]
             PROXY["Traefik Proxy"]
         end
         
@@ -65,7 +64,8 @@ flowchart TD
     subgraph logs["Logging"]
         direction LR
         LOG_VOL["./logs → /logs"]
-        API & DB & PROXY -- "Logs" --> LOG_VOL
+        LOG_DIRS["Subdirectories: api, database, traefik"]
+        API & DB & PROXY -- "Logs" --> LOG_VOL --> LOG_DIRS
     end
 ```
 
@@ -76,7 +76,7 @@ flowchart TD
   - Hot reloading and debug features enabled
   - App directory mounted for live changes
   - Detailed logging for development
-  - Testing with in-memory SQLite (`docker compose exec api pytest --cov -v`)
+  - Testing with in-memory SQLite (run with `docker compose exec api pytest --cov -v`)
 
 ## Production Mode
 - Enable by changing `ENVIRONMENT=production` in docker-compose.yml
@@ -85,3 +85,19 @@ flowchart TD
   - Optimized performance settings
   - Enhanced security features
   - Production-level logging
+
+## Directory Structure
+- `data/`: Contains SQLite database and backups
+  - `backups/`: Database backup files
+  - `logs/`: Application data logs
+- `logs/`: Container logs
+  - `api/`: API service logs
+  - `database/`: Database operation logs
+  - `traefik/`: Traefik proxy logs
+- `certificates/`: TLS certificates for secure connections
+
+## Security Notes
+- TLS is enabled for secure connections
+- Self-signed certificates are used for local development
+- Production should use proper certificates from Let's Encrypt
+- Non-root user (appuser) is used in the container for enhanced security

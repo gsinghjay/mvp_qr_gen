@@ -208,9 +208,7 @@ class DatabaseManager:
             )
 
             for old_backup in backups[keep_count:]:
-                loggers["backups"].info(
-                    _("Removing old backup", backup_path=str(old_backup))
-                )
+                loggers["backups"].info(_("Removing old backup", backup_path=str(old_backup)))
                 old_backup.unlink()
         except Exception as e:
             loggers["errors"].warning(
@@ -224,9 +222,7 @@ class DatabaseManager:
     def get_current_revision(self) -> str:
         """Get current database revision."""
         if not self.db_path.exists():
-            loggers["operations"].info(
-                _("No database file exists", db_path=str(self.db_path))
-            )
+            loggers["operations"].info(_("No database file exists", db_path=str(self.db_path)))
             return None
 
         try:
@@ -240,9 +236,7 @@ class DatabaseManager:
                 )
                 return revision
         except sqlite3.OperationalError as e:
-            loggers["operations"].info(
-                _("No alembic_version table found", error=str(e))
-            )
+            loggers["operations"].info(_("No alembic_version table found", error=str(e)))
             return None
         except Exception as e:
             loggers["errors"].error(
@@ -304,9 +298,7 @@ class DatabaseManager:
             if self.db_path.exists():
                 self.db_path.unlink()
 
-            loggers["operations"].info(
-                _("Creating new database", db_path=str(self.db_path))
-            )
+            loggers["operations"].info(_("Creating new database", db_path=str(self.db_path)))
 
             # Create a fresh database and run initial migration
             config = Config(self.alembic_ini)
@@ -368,9 +360,7 @@ class DatabaseManager:
         Returns True if valid, False otherwise.
         """
         if not self.db_path.exists():
-            loggers["operations"].info(
-                _("Database file does not exist", db_path=str(self.db_path))
-            )
+            loggers["operations"].info(_("Database file does not exist", db_path=str(self.db_path)))
             return False
 
         try:
@@ -449,18 +439,10 @@ class DatabaseManager:
 def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(description="Database management script")
-    parser.add_argument(
-        "--init", action="store_true", help="Initialize a fresh database"
-    )
-    parser.add_argument(
-        "--migrate", action="store_true", help="Run database migrations"
-    )
-    parser.add_argument(
-        "--check", action="store_true", help="Check if migrations are needed"
-    )
-    parser.add_argument(
-        "--validate", action="store_true", help="Validate database structure"
-    )
+    parser.add_argument("--init", action="store_true", help="Initialize a fresh database")
+    parser.add_argument("--migrate", action="store_true", help="Run database migrations")
+    parser.add_argument("--check", action="store_true", help="Check if migrations are needed")
+    parser.add_argument("--validate", action="store_true", help="Validate database structure")
     args = parser.parse_args()
 
     try:
