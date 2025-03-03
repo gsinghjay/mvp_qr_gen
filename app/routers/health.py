@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas import HealthResponse, HTTPError
+from app.schemas.common import HTTPError
+from app.schemas.health import HealthResponse
 from app.services.health import HealthService
 
 router = APIRouter(prefix="/health", tags=["Health"])

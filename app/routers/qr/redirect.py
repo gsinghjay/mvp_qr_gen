@@ -3,12 +3,18 @@ Router for QR code redirects.
 """
 
 from datetime import UTC, datetime
+import logging
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from fastapi.responses import RedirectResponse
 
 from ...dependencies import get_qr_service
+from ...database import get_db
+from ...models.qr import QRCode
 from ...services.qr_service import QRCodeService
+from ...database import with_retry
 from .common import logger
 
 router = APIRouter(
@@ -22,7 +28,9 @@ router = APIRouter(
 async def redirect_qr(
     short_id: str,
     request: Request,
+    background_tasks: BackgroundTasks,
     qr_service: QRCodeService = Depends(get_qr_service),
+    db = Depends(get_db),
 ):
     """
     Redirect a QR code scan to the target URL.
@@ -30,7 +38,9 @@ async def redirect_qr(
     Args:
         short_id: The short ID from the QR code
         request: The FastAPI request object
+        background_tasks: FastAPI background tasks
         qr_service: The QR code service (injected)
+        db: Database session (injected)
 
     Returns:
         A redirect response to the target URL
@@ -39,28 +49,40 @@ async def redirect_qr(
         # The full path that would be in the QR code content
         full_path = f"/r/{short_id}"
 
-        # Query all QR codes to find the one with matching content
-        qr_codes, _ = qr_service.list_qr_codes(limit=1000)
-        matching_qr_codes = [qr for qr in qr_codes if qr.content == full_path]
+        # More efficient direct query instead of listing all QRs
+        try:
+            stmt = select(QRCode).where(QRCode.content == full_path)
+            result = db.execute(stmt)
+            qr = result.scalars().first()
+        except SQLAlchemyError as e:
+            logger.error(f"Database error finding QR code: {str(e)}")
+            raise HTTPException(status_code=500, detail="Database error finding QR code") 
 
-        if not matching_qr_codes:
+        if not qr:
             logger.warning(f"QR code not found for path: {full_path}")
             raise HTTPException(status_code=404, detail="QR code not found")
-
-        qr = matching_qr_codes[0]
 
         # Validate QR code type and redirect URL
         if qr.qr_type != "dynamic" or not qr.redirect_url:
             logger.error(f"Invalid QR code type or missing redirect URL: {qr.id}")
             raise HTTPException(status_code=400, detail="Invalid QR code")
 
-        # Update scan statistics in the background
+        # Get redirect URL before any background tasks run
+        redirect_url = qr.redirect_url
+        
+        # Update scan statistics in a background task to improve response time
         timestamp = datetime.now(UTC)
-        try:
-            qr_service.update_scan_count(qr.id, timestamp)
-        except Exception as e:
-            # Log the error but don't fail the redirect
-            logger.error(f"Error updating scan count: {str(e)}")
+        
+        # Define the background task for scan count update
+        def update_scan_count_bg(qr_id: str, timestamp: datetime):
+            try:
+                qr_service.update_scan_count(qr_id, timestamp)
+            except Exception as e:
+                # Just log the error, since this is in the background
+                logger.error(f"Background error updating scan count: {str(e)}")
+        
+        # Add the task to background tasks
+        background_tasks.add_task(update_scan_count_bg, qr.id, timestamp)
 
         # Log the scan event
         client_ip = request.client.host if request.client else "unknown"
@@ -76,7 +98,7 @@ async def redirect_qr(
         )
 
         # Redirect to the target URL
-        return RedirectResponse(url=qr.redirect_url, status_code=302)
+        return RedirectResponse(url=redirect_url, status_code=302)
 
     except HTTPException:
         raise
