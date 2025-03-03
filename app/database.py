@@ -110,9 +110,20 @@ class Base(DeclarativeBase):
     pass
 
 
-@contextmanager
+# Replace the context manager with a generator function that can be used as a dependency
 def get_db():
-    """Get database session with proper cleanup."""
+    """Get database session with proper cleanup for FastAPI dependency injection."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# Keep the context manager version for use in scripts
+@contextmanager
+def get_db_context():
+    """Get database session with proper cleanup as a context manager."""
     db = SessionLocal()
     try:
         yield db
