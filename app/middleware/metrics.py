@@ -43,9 +43,9 @@ class MetricsMiddleware(BaseHTTPMiddleware):
 
             # Record metrics
             duration = time.perf_counter() - start_time
-            REQUEST_LATENCY.labels(
-                method=request.method, endpoint=request.url.path
-            ).observe(duration)
+            REQUEST_LATENCY.labels(method=request.method, endpoint=request.url.path).observe(
+                duration
+            )
 
             REQUEST_COUNT.labels(
                 method=request.method,
@@ -58,12 +58,10 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         except Exception:
             # Record error metrics
             duration = time.perf_counter() - start_time
-            REQUEST_LATENCY.labels(
-                method=request.method, endpoint=request.url.path
-            ).observe(duration)
+            REQUEST_LATENCY.labels(method=request.method, endpoint=request.url.path).observe(
+                duration
+            )
 
-            REQUEST_COUNT.labels(
-                method=request.method, endpoint=request.url.path, status=500
-            ).inc()
+            REQUEST_COUNT.labels(method=request.method, endpoint=request.url.path, status=500).inc()
 
             raise
