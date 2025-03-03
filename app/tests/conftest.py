@@ -11,7 +11,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from ..database import Base, get_db_with_logging
+from ..database import Base, get_db_with_logging, get_db
 from ..main import app
 
 # Set test environment
@@ -89,8 +89,9 @@ def get_test_db():
         db.close()
 
 
-# Override the database dependency
+# Override the database dependencies
 app.dependency_overrides[get_db_with_logging] = get_test_db
+app.dependency_overrides[get_db] = get_test_db
 
 
 @pytest.fixture
