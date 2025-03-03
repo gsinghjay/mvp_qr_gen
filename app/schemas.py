@@ -61,6 +61,7 @@ class QRCodeBase(BaseModel):
 class QRCodeCreate(QRCodeBase):
     """Schema for creating a QR code."""
 
+    qr_type: QRType = QRType.STATIC
     redirect_url: HttpUrl | None = None
 
 
@@ -82,9 +83,7 @@ class QRCodeResponse(QRCodeBase):
 
     model_config = ConfigDict(
         from_attributes=True,
-        json_encoders={
-            datetime: lambda dt: dt.astimezone().isoformat() if dt else None
-        },
+        json_encoders={datetime: lambda dt: dt.astimezone().isoformat() if dt else None},
     )
 
 
