@@ -12,7 +12,7 @@ from sqlalchemy import text
 from app.core.config import settings
 
 # We'll define these schemas in schemas.py later
-from app.schemas import (
+from app.schemas.health.models import (
     HealthResponse,
     HealthStatus,
     ServiceStatus,

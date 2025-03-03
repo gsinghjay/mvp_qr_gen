@@ -15,8 +15,9 @@ from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from ..models import QRCode
-from ..schemas import QRCodeCreate, QRCodeUpdate, QRType
+from ..models.qr import QRCode
+from ..schemas.common import QRType
+from ..schemas.qr.models import QRCodeCreate, QRCodeUpdate
 
 # Configure logger
 logger = logging.getLogger(__name__)

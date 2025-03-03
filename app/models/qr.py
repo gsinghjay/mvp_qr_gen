@@ -1,40 +1,15 @@
 """
-Database models for the QR code generator application.
+QR code database models.
 """
 
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, DateTime, Integer, String, Text, TypeDecorator
+from sqlalchemy import Column, DateTime, Integer, String, Text
 from sqlalchemy.sql import func
 
-from .database import Base
-
-
-class UTCDateTime(TypeDecorator):
-    """
-    Custom SQLAlchemy type that ensures timezone awareness.
-    Stores datetime in UTC and retrieves as UTC.
-    """
-
-    impl = DateTime
-    cache_ok = True
-
-    def process_bind_param(self, value, dialect):
-        """Convert datetime to UTC before storing."""
-        if value is not None:
-            if value.tzinfo is None:
-                value = value.replace(tzinfo=UTC)
-            return value.astimezone(UTC)
-        return value
-
-    def process_result_value(self, value, dialect):
-        """Ensure retrieved datetime is timezone-aware."""
-        if value is not None:
-            if value.tzinfo is None:
-                value = value.replace(tzinfo=UTC)
-            return value.astimezone(UTC)
-        return value
+from app.database import Base
+from .base import UTCDateTime
 
 
 class QRCode(Base):
@@ -83,7 +58,12 @@ class QRCode(Base):
         if "created_at" not in kwargs:
             kwargs["created_at"] = datetime.now(UTC)
         elif kwargs["created_at"].tzinfo is None:
+            # Convert naive datetime to UTC
             kwargs["created_at"] = kwargs["created_at"].replace(tzinfo=UTC)
+
+        # Set default scan_count if not provided
+        if "scan_count" not in kwargs:
+            kwargs["scan_count"] = 0
 
         # Ensure last_scan_at is timezone-aware if provided
         if "last_scan_at" in kwargs and kwargs["last_scan_at"] is not None:
@@ -106,4 +86,4 @@ class QRCode(Base):
             "back_color": self.back_color,
             "size": self.size,
             "border": self.border,
-        }
+        } 

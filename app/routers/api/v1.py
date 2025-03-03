@@ -37,8 +37,11 @@ async def list_qr_codes(
     try:
         qr_codes, total = qr_service.list_qr_codes(skip=skip, limit=limit, qr_type=qr_type)
 
+        # Convert QRCode model objects to dictionaries for Pydantic validation
+        qr_code_dicts = [qr.to_dict() for qr in qr_codes]
+        
         response = QRCodeList(
-            items=qr_codes, total=total, page=skip // limit + 1 if limit else 1, page_size=limit
+            items=qr_code_dicts, total=total, page=skip // limit + 1 if limit else 1, page_size=limit
         )
 
         return response
