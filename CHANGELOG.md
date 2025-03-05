@@ -1,6 +1,28 @@
 # CHANGELOG
 
 
+## v0.6.0 (2025-03-05)
+
+### Features
+
+- **api**: Add DELETE endpoint for QR codes
+  ([`675041f`](https://github.com/gsinghjay/mvp_qr_gen/commit/675041f63ecac96eadcfb90e500064d716aa6a06))
+
+- **background-tasks**: Implement non-blocking scan statistics updates
+  ([`e57f3c6`](https://github.com/gsinghjay/mvp_qr_gen/commit/e57f3c69d204445c95d7222aecb7fade4d3c85a4))
+
+- **frontend**: Implement deleteQR function in API service
+  ([`abe628c`](https://github.com/gsinghjay/mvp_qr_gen/commit/abe628cbfc049a47c02f8196fb0ce077c94ad727))
+
+- **qr**: Add delete_qr method to QRCodeService
+  ([`3b1f563`](https://github.com/gsinghjay/mvp_qr_gen/commit/3b1f56384cb705fe80f92f43e1188ce42d1131c7))
+
+### Testing
+
+- **background-tasks**: Add comprehensive tests for background task functionality
+  ([`126f058`](https://github.com/gsinghjay/mvp_qr_gen/commit/126f0588fdb7ab89b305e60430f24ab5509d85e1))
+
+
 ## v0.5.1 (2025-03-03)
 
 ### Bug Fixes
