@@ -78,16 +78,16 @@
 
 ## Phase 4: Frontend & UI
 
-- [ ] **Write Login UI Tests**
-  - [ ] Create `app/tests/test_login_ui.py` for template testing
-  - [ ] Test login page rendering and form submission
-  - [ ] Run tests (they will fail until implementation)
+- [x] **Write Login UI Tests**
+  - [x] Create `app/tests/test_login_ui.py` for template testing
+  - [x] Test login page rendering and form submission
+  - [x] Run tests (they will fail until implementation)
 
-- [ ] **Implement Basic Login UI**
-  - [ ] Create login page template with FastAPI's Jinja2Templates
-  - [ ] Add login/logout buttons to main layout
-  - [ ] Implement minimal authentication state display
-  - [ ] Run tests to verify implementation
+- [x] **Implement Basic Login UI**
+  - [x] Create login page template with FastAPI's Jinja2Templates
+  - [x] Add login/logout buttons to main layout
+  - [x] Implement minimal authentication state display
+  - [x] Run tests to verify implementation
 
 ## Phase 5: Integration
 
@@ -102,7 +102,7 @@
   - [x] Configure CORS for authentication endpoints
   - [x] Run tests to verify full implementation
 
-- [ ] **Document Authentication Flow**
-  - [ ] Create documentation in README or separate markdown file
-  - [ ] Document required environment variables
-  - [ ] Add diagrams showing authentication flow
+- [x] **Document Authentication Flow**
+  - [x] Create documentation in README or separate markdown file
+  - [x] Document required environment variables
+  - [x] Add diagrams showing authentication flow
