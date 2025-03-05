@@ -8,6 +8,7 @@ from .qr.redirect import router as redirect_router
 from .qr.static import router as static_qr_router
 from .web.pages import router as pages_router
 from .health import router as health_router
+# Auth router is imported directly in main.py to ensure proper initialization order
 
 # Create a list of all routers to be included in the application
 routers = [

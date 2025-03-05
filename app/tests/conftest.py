@@ -4,6 +4,7 @@ Test configuration and fixtures for the QR code generator API.
 
 import os
 from datetime import UTC, datetime
+from unittest import mock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,6 +17,9 @@ from ..main import app
 
 # Set test environment
 os.environ["ENVIRONMENT"] = "test"
+os.environ["MSAL_CLIENT_ID"] = "test-client-id"
+os.environ["MSAL_CLIENT_SECRET"] = "test-client-secret"
+os.environ["MSAL_TENANT_ID"] = "test-tenant-id"
 
 # Test database URL - using in-memory SQLite
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -105,8 +109,29 @@ def test_db():
 
 
 @pytest.fixture
-def client(test_db):
+def mock_auth_client():
+    """Mock MSAL client for testing."""
+    auth_client = mock.MagicMock()
+    auth_client.get_auth_url.return_value = "https://login.example.com/auth"
+    auth_client.get_token_from_code.return_value = {
+        "access_token": "test-access-token",
+        "id_token": "test-id-token",
+        "refresh_token": "test-refresh-token"
+    }
+    auth_client.get_token_claims.return_value = {
+        "oid": "test-user-id",
+        "name": "Test User",
+        "preferred_username": "test.user@example.com"
+    }
+    return auth_client
+
+
+@pytest.fixture
+def client(test_db, mock_auth_client):
     """Create a test client with proper headers for Traefik."""
+    # Mock the MSAL client in the app state
+    app.state.auth_client = mock_auth_client
+    
     test_client = TestClient(app)
     test_client.headers.update(
         {

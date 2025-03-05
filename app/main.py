@@ -17,8 +17,11 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from .auth.config import auth_settings
+from .auth.msal_client import MSALClient
 from .core.config import MIDDLEWARE_CONFIG, settings
 from .database import init_db
 from .middleware import logging as logging_middleware
@@ -92,6 +95,15 @@ async def lifespan(app: FastAPI):
     # Startup
     init_db()
     logger.info("Database initialized")
+    
+    # Initialize MSAL client and store in app state
+    try:
+        app.state.auth_client = MSALClient()
+        logger.info("MSAL client initialized")
+    except Exception as e:
+        # Log error but don't fail startup (auth will be unavailable)
+        logger.error(f"Failed to initialize MSAL client: {str(e)}", exc_info=True)
+    
     yield
     # Shutdown (if needed)
 
@@ -110,9 +122,23 @@ app = FastAPI(
 # Initialize middleware
 setup_middleware(app)
 
+# Add session middleware for authentication
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=os.environ.get("SESSION_SECRET", "supersecret"),
+    session_cookie=auth_settings.SESSION_COOKIE_NAME,
+    max_age=86400,  # 24 hours
+    same_site="lax",
+    https_only=auth_settings.SESSION_COOKIE_SECURE
+)
+
 # Include all routers
 for router in routers:
     app.include_router(router)
+
+# Include auth router
+from .routers.auth import auth_router
+app.include_router(auth_router)
 
 # Configure static files - ensure correct directory in Docker context
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/static")
