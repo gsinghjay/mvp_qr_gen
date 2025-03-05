@@ -537,3 +537,41 @@ class QRCodeService:
         except Exception as e:
             logger.error(f"Error listing QR codes: {str(e)}")
             raise HTTPException(status_code=500, detail="Database error while listing QR codes")
+
+    @with_retry(max_retries=3, retry_delay=0.2)
+    def delete_qr(self, qr_id: str) -> None:
+        """
+        Delete a QR code by ID.
+
+        Args:
+            qr_id: The ID of the QR code to delete
+
+        Raises:
+            HTTPException: If the QR code is not found or there's a database error
+        """
+        try:
+            # First, check if the QR code exists
+            qr = self.get_qr_by_id(qr_id)
+            
+            # Delete the QR code
+            self.db.delete(qr)
+            self.db.commit()
+            
+            logger.info(f"QR code deleted: {qr_id}")
+        except HTTPException:
+            # Re-raise HTTP exceptions from get_qr_by_id
+            raise
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.exception(f"Database error deleting QR code {qr_id}: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Database error deleting QR code: {str(e)}",
+            )
+        except Exception as e:
+            self.db.rollback()
+            logger.exception(f"Unexpected error deleting QR code {qr_id}: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error deleting QR code: {str(e)}",
+            )
