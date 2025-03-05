@@ -234,5 +234,34 @@ export const api = {
      */
     getRedirectUrl(shortId) {
         return `${config.API.BASE_URL}/r/${shortId}`;
+    },
+
+    /**
+     * Deletes a QR code by ID
+     * @param {string} id - QR code ID
+     * @returns {Promise<void>}
+     */
+    async deleteQR(id) {
+        try {
+            const response = await fetch(
+                `${config.API.BASE_URL}/api/v1/qr/${id}`,
+                createFetchOptions({
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+            );
+            
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.detail || `Failed to delete QR code: ${response.status}`);
+            }
+            
+            return true;
+        } catch (error) {
+            showError(`Error deleting QR code: ${error.message}`);
+            throw error;
+        }
     }
 }; 
