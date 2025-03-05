@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Configure templates directory
 TEMPLATES_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "templates"
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "app/templates"
 )
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
@@ -82,20 +82,42 @@ async def login_page(
     Returns:
         HTML login page
     """
-    # Create a state parameter with the next URL
-    state = create_state_param(next)
+    try:
+        # Create a state parameter with the next URL
+        state = create_state_param(next)
 
-    # Generate the full redirect URI including the host
-    redirect_uri = urljoin(str(request.base_url), auth_client.settings.REDIRECT_PATH)
+        # Generate the full redirect URI including the host
+        redirect_uri = urljoin(str(request.base_url), auth_client.settings.REDIRECT_PATH)
 
-    # Get the authorization URL
-    auth_url = auth_client.get_auth_url(redirect_uri, state)
+        # Get the authorization URL
+        auth_url = auth_client.get_auth_url(redirect_uri, state)
 
-    logger.info("Rendering login page", extra={"redirect_uri": redirect_uri})
+        logger.info("Rendering login page", extra={"redirect_uri": redirect_uri})
 
-    return templates.TemplateResponse(
-        "login.html", {"request": request, "auth_url": auth_url, "current_year": 2025}
-    )
+        # Get the context for the template
+        from app.core.config import settings as app_settings
+
+        context = {
+            "request": request,
+            "auth_url": auth_url,
+            "current_year": 2025,
+            "environment": app_settings.ENVIRONMENT,
+            "error": None
+        }
+        
+        return templates.TemplateResponse("login.html", context)
+    
+    except Exception as e:
+        logger.error(f"Error in login-page endpoint: {str(e)}", exc_info=True)
+        # Return a fallback login page with a placeholder URL
+        context = {
+            "request": request,
+            "auth_url": "#",
+            "current_year": 2025,
+            "environment": "development",
+            "error": "Authentication service unavailable"
+        }
+        return templates.TemplateResponse("login.html", context)
 
 
 @auth_router.get("/login")
