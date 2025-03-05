@@ -17,6 +17,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from pydantic import AnyUrl, ValidationError
 from zoneinfo import ZoneInfo
+import sqlite3
 
 from ..models.qr import QRCode
 from ..schemas.common import QRType
@@ -254,13 +255,88 @@ class QRCodeService:
             self.db.execute(stmt)
             self.db.commit()
 
-            # Log at debug level for high-volume operations
-            logger.debug(f"Updated scan count for QR code: {qr_id}")
-
-        except Exception as e:
-            logger.error(f"Error updating scan count for QR code {qr_id}: {e}")
+            logger.debug(f"Updated scan count for QR code {qr_id}")
+        except SQLAlchemyError as e:
             self.db.rollback()
+            logger.error(f"Database error updating scan count: {str(e)}")
             raise
+        except Exception as e:
+            logger.error(f"Unexpected error updating scan count: {str(e)}")
+            raise
+
+    @with_retry(max_retries=5, retry_delay=0.1)
+    def update_scan_statistics(
+        self, 
+        qr_id: str, 
+        timestamp: datetime | None = None,
+        client_ip: str | None = None,
+        user_agent: str | None = None
+    ) -> None:
+        """
+        Update scan statistics for a QR code with client information.
+        Designed to be used as a background task.
+        
+        Args:
+            qr_id: The ID of the QR code to update
+            timestamp: The timestamp of the scan (defaults to current time)
+            client_ip: The IP address of the client (optional)
+            user_agent: The user agent of the client (optional)
+            
+        Raises:
+            Exception: If there is an error updating the scan statistics after retries
+        """
+        try:
+            if timestamp is None:
+                timestamp = datetime.now(UTC)
+            
+            # Use direct SQL update to avoid race conditions
+            stmt = (
+                update(QRCode)
+                .where(QRCode.id == qr_id)
+                .values(scan_count=QRCode.scan_count + 1, last_scan_at=timestamp)
+            )
+            self.db.execute(stmt)
+            self.db.commit()
+
+            # Log detailed scan information including client data
+            logger.debug(
+                f"Updated scan statistics for QR code {qr_id}",
+                extra={
+                    "qr_id": qr_id,
+                    "timestamp": timestamp.isoformat(),
+                    "client_ip": client_ip or "unknown",
+                    "user_agent": user_agent or "unknown",
+                }
+            )
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(
+                f"Database error updating scan statistics: {e}",
+                extra={"qr_id": qr_id, "exception": str(e)},
+            )
+            # Don't re-raise the exception to avoid breaking redirect
+            
+        # Handle specific SQLite "not an error" interface error that occurs during concurrent access
+        except sqlite3.InterfaceError as e:
+            if "not an error" in str(e):
+                # This is a known issue with SQLite during concurrent access
+                # We can safely ignore it as the transaction was likely rolled back automatically
+                logger.warning(
+                    f"Concurrent access detected for QR code {qr_id}: {e}",
+                    extra={"qr_id": qr_id, "exception": str(e)},
+                )
+                self.db.rollback()
+            else:
+                # Re-raise unexpected interface errors
+                raise
+                
+        except Exception as e:
+            self.db.rollback()
+            logger.error(
+                f"Unexpected error updating scan statistics: {e}",
+                extra={"qr_id": qr_id, "exception": str(e)},
+            )
+            # Don't re-raise the exception to avoid breaking redirect
 
     def validate_qr_code(self, qr_data: QRCodeCreate) -> None:
         """

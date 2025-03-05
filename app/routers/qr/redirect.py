@@ -73,20 +73,20 @@ async def redirect_qr(
         # Update scan statistics in a background task to improve response time
         timestamp = datetime.now(UTC)
         
-        # Define the background task for scan count update
-        def update_scan_count_bg(qr_id: str, timestamp: datetime):
-            try:
-                qr_service.update_scan_count(qr_id, timestamp)
-            except Exception as e:
-                # Just log the error, since this is in the background
-                logger.error(f"Background error updating scan count: {str(e)}")
-        
-        # Add the task to background tasks
-        background_tasks.add_task(update_scan_count_bg, qr.id, timestamp)
-
-        # Log the scan event
+        # Get client information for analytics
         client_ip = request.client.host if request.client else "unknown"
         user_agent = request.headers.get("user-agent", "unknown")
+        
+        # Add the background task to update scan statistics with client info
+        background_tasks.add_task(
+            qr_service.update_scan_statistics, 
+            qr.id, 
+            timestamp,
+            client_ip,
+            user_agent
+        )
+
+        # Log the scan event
         logger.info(
             f"QR code scan: {qr.id}",
             extra={
