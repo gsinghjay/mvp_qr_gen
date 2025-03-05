@@ -141,3 +141,28 @@ async def update_qr(
     except Exception as e:
         logger.error(f"Error updating QR code: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error updating QR code: {str(e)}")
+
+
+@router.delete("/qr/{qr_id}", status_code=204)
+async def delete_qr(
+    qr_id: str,
+    qr_service: QRCodeService = Depends(get_qr_service),
+):
+    """
+    Delete a QR code by ID.
+
+    Args:
+        qr_id: The ID of the QR code to delete
+        qr_service: The QR code service (injected)
+
+    Returns:
+        No content (204)
+    """
+    try:
+        qr_service.delete_qr(qr_id)
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting QR code: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error deleting QR code: {str(e)}")
