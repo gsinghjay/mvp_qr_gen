@@ -1,134 +1,197 @@
-I'll create a comprehensive to-do list for refactoring your tests to reduce mock usage and create a more production-like testing environment using SQLite.
+# QR Generator Test Refactoring Tasks (1 Story Point Each)
 
-# Test Refactoring To-Do List: Reducing Mocks for Production-Like Tests
+## Test Factory Implementation
 
-## 1. Update Test Configuration
+1. [x] **Create Basic Test Factory Module**
+   - Create `app/tests/factories.py` with basic factory structure
+   - Implement base `Factory` class with common functionality
+   - Add direct DB session integration
+   - Acceptance: Factory can be imported and initialized in tests
 
-- [x] Replace in-memory SQLite with file-based SQLite for integration tests
-  - [x] Create a dedicated test database directory with proper cleanup
-  - [x] Update `conftest.py` to use file-based SQLite instead of `:memory:`
-  - [x] Implement test database lifecycle management (setup/teardown)
+2. [x] **Implement QRCode Factory**
+   - Add `QRCodeFactory` class to create test QR codes
+   - Include both static and dynamic QR code creation methods
+   - Support customizing all QRCode fields
+   - Acceptance: Factory can create QRCodes with sensible defaults
 
-- [x] Configure SQLite with production-relevant PRAGMAs
-  - [x] Apply WAL mode for integration tests
-  - [x] Set up proper journal modes and cache sizes
-  - [x] Configure appropriate timeout and busy handling settings
+3. [x] **Add Bulk Generation Support**
+   - Implement `create_batch` method to generate multiple entities
+   - Add sequence support for creating related entities
+   - Support customization of batch properties
+   - Acceptance: Can create 100+ test entities efficiently
 
-- [x] Create test data fixtures that mirror production scenarios
-  - [x] Implement database seeding functions
-  - [x] Create realistic test data generators
+## Test DRY Improvements
 
-## 2. Refactor Existing Tests
+4. [x] **Extract Common Test Helpers**
+   - Create `app/tests/helpers.py` with shared test functions
+   - Move duplicate assertion logic to helper functions
+   - Implement reusable QR code validation helpers
+   - Acceptance: At least 3 common helpers extracted from existing tests
 
-- [x] Identify and categorize current mock usage
-  - [x] Audit all test files for mock usage
-  - [x] Classify mocks as "necessary" vs "replaceable"
-  - [x] Document external dependencies that still require mocking
+5. [x] **Parameterize QR Code Validation Tests**
+   - Convert color validation tests to use pytest.mark.parametrize
+   - Add comprehensive test parameters for validation edge cases
+   - Remove duplicated test code
+   - Acceptance: Validation test count reduced by 50% with same coverage
 
-- [x] Replace `MagicMock` instances with real components
-  - [x] Refactor `test_qr_service.py` to use real database sessions
-  - [x] Replace mocked database sessions in `test_main.py`
-  - [x] Update HTTP client tests to use the actual service layer
+6. [x] **Parameterize QR Service Tests**
+   - Convert service methods tests to use pytest.mark.parametrize
+   - Add test parameters for success/failure conditions
+   - Consolidate mock and real DB test variants
+   - Acceptance: Service test count reduced by 30% with same coverage
 
-- [x] Restructure test assertions
-  - [x] Update assertions to check database state directly
-  - [x] Replace mock verification with actual state verification
-  - [x] Add database integrity checks post-test
+## Fix Skipped SQLite Tests
 
-## 3. Create SQLite-Specific Test Suite
+7. [x] **Fix Concurrent Writes Test**
+   - Debug and fix the concurrent writes test in `test_sqlite_specific.py`
+   - Implement proper thread synchronization
+   - Use SQLAlchemy's concurrency patterns correctly
+   - Acceptance: Test passes consistently without being skipped
 
-- [x] Test WAL mode functionality
-  - [x] Verify WAL files are created and managed properly
-  - [x] Test checkpoint behaviors
+8. [x] **Fix Busy Timeout Test**
+   - Debug and fix the busy timeout handling test
+   - Implement reliable method to test timeout behavior
+   - Create proper isolation between test connection and main connection
+   - Acceptance: Test passes consistently without being skipped
 
-- [x] Implement concurrency tests
-  - [x] Test `with_retry` decorator with actual concurrent operations
-  - [x] Verify database locking behavior under load
-  - [x] Test concurrent read/write operations
+9. [x] **Fix Database Checkpoint Test**
+   - Debug and fix WAL file size measurement
+   - Implement reliable checkpoint verification
+   - Add proper test cleanup to prevent side effects
+   - Acceptance: Test passes consistently without being skipped
 
-- [x] Add database integrity validation tests
-  - [x] Test SQLite PRAGMA integrity_check
-  - [x] Verify transaction rollback functionality
-  - [x] Test proper constraint enforcement
+10. [x] **Fix UTC DateTime Function Test**
+    - Debug and fix UTC function testing approach
+    - Implement reliable datetime testing methods
+    - Create isolated test environment for SQLite function testing
+    - Acceptance: Test passes consistently without being skipped
 
-- [x] Implement backup and recovery tests
-  - [x] Test database backup functionality
-  - [x] Verify database restoration process
-  - [x] Test corruption recovery scenarios
+## FastAPI-Specific Testing
 
-## 4. Enhance Integration Test Coverage
+11. [ ] **Standardize Dependency Injection Tests**
+    - Refactor tests to use FastAPI's `app.dependency_overrides` consistently
+    - Implement proper cleanup of dependency overrides between tests
+    - Create helper for managing dependency overrides
+    - Acceptance: All tests use consistent dependency injection pattern
 
-- [x] Create end-to-end flow tests
-  - [x] Test complete QR code creation to scan flows
-  - [x] Test dynamic QR code updates and redirections
-  - [x] Add long-running tests with database persistence
+12. [ ] **Improve Path Operation Testing**
+    - Standardize endpoint testing using FastAPI's TestClient
+    - Create consistent patterns for testing each HTTP method
+    - Add helper functions for common endpoint test scenarios
+    - Acceptance: All endpoints have consistent test coverage
 
-- [x] Add load and performance tests
-  - [x] Test database performance under multiple concurrent users
-  - [x] Verify connection pooling behavior
-  - [x] Measure and assert response times for key operations
+13. [ ] **Enhance Request Validation Testing**
+    - Create comprehensive tests for input validation
+    - Test endpoint behavior with invalid inputs
+    - Verify error messages match expectations
+    - Acceptance: All validation rules are properly tested
 
-- [x] Test service layer directly with real database
-  - [x] Replace `QRCodeService` mock tests with real service tests
-  - [x] Test service transaction integrity
-  - [x] Verify service error handling with real database errors
+14. [x] **Implement Response Model Validation**
+    - Add tests to verify responses match Pydantic response models
+    - Create validation helper for checking response against schema
+    - Test all response types (success, error, partial) against models
+    - Acceptance: All endpoint responses validated against Pydantic models
 
-## 5. Refine Test Isolation Strategy
+15. [ ] **Add Middleware Testing**
+    - Create tests specifically for each middleware in the application
+    - Test middleware execution order and effects
+    - Implement middleware mocking capabilities
+    - Acceptance: All middleware components have dedicated tests
 
-- [x] Implement transaction-based test isolation
-  - [x] Use SQLAlchemy's nested transactions for test isolation
-  - [x] Ensure all tests properly cleanup database state
-  - [x] Add cleanup verification steps to prevent test contamination
+16. [ ] **Test FastAPI Lifecycle Events**
+    - Implement tests for application startup/shutdown events
+    - Add tests for lifespan context management
+    - Create fixtures for testing lifecycle events
+    - Acceptance: All lifecycle events are properly tested
 
-- [x] Create database fixture management
-  - [x] Implement database resets between test suites
-  - [x] Add database state verification between tests
-  - [x] Create isolation verification tooling
+## Async Testing Improvements
 
-## 6. Document New Testing Approach
+17. [ ] **Create Async Testing Utilities**
+    - Implement `AsyncTestHelper` class in tests package
+    - Add methods for testing concurrent operations
+    - Create utilities for waiting on async operations
+    - Acceptance: Helper simplifies testing of async code
 
-- [x] Update testing documentation
-  - [x] Document the new testing approach and philosophy
-  - [x] Create guidelines for when to use mocks vs real components
-  - [x] Add examples of effective database testing patterns
+18. [ ] **Improve Background Task Testing**
+    - Create reliable test pattern for background tasks
+    - Implement wait utilities for background task completion
+    - Add task mocking capabilities
+    - Acceptance: Background task tests are deterministic
 
-- [x] Create testing tutorials for new team members
-  - [x] Write step-by-step guide for running integration tests
-  - [x] Document common testing patterns and anti-patterns
-  - [x] Create troubleshooting guide for database test issues
+19. [ ] **Implement Event Loop Isolation**
+    - Fix potential event loop leakage between tests
+    - Add event loop fixtures with proper cleanup
+    - Ensure each async test gets a clean event loop
+    - Acceptance: Async tests don't interfere with each other
 
-## 7. New Insights and Lessons Learned
+## Test Documentation and Organization
 
-- The file-based SQLite approach provides much more realistic testing of database interactions compared to in-memory SQLite
-- WAL mode testing is critical for ensuring production-like behavior in tests
-- Concurrent operation testing revealed potential race conditions that weren't visible with mocked database sessions
-- Direct database state verification provides stronger assertions than checking return values alone
-- Some mocks are still necessary for testing error conditions and external dependencies
-- The new approach allows testing of SQLite-specific features like busy timeout handling and checkpointing
-- Transaction isolation between tests is critical for test reliability
-- Testing with real components improves confidence in the test suite and reduces the likelihood of "works in test but not in production" issues
+20. [ ] **Add Comprehensive Test Docstrings**
+    - Add detailed docstrings to all test modules
+    - Document test strategies and patterns used
+    - Update existing test documentation
+    - Acceptance: All test modules have comprehensive docstrings
 
-## 8. Future Work
+21. [ ] **Standardize Test Structure**
+    - Create consistent naming and organization pattern
+    - Reorganize tests into logical groupings
+    - Implement standard test class/function structure
+    - Acceptance: All tests follow consistent organization
 
-- Several SQLite-specific tests had to be skipped due to issues with:
-  - Concurrent writes test: Needs further investigation into thread safety with shared sessions
-  - Busy timeout handling: Needs proper table creation and transaction management
-  - Database checkpoint: WAL file size measurement is inconsistent, needs better approach
-  - UTC datetime functions: Custom SQLite functions need debugging
-- These skipped tests should be revisited in the future to ensure complete coverage of SQLite-specific features
-- Consider implementing a more robust approach to concurrent testing, possibly using pytest-xdist
-- Investigate using SQLite's in-memory mode with shared cache for faster tests while still testing concurrency
+22. [ ] **Create Testing Guide Document**
+    - Document test philosophy and approach
+    - Add examples of best practices
+    - Create troubleshooting guide for common issues
+    - Acceptance: New developers can understand testing approach
 
-## 9. Completion Summary
+## Performance Optimization
 
-All tasks in the test refactoring plan have been successfully completed. The test suite now:
+23. [ ] **Add Test Duration Metrics**
+    - Create pytest plugin or hook to measure test duration
+    - Add reporting for slow tests
+    - Implement tracking of test performance over time
+    - Acceptance: Can identify the slowest 10% of tests
 
-- Uses file-based SQLite with WAL mode for more production-like testing
-- Replaces unnecessary mocks with real components where possible
-- Verifies database state directly rather than relying on return values
-- Includes comprehensive documentation for testing practices
-- Maintains high test coverage (>80%)
-- Properly handles async components and concurrent operations
-- Includes specific guidance for FastAPI testing
+24. [ ] **Optimize Test Database Setup**
+    - Implement faster DB initialization for tests
+    - Add in-memory SQLite option for appropriate tests
+    - Optimize transaction management in tests
+    - Acceptance: Test suite runs at least 20% faster
 
-The test suite now runs with 69 passing tests and 4 skipped tests (which have been documented for future investigation). The refactoring has significantly improved the reliability and realism of the tests, making them more effective at catching issues before they reach production.
+25. [ ] **Optimize Fixture Scope**
+    - Review and update fixture scopes for optimal performance
+    - Convert function-scoped fixtures to session when possible
+    - Implement caching for expensive fixture operations
+    - Acceptance: Reduced test setup/teardown time
+
+## Advanced Testing Improvements
+
+26. [ ] **Implement OpenAPI Schema Validation**
+    - Create test to validate actual responses against OpenAPI schema
+    - Add test for all major API endpoints
+    - Implement schema compliance checker
+    - Acceptance: Tests verify API matches documented schema
+
+27. [ ] **Add API Performance Tests**
+    - Implement performance baseline tests for key API endpoints
+    - Add response time assertions
+    - Create test fixtures for performance measurement
+    - Acceptance: Performance regression can be detected by tests
+
+28. [ ] **Implement Property-Based Tests**
+    - Add hypothesis for property-based testing
+    - Implement property tests for QR code generation
+    - Create strategies for testing with random valid inputs
+    - Acceptance: Key components tested with property-based approach
+
+29. [ ] **Add Database Concurrency Stress Tests**
+    - Implement stress tests for concurrent database operations
+    - Verify data integrity under concurrent load
+    - Add test for WAL mode benefits
+    - Acceptance: System handles concurrent operations reliably
+
+30. [ ] **Implement Test Environment Isolation**
+    - Create dedicated test configuration
+    - Implement environment detection and configuration
+    - Ensure all tests clean up resources
+    - Acceptance: Tests run in isolation without side effects
