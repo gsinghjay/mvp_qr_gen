@@ -20,8 +20,14 @@ from zoneinfo import ZoneInfo
 import sqlite3
 
 from ..models.qr import QRCode
-from ..schemas.common import QRType
+from ..schemas.common import QRType, ImageFormat
 from ..schemas.qr.models import QRCodeCreate, QRCodeUpdate
+from ..schemas.qr.parameters import (
+    StaticQRCreateParameters,
+    DynamicQRCreateParameters,
+    QRUpdateParameters,
+    QRImageParameters,
+)
 from ..database import with_retry
 
 # Configure UTC timezone
@@ -79,7 +85,7 @@ class QRCodeService:
             logger.error(f"Unexpected error retrieving QR code {qr_id}: {str(e)}")
             raise HTTPException(status_code=500, detail="Unexpected error while retrieving QR code")
 
-    def create_static_qr(self, data: QRCodeCreate) -> QRCode:
+    def create_static_qr(self, data: StaticQRCreateParameters) -> QRCode:
         """
         Create a new static QR code.
 
@@ -93,40 +99,47 @@ class QRCodeService:
             HTTPException: If there is an error creating the QR code
         """
         try:
-            # Validate QR code data
-            if data.qr_type != QRType.STATIC:
-                data.qr_type = QRType.STATIC
-            self.validate_qr_code(data)
-
-            # Create a new QR code
-            qr = QRCode(
-                content=str(data.content),
-                qr_type="static",
+            # Convert to QRCodeCreate for backward compatibility with existing code
+            qr_data = QRCodeCreate(
+                content=data.content,
+                qr_type=QRType.STATIC,
                 fill_color=data.fill_color,
                 back_color=data.back_color,
                 size=data.size,
                 border=data.border,
-                created_at=datetime.now(UTC),
             )
+            
+            # Validate QR code data
+            self.validate_qr_code(qr_data)
+            
+            # Create QR code
+            qr = QRCode(
+                id=str(uuid.uuid4()),
+                content=qr_data.content,
+                qr_type=QRType.STATIC.value,
+                redirect_url=None,
+                fill_color=qr_data.fill_color,
+                back_color=qr_data.back_color,
+                size=qr_data.size,
+                border=qr_data.border,
+                created_at=datetime.now(UTC),
+                scan_count=0,
+                last_scan_at=None,
+            )
+            
+            # Add to database
             self.db.add(qr)
             self.db.commit()
-            self.db.refresh(qr)
-
-            logger.info("Created static QR code", extra={"qr_id": qr.id})
+            
             return qr
-        except ValueError as e:
-            logger.error(f"Validation error creating static QR code: {str(e)}")
-            raise HTTPException(status_code=422, detail=str(e))
-        except SQLAlchemyError as e:
-            self.db.rollback()
-            logger.error(f"Database error creating static QR code: {str(e)}")
-            raise HTTPException(status_code=500, detail="Error creating QR code: database error")
+        except HTTPException:
+            raise
         except Exception as e:
             self.db.rollback()
-            logger.exception(f"Unexpected error creating static QR code: {str(e)}")
-            raise HTTPException(status_code=500, detail="Error creating QR code: unexpected error")
+            logger.exception("Error creating static QR code")
+            raise HTTPException(status_code=500, detail=f"Error creating QR code: {str(e)}")
 
-    def create_dynamic_qr(self, data: QRCodeCreate) -> QRCode:
+    def create_dynamic_qr(self, data: DynamicQRCreateParameters) -> QRCode:
         """
         Create a new dynamic QR code.
 
@@ -140,57 +153,64 @@ class QRCodeService:
             HTTPException: If there is an error creating the QR code
         """
         try:
-            # Validate QR code data
-            if data.qr_type != QRType.DYNAMIC:
-                data.qr_type = QRType.DYNAMIC
-            self.validate_qr_code(data)
-
-            if not data.redirect_url:
-                raise HTTPException(
-                    status_code=422, detail="Dynamic QR codes must have a redirect URL"
-                )
-
             # Generate a short unique identifier for the redirect path
             short_id = str(uuid.uuid4())[:8]
-            qr = QRCode(
-                content=f"/r/{short_id}",
-                qr_type="dynamic",
+            
+            # Create the redirect URL path - this MUST be the content for redirection to work
+            redirect_path = f"/r/{short_id}"
+            
+            # Store any user-provided content as a custom field if needed
+            custom_content = data.content
+            
+            # Convert to QRCodeCreate for backward compatibility with existing code
+            qr_data = QRCodeCreate(
+                content=redirect_path,  # Always use redirect_path as content
+                qr_type=QRType.DYNAMIC,
                 redirect_url=str(data.redirect_url),
                 fill_color=data.fill_color,
                 back_color=data.back_color,
                 size=data.size,
                 border=data.border,
-                created_at=datetime.now(UTC),
             )
+            
+            # Validate QR code data
+            self.validate_qr_code(qr_data)
+            
+            # Create QR code
+            qr = QRCode(
+                id=str(uuid.uuid4()),
+                content=redirect_path,  # Always use redirect_path as content
+                qr_type=QRType.DYNAMIC.value,
+                redirect_url=str(data.redirect_url),
+                fill_color=qr_data.fill_color,
+                back_color=qr_data.back_color,
+                size=qr_data.size,
+                border=qr_data.border,
+                created_at=datetime.now(UTC),
+                scan_count=0,
+                last_scan_at=None,
+            )
+            
+            # Add to database
             self.db.add(qr)
             self.db.commit()
-            self.db.refresh(qr)
-
-            logger.info("Created dynamic QR code", extra={"qr_id": qr.id})
+            
             return qr
-        except ValueError as e:
-            logger.error(f"Validation error creating dynamic QR code: {str(e)}")
-            raise HTTPException(status_code=422, detail=str(e))
         except HTTPException:
             raise
-        except SQLAlchemyError as e:
-            self.db.rollback()
-            logger.error(f"Database error creating dynamic QR code: {str(e)}")
-            raise HTTPException(status_code=500, detail="Error creating QR code: database error")
         except Exception as e:
             self.db.rollback()
-            logger.exception(f"Unexpected error creating dynamic QR code: {str(e)}")
-            raise HTTPException(status_code=500, detail="Error creating QR code: unexpected error")
+            logger.exception("Error creating dynamic QR code")
+            raise HTTPException(status_code=500, detail=f"Error creating QR code: {str(e)}")
 
     @with_retry(max_retries=3, retry_delay=0.2)
-    def update_dynamic_qr(self, qr_id: str, data: QRCodeUpdate) -> QRCode:
+    def update_dynamic_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
         """
-        Update a dynamic QR code's redirect URL.
-        Uses retry mechanism with exponential backoff to handle concurrent updates.
+        Update a dynamic QR code.
 
         Args:
             qr_id: The ID of the QR code to update
-            data: The updated QR code data
+            data: The QR code data to update
 
         Returns:
             The updated QR code object
@@ -199,35 +219,29 @@ class QRCodeService:
             HTTPException: If there is an error updating the QR code
         """
         try:
+            # Get the QR code
             qr = self.get_qr_by_id(qr_id)
-
-            if qr.qr_type != "dynamic":
-                raise HTTPException(status_code=400, detail="Cannot update static QR code")
-
-            # Validate and update the redirect URL
-            if not data.redirect_url:
-                raise HTTPException(status_code=422, detail="Redirect URL is required")
-
-            try:
-                qr.redirect_url = str(data.redirect_url)
-                qr.last_scan_at = datetime.now(UTC)
-                self.db.add(qr)
-                self.db.commit()
-                self.db.refresh(qr)
-
-                logger.info(f"Updated QR code {qr_id} with new redirect URL")
-                return qr
-
-            except SQLAlchemyError as e:
-                self.db.rollback()
-                logger.error(f"Database error updating QR code {qr_id}: {str(e)}")
-                raise HTTPException(status_code=500, detail="Database error while updating QR code")
-
+            
+            # Check if it's a dynamic QR code
+            if qr.qr_type != QRType.DYNAMIC.value:
+                raise HTTPException(status_code=400, detail="Only dynamic QR codes can be updated")
+            
+            # Convert to QRCodeUpdate for backward compatibility with existing code
+            qr_data = QRCodeUpdate(redirect_url=data.redirect_url)
+            
+            # Update the QR code
+            qr.redirect_url = str(qr_data.redirect_url)
+            
+            # Commit the changes
+            self.db.commit()
+            
+            return qr
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error updating QR code {qr_id}: {str(e)}")
-            raise HTTPException(status_code=500, detail="Unexpected error while updating QR code")
+            self.db.rollback()
+            logger.exception(f"Error updating QR code {qr_id}")
+            raise HTTPException(status_code=500, detail=f"Error updating QR code: {str(e)}")
 
     @with_retry(max_retries=5, retry_delay=0.1)
     def update_scan_count(self, qr_id: str, timestamp: datetime | None = None) -> None:
