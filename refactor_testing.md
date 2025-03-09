@@ -68,11 +68,12 @@
 
 ## FastAPI-Specific Testing
 
-11. [ ] **Standardize Dependency Injection Tests**
+11. [x] **Standardize Dependency Injection Tests**
     - Refactor tests to use FastAPI's `app.dependency_overrides` consistently
     - Implement proper cleanup of dependency overrides between tests
     - Create helper for managing dependency overrides
     - Acceptance: All tests use consistent dependency injection pattern
+    - Implementation: Created `DependencyOverrideManager` class in `helpers.py` with context manager pattern and convenience methods. Added comprehensive examples in `test_dependency_overrides.py`. All tests pass successfully in Docker.
 
 12. [ ] **Improve Path Operation Testing**
     - Standardize endpoint testing using FastAPI's TestClient
