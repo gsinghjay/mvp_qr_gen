@@ -5,7 +5,7 @@ Router for static QR code operations.
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...dependencies import get_qr_service
-from ...schemas import QRCodeCreate, QRCodeResponse
+from ...schemas import QRCodeResponse, StaticQRCreateParameters
 from ...services.qr_service import QRCodeService
 from .common import logger
 
@@ -17,7 +17,9 @@ router = APIRouter(
 
 
 @router.post("", response_model=QRCodeResponse)
-async def create_static_qr(data: QRCodeCreate, qr_service: QRCodeService = Depends(get_qr_service)):
+async def create_static_qr(
+    data: StaticQRCreateParameters, qr_service: QRCodeService = Depends(get_qr_service)
+):
     """
     Create a new static QR code.
 

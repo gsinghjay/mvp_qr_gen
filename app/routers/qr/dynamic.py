@@ -5,7 +5,7 @@ Router for dynamic QR code operations.
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...dependencies import get_qr_service
-from ...schemas import QRCodeCreate, QRCodeResponse, QRCodeUpdate
+from ...schemas import QRCodeResponse, DynamicQRCreateParameters, QRUpdateParameters
 from ...services.qr_service import QRCodeService
 from .common import logger
 
@@ -18,7 +18,7 @@ router = APIRouter(
 
 @router.post("", response_model=QRCodeResponse)
 async def create_dynamic_qr(
-    data: QRCodeCreate, qr_service: QRCodeService = Depends(get_qr_service)
+    data: DynamicQRCreateParameters, qr_service: QRCodeService = Depends(get_qr_service)
 ):
     """
     Create a new dynamic QR code.
@@ -43,7 +43,7 @@ async def create_dynamic_qr(
 
 @router.put("/{qr_id}", response_model=QRCodeResponse)
 async def update_dynamic_qr(
-    qr_id: str, data: QRCodeUpdate, qr_service: QRCodeService = Depends(get_qr_service)
+    qr_id: str, data: QRUpdateParameters, qr_service: QRCodeService = Depends(get_qr_service)
 ):
     """
     Update a dynamic QR code's redirect URL.
