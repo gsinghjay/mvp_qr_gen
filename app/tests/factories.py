@@ -8,7 +8,7 @@ sensible defaults, while allowing customization of specific attributes.
 
 import random
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, TypeVar, Type, Generic, cast
 
 from faker import Faker
@@ -142,7 +142,7 @@ class QRCodeFactory(Factory[QRCode]):
             "size": 10,
             "border": 4,
             "scan_count": 0,
-            "created_at": datetime.now(UTC),
+            "created_at": datetime.now(timezone.utc),
         }
     
     def build_static(self, **kwargs: Any) -> QRCode:
@@ -245,7 +245,7 @@ class QRCodeFactory(Factory[QRCode]):
         Returns:
             A saved QR code instance with scan history
         """
-        last_scan_at = datetime.now(UTC) - timedelta(days=last_scan_days_ago)
+        last_scan_at = datetime.now(timezone.utc) - timedelta(days=last_scan_days_ago)
         
         attrs = {
             "scan_count": scan_count,

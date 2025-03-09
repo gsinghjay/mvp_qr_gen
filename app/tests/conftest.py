@@ -4,7 +4,7 @@ Test configuration and fixtures for the QR code generator API.
 
 import os
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional, Generator, AsyncGenerator
 import asyncio
@@ -79,7 +79,7 @@ def add_sqlite_functions(dbapi_connection, connection_record):
     def utcnow():
         """Return current UTC timestamp in ISO format with Z suffix."""
         # Return with 'Z' suffix instead of +00:00 for UTC timezone
-        dt = datetime.now(UTC)
+        dt = datetime.now(timezone.utc)
         # Format with Z suffix manually to ensure test passes
         return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
     
@@ -145,14 +145,14 @@ def create_test_qr_code(
         redirect_url = fake.url()
     
     # Calculate dates
-    created_at = datetime.now(UTC)
+    created_at = datetime.now(timezone.utc)
     if created_days_ago > 0:
         created_at = created_at - timedelta(days=created_days_ago)
     
     # Handle last scan date
     last_scan_at = None
     if last_scan_days_ago is not None:
-        last_scan_at = datetime.now(UTC) - timedelta(days=last_scan_days_ago)
+        last_scan_at = datetime.now(timezone.utc) - timedelta(days=last_scan_days_ago)
     
     # Create the QR code
     qr_code = QRCode(
