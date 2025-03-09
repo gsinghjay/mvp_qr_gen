@@ -2,10 +2,19 @@
 API version 1 router.
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 
 from ...dependencies import get_qr_service
-from ...schemas import QRCodeList, QRCodeResponse, QRCodeUpdate
+from ...schemas import (
+    QRCodeList, 
+    QRCodeResponse, 
+    QRCodeUpdate,
+    QRListParameters,
+    QRImageParameters,
+    QRUpdateParameters,
+)
 from ...services.qr_service import QRCodeService
 from ..qr.common import logger
 
@@ -17,31 +26,34 @@ router = APIRouter(
 
 @router.get("/qr", response_model=QRCodeList)
 async def list_qr_codes(
-    skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=10, ge=1, le=100),
-    qr_type: str | None = Query(default=None, pattern="^(static|dynamic)$"),
+    params: QRListParameters = Depends(),
     qr_service: QRCodeService = Depends(get_qr_service),
 ):
     """
     List QR codes with pagination and optional filtering.
 
     Args:
-        skip: Number of records to skip (for pagination)
-        limit: Maximum number of records to return
-        qr_type: Optional filter by QR code type (static or dynamic)
+        params: Query parameters for listing QR codes
         qr_service: The QR code service (injected)
 
     Returns:
         A paginated list of QR codes
     """
     try:
-        qr_codes, total = qr_service.list_qr_codes(skip=skip, limit=limit, qr_type=qr_type)
+        qr_codes, total = qr_service.list_qr_codes(
+            skip=params.skip, 
+            limit=params.limit, 
+            qr_type=params.qr_type.value if params.qr_type else None
+        )
 
         # Convert QRCode model objects to dictionaries for Pydantic validation
         qr_code_dicts = [qr.to_dict() for qr in qr_codes]
         
         response = QRCodeList(
-            items=qr_code_dicts, total=total, page=skip // limit + 1 if limit else 1, page_size=limit
+            items=qr_code_dicts, 
+            total=total, 
+            page=params.skip // params.limit + 1 if params.limit else 1, 
+            page_size=params.limit
         )
 
         return response
@@ -77,8 +89,7 @@ async def get_qr(qr_id: str, qr_service: QRCodeService = Depends(get_qr_service)
 @router.get("/qr/{qr_id}/image")
 async def get_qr_image(
     qr_id: str,
-    image_format: str = Query(default="png", pattern="^(png|jpeg|jpg|svg|webp)$"),
-    image_quality: int | None = Query(default=None, ge=1, le=100),
+    params: QRImageParameters = Depends(),
     qr_service: QRCodeService = Depends(get_qr_service),
 ):
     """
@@ -86,16 +97,22 @@ async def get_qr_image(
 
     Args:
         qr_id: The ID of the QR code to retrieve
-        image_format: The format of the image (png, jpeg, jpg, svg, webp)
-        image_quality: The quality of the image (1-100, for lossy formats)
+        params: Query parameters for image generation
         qr_service: The QR code service (injected)
 
     Returns:
         The QR code image
     """
     try:
+        # Add debug logging
+        logger.debug(f"Getting QR image for ID: {qr_id}")
+        logger.debug(f"Image format: {params.image_format}")
+        logger.debug(f"Image format value: {params.image_format.value}")
+        logger.debug(f"Image quality: {params.image_quality}")
+        
         # Get the QR code
         qr = qr_service.get_qr_by_id(qr_id)
+        logger.debug(f"QR code retrieved: {qr.id}")
 
         # Generate QR code
         return qr_service.generate_qr(
@@ -104,21 +121,21 @@ async def get_qr_image(
             border=qr.border,
             fill_color=qr.fill_color,
             back_color=qr.back_color,
-            image_format=image_format,
-            image_quality=image_quality,
+            image_format=params.image_format.value,
+            image_quality=params.image_quality,
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error generating QR code image: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error generating QR code image")
+        logger.exception(f"Error generating QR code image: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating QR code image: {str(e)}")
 
 
 @router.put("/qr/{qr_id}", response_model=QRCodeResponse)
 async def update_qr(
     qr_id: str,
-    qr_update: QRCodeUpdate,
+    qr_update: QRUpdateParameters,
     qr_service: QRCodeService = Depends(get_qr_service),
 ):
     """
@@ -143,7 +160,7 @@ async def update_qr(
         raise HTTPException(status_code=500, detail=f"Error updating QR code: {str(e)}")
 
 
-@router.delete("/qr/{qr_id}", status_code=204)
+@router.delete("/qr/{qr_id}", status_code=204, response_class=Response)
 async def delete_qr(
     qr_id: str,
     qr_service: QRCodeService = Depends(get_qr_service),
