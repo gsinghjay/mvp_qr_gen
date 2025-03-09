@@ -77,14 +77,16 @@ def test_integrity_check(test_engine):
     assert result == "ok"
 
 
-def test_concurrent_reads(test_db, seeded_db):
+def test_concurrent_reads(test_db, seeded_db, test_session_factory):
     """Test that concurrent reads work correctly."""
-    # Define a function to read QR codes
+    # Define a function to read QR codes with its own session
     def read_qr_codes():
-        # Query all QR codes
-        result = test_db.execute(select(QRCode)).scalars().all()
-        # Return the count
-        return len(result)
+        # Create a new session for each read to avoid sharing sessions between threads
+        with test_session_factory() as session:
+            # Query all QR codes
+            result = session.execute(select(QRCode)).scalars().all()
+            # Return the count
+            return len(result)
     
     # Get actual number of QR codes in the database to make the test more robust
     actual_count = read_qr_codes()
@@ -93,9 +95,14 @@ def test_concurrent_reads(test_db, seeded_db):
     threads = []
     results = []
     
+    # Use a lock to protect the results list from concurrent modification
+    results_lock = threading.Lock()
+    
     for _ in range(5):
         def worker():
-            results.append(read_qr_codes())
+            count = read_qr_codes()
+            with results_lock:
+                results.append(count)
         
         thread = threading.Thread(target=worker)
         threads.append(thread)
@@ -106,9 +113,9 @@ def test_concurrent_reads(test_db, seeded_db):
         thread.join()
     
     # Verify all threads read the same number of QR codes
-    assert all(count == results[0] for count in results)
+    assert all(count == actual_count for count in results), f"Expected all counts to be {actual_count}, got {results}"
     # Verify the count matches the expected number from actual count
-    assert results[0] == actual_count, f"Expected {actual_count} QR codes, got {results[0]}"
+    assert len(results) == 5, f"Expected 5 results, got {len(results)}"
 
 
 def test_concurrent_writes(test_db, test_session_factory):
