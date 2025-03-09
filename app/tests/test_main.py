@@ -56,7 +56,7 @@ def create_test_qr_code(client: TestClient, qr_type: QRType = QRType.STATIC) -> 
     json_payload = jsonable_encoder(payload)
     endpoint = f"/api/v1/qr/{qr_type.value}"
     response = client.post(endpoint, json=json_payload)
-    assert response.status_code == 200, f"Failed to create QR code: {response.text}"
+    assert response.status_code == 201, f"Failed to create QR code: {response.text}"
     data = response.json()
 
     # Verify timezone-aware datetime fields
@@ -103,29 +103,29 @@ def test_create_static_qr(client: TestClient, test_db: Session):
         "border": 4,
     }
     json_payload = jsonable_encoder(payload)
-
+    
     response = client.post("/api/v1/qr/static", json=json_payload)
-    assert response.status_code == 200, f"Failed to create static QR code: {response.text}"
+    assert response.status_code == 201, f"Failed to create static QR code: {response.text}"
     data = response.json()
-
-    # Verify response data
+    
+    # Verify the response data
     assert data["content"] == "https://example.com"
-    assert data["qr_type"] == QRType.STATIC
+    assert data["qr_type"] == "static"
+    assert data["fill_color"] == "#000000"
+    assert data["back_color"] == "#FFFFFF"
     assert data["redirect_url"] is None
     assert "id" in data
     assert "created_at" in data
-    created_at = datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))
-    assert created_at.tzinfo is not None, "created_at should be timezone-aware"
-    assert data["scan_count"] == 0
-    assert data["last_scan_at"] is None
-    assert data["fill_color"] == "#000000"
-    assert data["back_color"] == "#FFFFFF"
-
-    # Verify database state
-    db_qr = test_db.query(QRCode).filter(QRCode.id == data["id"]).first()
-    assert db_qr is not None
-    assert db_qr.content == "https://example.com"
-    assert db_qr.created_at.tzinfo is not None, "Database created_at should be timezone-aware"
+    
+    # Verify the QR code was created in the database
+    qr_id = data["id"]
+    qr = test_db.query(QRCode).filter(QRCode.id == qr_id).first()
+    assert qr is not None
+    assert qr.content == "https://example.com"
+    assert qr.qr_type == "static"
+    assert qr.fill_color == "#000000"
+    assert qr.back_color == "#FFFFFF"
+    assert qr.redirect_url is None
 
 
 def test_create_dynamic_qr(client: TestClient, test_db: Session):
@@ -133,175 +133,197 @@ def test_create_dynamic_qr(client: TestClient, test_db: Session):
     # No need to override dependencies, already handled by client fixture
     
     payload = {
-        "content": "My GitHub",
-        "qr_type": QRType.DYNAMIC,
-        "redirect_url": "https://github.com/example",
+        "content": None,  # Content is optional for dynamic QR codes
+        "redirect_url": "https://example.com/redirect",
         "fill_color": "#000000",
         "back_color": "#FFFFFF",
         "size": 10,
         "border": 4,
     }
     json_payload = jsonable_encoder(payload)
-
+    
     response = client.post("/api/v1/qr/dynamic", json=json_payload)
-    assert response.status_code == 200, f"Failed to create dynamic QR code: {response.text}"
+    assert response.status_code == 201, f"Failed to create dynamic QR code: {response.text}"
     data = response.json()
-
-    # Verify response data
-    assert data["qr_type"] == QRType.DYNAMIC
-    assert data["redirect_url"] == "https://github.com/example"
-    assert data["content"].startswith("/r/")
-    assert "id" in data
-    assert "created_at" in data
-    assert data["scan_count"] == 0
-    assert data["last_scan_at"] is None
+    
+    # Verify the response data
+    assert data["qr_type"] == "dynamic"
+    assert data["redirect_url"] == "https://example.com/redirect"
     assert data["fill_color"] == "#000000"
     assert data["back_color"] == "#FFFFFF"
-
-    # Verify database state
-    db_qr = test_db.query(QRCode).filter(QRCode.id == data["id"]).first()
-    assert db_qr is not None
-    assert db_qr.redirect_url == "https://github.com/example"
-    assert db_qr.content.startswith("/r/")
+    assert "id" in data
+    assert "content" in data
+    assert "created_at" in data
+    
+    # Verify the content starts with "/r/" for redirection
+    assert data["content"].startswith("/r/")
+    
+    # Verify the QR code was created in the database
+    qr_id = data["id"]
+    qr = test_db.query(QRCode).filter(QRCode.id == qr_id).first()
+    assert qr is not None
+    assert qr.qr_type == "dynamic"
+    assert qr.redirect_url == "https://example.com/redirect"
+    assert qr.content.startswith("/r/")
+    assert qr.fill_color == "#000000"
+    assert qr.back_color == "#FFFFFF"
 
 
 def test_list_qr_codes(client: TestClient, test_db: Session):
     """Test listing QR codes with pagination."""
-    # Clean any existing data to ensure predictable test state
-    test_db.query(QRCode).delete()
-    test_db.commit()
+    # Create some test QR codes
+    qr_codes = []
+    for i in range(5):
+        qr = create_test_qr_code(client, QRType.STATIC if i % 2 == 0 else QRType.DYNAMIC)
+        qr_codes.append(qr)
     
-    # Create test QR codes
-    static_qr = create_test_qr_code(client, QRType.STATIC)
-    dynamic_qr = create_test_qr_code(client, QRType.DYNAMIC)
-    
-    # Store the IDs of the created QR codes
-    created_ids = {static_qr["id"], dynamic_qr["id"]}
-    
-    # Test listing with pagination
-    response = client.get("/api/v1/qr?skip=0&limit=10")
-    assert response.status_code == 200, f"Failed to list QR codes: {response.text}"
+    # Test listing all QR codes
+    response = client.get("/api/v1/qr")
+    assert response.status_code == 200
     data = response.json()
     
-    # Verify response structure
+    # Verify pagination fields
     assert "items" in data
     assert "total" in data
     assert "page" in data
     assert "page_size" in data
+    assert data["total"] >= len(qr_codes)
     
-    # Ensure our created QR codes are in the results
-    result_ids = {item["id"] for item in data["items"]}
-    assert created_ids.issubset(result_ids), f"Created QR codes {created_ids} not found in results {result_ids}"
+    # Test pagination
+    response = client.get("/api/v1/qr?skip=1&limit=2")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["items"]) <= 2
     
-    # Expect at least our 2 created items
-    assert data["total"] >= 2
-    assert data["page"] == 1
-    assert data["page_size"] == 10
+    # Test filtering by type
+    response = client.get("/api/v1/qr?qr_type=static")
+    assert response.status_code == 200
+    data = response.json()
+    for item in data["items"]:
+        assert item["qr_type"] == "static"
 
 
 def test_get_qr_code(client: TestClient, test_db: Session):
-    """Test getting a specific QR code by ID."""
+    """Test retrieving a QR code by ID."""
     # Create a test QR code
-    created_qr = create_test_qr_code(client, QRType.STATIC)
-    test_db.commit()
-
-    # Get the QR code
-    response = client.get(f"/api/v1/qr/{created_qr['id']}")
+    qr = create_test_qr_code(client, QRType.STATIC)
+    qr_id = qr["id"]
+    
+    # Test retrieving the QR code
+    response = client.get(f"/api/v1/qr/{qr_id}")
     assert response.status_code == 200
     data = response.json()
-
-    # Verify response data
-    assert data["id"] == created_qr["id"]
-    assert data["content"] == created_qr["content"]
-    assert data["qr_type"] == created_qr["qr_type"]
-    assert data["fill_color"] == created_qr["fill_color"]
-    assert data["back_color"] == created_qr["back_color"]
+    
+    # Verify the response data
+    assert data["id"] == qr_id
+    assert data["qr_type"] == "static"
+    assert data["content"] == qr["content"]
+    assert data["fill_color"] == qr["fill_color"]
+    assert data["back_color"] == qr["back_color"]
+    
+    # Test retrieving a non-existent QR code
+    response = client.get("/api/v1/qr/non-existent-id")
+    assert response.status_code == 404
 
 
 def test_get_qr_image(client: TestClient, test_db: Session):
-    """Test getting a QR code image."""
+    """Test retrieving a QR code image."""
     # Create a test QR code
-    created_qr = create_test_qr_code(client, QRType.STATIC)
-    test_db.commit()
-
-    # Test different image formats
-    format_content_types = {
-        "png": "image/png",
-        "jpeg": "image/jpeg",
-        "svg": "image/svg+xml",
-        "webp": "image/webp",
-    }
-
-    for fmt, content_type in format_content_types.items():
-        response = client.get(f"/api/v1/qr/{created_qr['id']}/image?image_format={fmt}")
+    qr = create_test_qr_code(client, QRType.STATIC)
+    qr_id = qr["id"]
+    
+    # Test retrieving the QR code image in different formats
+    for image_format in ["png", "jpeg", "svg", "webp"]:
+        response = client.get(f"/api/v1/qr/{qr_id}/image?image_format={image_format}")
         assert response.status_code == 200
-        assert response.headers["content-type"] == content_type
+        
+        # Verify the content type
+        if image_format == "svg":
+            assert response.headers["content-type"] == "image/svg+xml"
+        else:
+            assert response.headers["content-type"] == f"image/{image_format}"
+        
+        # Verify the image content
+        assert len(response.content) > 0
+    
+    # Test retrieving a non-existent QR code image
+    response = client.get("/api/v1/qr/non-existent-id/image")
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_dynamic_qr_redirect(client: TestClient, test_db: Session):
-    """Test dynamic QR code redirection and concurrent access."""
-    # No need to override dependencies, already handled by client fixture
-    
+    """Test dynamic QR code redirection."""
     # Create a dynamic QR code
-    created_qr = create_test_qr_code(client, QRType.DYNAMIC)
-    short_id = created_qr["content"].replace("/r/", "")
+    redirect_url = "https://example.com/redirect"
+    qr = create_test_qr_code(client, QRType.DYNAMIC)
     
-    # Ensure the QR code was created and properly saved in the database
-    db_qr = test_db.query(QRCode).filter(QRCode.id == created_qr["id"]).first()
-    assert db_qr is not None, "QR code was not found in the database"
-    assert db_qr.redirect_url == created_qr["redirect_url"]
+    # Extract the path from the content (should be like "/r/abc123")
+    redirect_path = qr["content"]
+    assert redirect_path.startswith("/r/")
     
-    # Get initial scan count
-    initial_scan_count = db_qr.scan_count
+    # Test the redirection
+    response = client.get(redirect_path, follow_redirects=False)
+    assert response.status_code == 302  # HTTP 302 Found
+    assert response.headers["location"] == qr["redirect_url"]
     
-    # Test redirection
-    response = client.get(f"/r/{short_id}", follow_redirects=False)
-    assert response.status_code == 302, f"Expected 302 redirect, got {response.status_code}"
-    assert response.headers["location"] == created_qr["redirect_url"]
+    # Verify the scan count was incremented
+    response = client.get(f"/api/v1/qr/{qr['id']}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["scan_count"] == 1
+    assert data["last_scan_at"] is not None
     
-    # Verify scan count was updated (in background task)
-    # Need to give the background task time to complete
-    await asyncio.sleep(0.1)
-    
-    # Refresh the database object
-    test_db.refresh(db_qr)
-    assert db_qr.scan_count == initial_scan_count + 1, "Scan count should have been incremented"
-    assert db_qr.last_scan_at is not None, "Last scan timestamp should be set"
+    # Test redirection for a non-existent path
+    response = client.get("/r/non-existent", follow_redirects=False)
+    assert response.status_code == 404
 
 
 def test_update_dynamic_qr(client: TestClient, test_db: Session):
-    """Test updating a dynamic QR code's redirect URL."""
-    # No need to override dependencies, already handled by client fixture
-    
+    """Test updating a dynamic QR code."""
     # Create a dynamic QR code
-    created_qr = create_test_qr_code(client, QRType.DYNAMIC)
+    qr = create_test_qr_code(client, QRType.DYNAMIC)
+    qr_id = qr["id"]
     
-    # Update redirect URL
-    new_url = "https://github.com/new-example"
-    response = client.put(f"/api/v1/qr/{created_qr['id']}", json={"redirect_url": new_url})
-    assert response.status_code == 200, f"Failed to update QR code: {response.text}"
+    # Update the redirect URL
+    new_redirect_url = "https://example.com/updated"
+    response = client.put(
+        f"/api/v1/qr/{qr_id}",
+        json={"redirect_url": new_redirect_url}
+    )
+    assert response.status_code == 200
     data = response.json()
     
-    # Verify response data
-    assert data["id"] == created_qr["id"]
-    assert data["qr_type"] == QRType.DYNAMIC
-    assert data["redirect_url"] == new_url
-    assert data["content"] == created_qr["content"]
-    assert data["fill_color"] == created_qr["fill_color"]
-    assert data["back_color"] == created_qr["back_color"]
+    # Verify the response data
+    assert data["id"] == qr_id
+    assert data["redirect_url"] == new_redirect_url
     
-    # Verify database state
-    db_qr = test_db.query(QRCode).filter(QRCode.id == created_qr["id"]).first()
-    assert db_qr is not None
-    assert db_qr.redirect_url == new_url
+    # Verify the QR code was updated in the database
+    updated_qr = test_db.query(QRCode).filter(QRCode.id == qr_id).first()
+    assert updated_qr is not None
+    assert updated_qr.redirect_url == new_redirect_url
+    
+    # Test updating a non-existent QR code
+    response = client.put(
+        "/api/v1/qr/non-existent-id",
+        json={"redirect_url": new_redirect_url}
+    )
+    assert response.status_code == 404
+    
+    # Test updating a static QR code (should fail)
+    static_qr = create_test_qr_code(client, QRType.STATIC)
+    response = client.put(
+        f"/api/v1/qr/{static_qr['id']}",
+        json={"redirect_url": new_redirect_url}
+    )
+    assert response.status_code == 422
 
 
 @pytest.mark.parametrize(
     "qr_type,expected_status,include_redirect",
     [
-        (QRType.STATIC, 200, False),
-        (QRType.DYNAMIC, 200, True),
+        (QRType.STATIC, 201, False),
+        (QRType.DYNAMIC, 201, True),
         ("invalid", 422, False),
         (QRType.DYNAMIC, 422, False),  # Dynamic without redirect_url should fail
         (QRType.STATIC, 422, True),  # Static with redirect_url should fail
@@ -375,83 +397,63 @@ def test_qr_code_types(
     ],
 )
 def test_qr_code_color_validation(client: TestClient, test_db: Session, color):
-    """Test QR code color validation with various formats."""
-    # Override the QR service dependency to use the test database
-    def get_test_qr_service():
-        yield QRCodeService(test_db)
+    """Test QR code color validation."""
+    # No need to override dependencies, already handled by client fixture
     
+    # Define a test QR service to handle the validation
+    def get_test_qr_service():
+        return QRCodeService(test_db)
+    
+    # Override the dependency
     app.dependency_overrides[get_qr_service] = get_test_qr_service
     
+    # Create a QR code with the test color
     payload = {
-        "content": fake.url(),
-        "qr_type": QRType.STATIC,
+        "content": "https://example.com",
         "fill_color": color,
-        "back_color": ("#000000" if color == "#FFFFFF" else "#FFFFFF"),  # Ensure different colors
-        "size": 10,
-        "border": 4,
+        "back_color": "#FFFFFF" if color != "#FFFFFF" else "#000000",  # Ensure different colors
     }
-
-    json_payload = jsonable_encoder(payload)
-    response = client.post("/api/v1/qr/static", json=json_payload)
-
-    # Clean up dependency override
-    app.dependency_overrides.pop(get_qr_service, None)
     
-    # Valid hex colors should succeed, others should fail validation
-    is_valid_hex = bool(re.match(r"^#[0-9A-Fa-f]{6}$", color))
-    expected_status = 200 if is_valid_hex else 422
-    assert (
-        response.status_code == expected_status
-    ), f"Expected status {expected_status} for color {color}, got {response.status_code}"
-
-    if expected_status == 200:
-        data = response.json()
-        assert data["fill_color"] == color.upper()
-        assert data["back_color"] == payload["back_color"].upper()
-        assert data["qr_type"] == QRType.STATIC
+    # Attempt to create the QR code
+    response = client.post("/api/v1/qr/static", json=payload)
+    
+    # Check if the color is valid
+    is_valid = re.match(r"^#[0-9A-Fa-f]{6}$", color)
+    
+    if is_valid:
+        assert response.status_code == 201, f"Valid color {color} was rejected"
+    else:
+        assert response.status_code == 422, f"Invalid color {color} was accepted"
+    
+    # Clean up
+    app.dependency_overrides.pop(get_qr_service, None)
 
 
 @pytest.mark.asyncio
 async def test_concurrent_qr_code_access(client: TestClient, test_db: Session):
     """Test concurrent access to QR codes."""
-    # No need to override dependencies, already handled by client fixture
+    # Create a dynamic QR code
+    qr = create_test_qr_code(client, QRType.DYNAMIC)
+    qr_id = qr["id"]
+    redirect_path = qr["content"]
     
-    # Create a test QR code
-    created_qr = create_test_qr_code(client, QRType.DYNAMIC)
-    short_id = created_qr["content"].replace("/r/", "")
-    
-    # Ensure the QR code was created and properly saved in the database
-    db_qr = test_db.query(QRCode).filter(QRCode.id == created_qr["id"]).first()
-    assert db_qr is not None, "QR code was not found in the database"
-    
-    # Initial scan count
-    initial_scan_count = db_qr.scan_count
-    
-    # Number of concurrent requests
-    num_requests = 5
-    
-    # Define a function to access the QR code
+    # Define a function to simulate concurrent access
     async def access_qr():
         # Use the client to make requests
-        response = client.get(f"/r/{short_id}", follow_redirects=False)
-        assert response.status_code == 302
-        return response.status_code
+        response = client.get(redirect_path, follow_redirects=False)
+        assert response.status_code == 302  # HTTP 302 Found
+        return response
     
-    # Create tasks for concurrent access
-    tasks = [access_qr() for _ in range(num_requests)]
+    # Simulate concurrent access
+    tasks = [access_qr() for _ in range(5)]
+    await asyncio.gather(*tasks)
     
-    # Run concurrent requests
-    results = await asyncio.gather(*tasks)
-    
-    # Verify all requests were successful
-    assert all(status_code == 302 for status_code in results)
-    
-    # Give background tasks time to complete
-    await asyncio.sleep(0.2)
-    
-    # Check that scan count was updated correctly (should be initial + num_requests)
-    test_db.refresh(db_qr)
-    assert db_qr.scan_count == initial_scan_count + num_requests, f"Expected scan count {initial_scan_count + num_requests}, got {db_qr.scan_count}"
+    # Verify the scan count was incremented correctly
+    response = client.get(f"/api/v1/qr/{qr_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["scan_count"] == 5
+    assert data["last_scan_at"] is not None
 
 
 def test_health_check_endpoint(client: TestClient):

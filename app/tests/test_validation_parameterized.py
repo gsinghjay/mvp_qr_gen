@@ -36,7 +36,7 @@ fake = Faker()
                 "size": 10,
                 "border": 4,
             },
-            200,
+            201,
             {
                 "qr_type": QRType.STATIC,
                 "redirect_url": None,
@@ -80,7 +80,7 @@ fake = Faker()
                 "size": 10,
                 "border": 4,
             },
-            200,
+            201,
             {
                 "qr_type": QRType.DYNAMIC,
                 "redirect_url": "https://github.com/example",
@@ -239,10 +239,10 @@ def test_qr_code_creation_validation(
 @pytest.mark.parametrize(
     "fill_color,back_color,expected_status",
     [
-        ("#000000", "#FFFFFF", 200),     # Valid black & white
-        ("#FF0000", "#00FF00", 200),     # Valid red & green
-        ("#123ABC", "#DEF456", 200),     # Valid mixed case
-        ("#123abc", "#def456", 200),     # Valid lowercase (API normalizes to uppercase)
+        ("#000000", "#FFFFFF", 201),     # Valid black & white
+        ("#FF0000", "#00FF00", 201),     # Valid red & green
+        ("#123ABC", "#DEF456", 201),     # Valid mixed case
+        ("#123abc", "#def456", 201),     # Valid lowercase (API normalizes to uppercase)
         ("invalid", "#FFFFFF", 422),     # Invalid fill color
         ("#000000", "invalid", 422),     # Invalid back color
         ("#FFG000", "#FFFFFF", 422),     # Invalid hex character
@@ -310,7 +310,7 @@ def test_qr_code_color_validation(
         (True, {"redirect_url": ""}, 422, None),
         
         # Try updating static QR with redirect URL (should fail)
-        (False, {"redirect_url": "https://new-example.com"}, 400, None),
+        (False, {"redirect_url": "https://new-example.com"}, 422, None),
         
         # Try updating non-existent QR
         (None, {"redirect_url": "https://new-example.com"}, 404, None),
@@ -376,7 +376,7 @@ def test_qr_code_update_validation(
             
         # Create the QR code
         create_response = client.post(endpoint, json=create_payload)
-        assert create_response.status_code == 200
+        assert create_response.status_code == 201
         qr_id = create_response.json()["id"]
     
     # Send update request

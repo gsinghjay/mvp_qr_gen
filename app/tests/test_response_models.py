@@ -101,7 +101,7 @@ class TestQRCodeResponseModel:
         )
         
         # Check status code
-        assert response.status_code == 200
+        assert response.status_code == 201  # API returns 201 Created for successful creation
         
         # Validate response model
         assert validate_response_model(response.json(), QRCodeResponse)

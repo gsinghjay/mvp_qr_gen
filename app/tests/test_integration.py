@@ -47,7 +47,7 @@ def test_get_qr_service_dependency(test_db):
     )
     
     # Verify response
-    assert response.status_code == 200
+    assert response.status_code == 201  # API returns 201 Created for successful creation
     
     # Restore original dependency
     if original_dependency:
@@ -72,7 +72,7 @@ def test_static_qr_create_integration():
     )
 
     # Verify the response
-    assert response.status_code == 200  # API returns 200 for successful creation
+    assert response.status_code == 201  # API returns 201 Created for successful creation
     data = response.json()
     assert data["qr_type"] == "static"
     assert data["content"] == "https://example.com"
@@ -99,7 +99,7 @@ def test_dynamic_qr_create_integration():
     )
 
     # Verify the response
-    assert response.status_code == 200  # API returns 200 for successful creation
+    assert response.status_code == 201  # API returns 201 Created for successful creation
     data = response.json()
     assert data["qr_type"] == "dynamic"
     assert data["redirect_url"] == "https://example.com/"  # API adds trailing slash

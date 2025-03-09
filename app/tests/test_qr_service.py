@@ -191,10 +191,14 @@ class TestQRCodeService:
             assert_http_exception(exc_info, expected_status_code=404, expected_detail_substring="not found")
         else:
             # Act & Assert for real DB test
-            with pytest.raises(HTTPException) as exc_info:
+            from app.core.exceptions import QRCodeNotFoundError
+            
+            with pytest.raises(QRCodeNotFoundError) as exc_info:
                 qr_service.get_qr_by_id(qr_id)
             
-            assert_http_exception(exc_info, expected_status_code=404, expected_detail_substring="not found")
+            # Verify the exception details
+            assert "not found" in str(exc_info.value)
+            assert exc_info.value.status_code == 404
     
     @pytest.mark.parametrize(
         "is_mock,qr_data,expected_fields",
@@ -286,7 +290,7 @@ class TestQRCodeService:
         response = client_with_real_db.post("/api/v1/qr/static", json=qr_data)
         
         # Assert
-        assert response.status_code == 200
+        assert response.status_code == 201  # API returns 201 Created for successful creation
         result = response.json()
         assert_qr_code_fields(result, {
             "content": "https://example.com",
