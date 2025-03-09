@@ -278,8 +278,57 @@ class DependencyOverrideManager:
             exc_val: Exception value if an exception was raised
             exc_tb: Exception traceback if an exception was raised
         """
-        # Restore original overrides
-        self.app.dependency_overrides = self.original_overrides.copy()
+        # Restore the original overrides
+        self.restore()
         
-        # Clear our overrides
-        self.overrides.clear() 
+    def restore(self) -> None:
+        """
+        Restore original dependencies manually.
+        
+        This can be called to reset overrides without exiting the context.
+        """
+        # Restore original dependencies
+        self.app.dependency_overrides = self.original_overrides.copy()
+
+    @classmethod
+    def create_db_override(cls, app: FastAPI, db_session: Session) -> 'DependencyOverrideManager':
+        """
+        Create a manager with common database session overrides.
+        
+        This is a convenience method for the common case of overriding
+        database dependencies with a test session.
+        
+        Args:
+            app: The FastAPI application instance
+            db_session: The SQLAlchemy session to use for tests
+            
+        Returns:
+            DependencyOverrideManager: Configured with common DB overrides
+        """
+        from ..database import get_db, get_db_with_logging
+        from ..services.qr_service import QRCodeService
+        from ..dependencies import get_qr_service
+        
+        # Create a new manager
+        manager = cls(app)
+        
+        # Create DB override function
+        def override_db():
+            try:
+                yield db_session
+            finally:
+                pass  # Session handled by test fixture
+        
+        # Create QR service override
+        def override_qr_service():
+            try:
+                yield QRCodeService(db_session)
+            finally:
+                pass  # Session handled by test fixture
+        
+        # Add the overrides
+        manager.override(get_db, override_db)
+        manager.override(get_db_with_logging, override_db)
+        manager.override(get_qr_service, override_qr_service)
+        
+        return manager 
