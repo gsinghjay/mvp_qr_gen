@@ -6,7 +6,7 @@ import os
 import time
 import psutil
 import sqlite3
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -148,7 +148,7 @@ class HealthService:
                 status=ServiceStatus.PASS,
                 latency_ms=latency,
                 message=message,
-                last_checked=datetime.utcnow(),
+                last_checked=datetime.now(UTC),
                 details=sqlite_details if is_sqlite else None
             )
         except Exception as e:
@@ -156,7 +156,7 @@ class HealthService:
                 status=ServiceStatus.FAIL,
                 latency_ms=0.0,
                 message=f"Database connection failed: {str(e)}",
-                last_checked=datetime.utcnow(),
+                last_checked=datetime.now(UTC),
             )
 
     @classmethod
