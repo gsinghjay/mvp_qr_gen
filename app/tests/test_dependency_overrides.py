@@ -42,7 +42,7 @@ def test_with_context_manager(test_db):
                 "back_color": "#FFFFFF"
             },
         )
-        assert response.status_code == 200
+        assert response.status_code == 201  # API returns 201 Created for successful creation
         # Verify response data
         data = response.json()
         assert_qr_code_fields(data, {
@@ -80,7 +80,7 @@ class TestDependencyOverrides:
                     "back_color": "#FFFFFF"
                 },
             )
-            assert response.status_code == 200
+            assert response.status_code == 201  # API returns 201 Created for successful creation
             data = response.json()
             assert data["content"] == "https://example.com/class-test"
             
@@ -107,7 +107,7 @@ class TestDependencyOverrides:
                     "back_color": "#FFFFFF"
                 },
             )
-            assert response.status_code == 200
+            assert response.status_code == 201  # API returns 201 Created for successful creation
             data = response.json()
             assert data["redirect_url"] == "https://example.com/redirect"
             assert data["qr_type"] == "dynamic"
@@ -145,7 +145,7 @@ def test_with_custom_behavior(test_db):
                 "back_color": "#FFFFFF"
             },
         )
-        assert response.status_code == 200
+        assert response.status_code == 201  # API returns 201 Created for successful creation
         data = response.json()
         # Verify our mock service modified the content
         assert data["content"] == "https://TEST-OVERRIDE.example.com" 
