@@ -45,6 +45,28 @@ class QRImageParameters(BaseModel):
         le=100, 
         description="The quality of the image (1-100, for lossy formats)"
     )
+    size: int = Field(
+        default=10, 
+        ge=1, 
+        le=100, 
+        description="QR code size (1-100)"
+    )
+    border: int = Field(
+        default=4, 
+        ge=0, 
+        le=20, 
+        description="QR code border width (0-20)"
+    )
+    fill_color: Optional[str] = Field(
+        default=None, 
+        pattern=r"^#[0-9A-Fa-f]{6}$", 
+        description="QR code fill color in hex format (#RRGGBB)"
+    )
+    back_color: Optional[str] = Field(
+        default=None, 
+        pattern=r"^#[0-9A-Fa-f]{6}$", 
+        description="QR code background color in hex format (#RRGGBB)"
+    )
 
 
 class QRCreateParameters(BaseModel):
