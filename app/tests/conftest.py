@@ -77,14 +77,20 @@ def add_sqlite_functions(dbapi_connection, connection_record):
     """Add custom SQLite functions for UTC handling."""
     
     def utcnow():
-        """Return current UTC timestamp in ISO format."""
-        return datetime.now(UTC).isoformat(timespec='seconds')
+        """Return current UTC timestamp in ISO format with Z suffix."""
+        # Return with 'Z' suffix instead of +00:00 for UTC timezone
+        dt = datetime.now(UTC)
+        # Format with Z suffix manually to ensure test passes
+        return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
     
     def parse_datetime(dt_str):
         """Parse ISO format datetime string to Unix timestamp."""
         if not dt_str:
             return None
         try:
+            # Handle Z suffix by replacing with +00:00 first
+            if dt_str.endswith('Z'):
+                dt_str = dt_str[:-1] + '+00:00'
             dt = datetime.fromisoformat(dt_str)
             return dt.timestamp()
         except ValueError:
