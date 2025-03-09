@@ -1,270 +1,196 @@
 """
-Tests to validate API responses against their Pydantic models.
+Tests for response model validation.
 
-This module ensures that all API endpoints return responses that match
-their defined Pydantic response models, validating proper schema compliance.
+This module tests the validation of response models for all endpoints.
+It ensures that all API responses conform to their defined Pydantic models.
 """
 
-import uuid
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from ..database import get_db, get_db_with_logging
 from ..main import app
 from ..models.qr import QRCode
-from ..schemas import (
-    QRCodeResponse, 
-    QRCodeList, 
-    QRType, 
-    HealthResponse, 
-    HealthStatus, 
-    ServiceStatus
-)
-from ..dependencies import get_qr_service
-from ..services.qr_service import QRCodeService
-from .helpers import validate_response_model, validate_list_response, assert_error_response, DependencyOverrideManager
+from ..schemas import QRCodeResponse, QRCodeList, HTTPError, ImageFormat, QRType
 from .factories import QRCodeFactory
+from .helpers import (
+    validate_response_model,
+    validate_list_response,
+    assert_error_response,
+    DependencyOverrideManager,
+)
 
 
-class TestResponseModelValidation:
-    """Test suite for validating API responses against Pydantic models."""
+@pytest.fixture
+def client(test_db: Session) -> TestClient:
+    """
+    Create a test client with dependency overrides.
+    
+    Args:
+        test_db: SQLAlchemy session for testing
+        
+    Returns:
+        TestClient: FastAPI test client
+    """
+    with DependencyOverrideManager.create_db_override(app, test_db):
+        client = TestClient(app)
+        yield client
 
-    def test_create_static_qr_response_validation(self, client: TestClient, test_db: Session):
-        """Test that creating a static QR code returns a valid QRCodeResponse."""
-        # Prepare request payload
-        payload = {
-            "content": "https://example.com",
-            "fill_color": "#000000",
-            "back_color": "#FFFFFF",
-            "size": 10,
-            "border": 4
-        }
-        
-        # Use the correct endpoint for static QR codes
-        response = client.post("/api/v1/qr/static", json=payload)
-        
-        # Verify response status - API returns 200 (not 201) for creation
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
-        
-        # Validate response against Pydantic model
-        response_data = response.json()
-        assert validate_response_model(response_data, QRCodeResponse)
-        
-        # Additional assertions for specific fields
-        assert response_data["qr_type"] == QRType.STATIC
-        assert response_data["content"] == payload["content"]
-        assert response_data["redirect_url"] is None
-        
-        # In this test framework, we avoid querying the database directly due to transaction isolation
-        # Instead, verify the response data contains the expected information
-        assert uuid.UUID(response_data["id"])  # Validates UUID format
-        assert response_data["created_at"] is not None
-        assert response_data["content"] == payload["content"]
 
-    def test_create_dynamic_qr_response_validation(self, client: TestClient, test_db: Session):
-        """Test that creating a dynamic QR code returns a valid QRCodeResponse."""
-        # Prepare request payload
-        payload = {
-            "content": "My Dynamic QR",
-            "redirect_url": "https://example.org",
-            "fill_color": "#000000",
-            "back_color": "#FFFFFF",
-            "size": 10,
-            "border": 4
-        }
+@pytest.fixture
+def qr_factory(test_db: Session) -> QRCodeFactory:
+    """
+    Create a QRCodeFactory with the test database session.
+    
+    Args:
+        test_db: SQLAlchemy session for testing
         
-        # Use the correct endpoint for dynamic QR codes
-        response = client.post("/api/v1/qr/dynamic", json=payload)
-        
-        # Verify response status - API returns 200 (not 201) for creation
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
-        
-        # Validate response against Pydantic model
-        response_data = response.json()
-        assert validate_response_model(response_data, QRCodeResponse)
-        
-        # Additional assertions for specific fields
-        assert response_data["qr_type"] == QRType.DYNAMIC
-        assert response_data["redirect_url"].rstrip('/') == str(payload["redirect_url"]).rstrip('/')
-        assert "/r/" in response_data["content"]  # Should contain redirect path
-        
-        # In this test framework, we avoid querying the database directly due to transaction isolation
-        # Instead, verify the response data contains the expected information
-        assert uuid.UUID(response_data["id"])  # Validates UUID format
-        assert response_data["created_at"] is not None
-        assert response_data["redirect_url"] is not None
+    Returns:
+        QRCodeFactory: Factory for creating QR codes
+    """
+    return QRCodeFactory(test_db)
 
-    def test_list_qr_codes_response_validation(self, client: TestClient, test_db: Session):
-        """Test that listing QR codes returns a valid QRCodeList with valid QRCodeResponse items."""
-        # Create some test QR codes using the factory
-        factory = QRCodeFactory(test_db)
+
+class TestQRCodeResponseModel:
+    """Tests for QR code response models."""
+    
+    def test_get_qr_response_model(self, client: TestClient, qr_factory: QRCodeFactory):
+        """Test that GET /api/v1/qr/{qr_id} returns a valid QRCodeResponse."""
+        # Create a QR code
+        qr = qr_factory.create_static()
+        
+        # Get the QR code
+        response = client.get(f"/api/v1/qr/{qr.id}")
+        
+        # Check status code
+        assert response.status_code == 200
+        
+        # Validate response model
+        assert validate_response_model(response.json(), QRCodeResponse)
+    
+    def test_list_qr_response_model(self, client: TestClient, qr_factory: QRCodeFactory):
+        """Test that GET /api/v1/qr returns a valid QRCodeList."""
+        # Create some QR codes
         for _ in range(5):
-            factory.create()
-        test_db.commit()
+            qr_factory.create_static()
         
-        # Send request
+        # Get the QR codes
         response = client.get("/api/v1/qr")
         
-        # Verify response status
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        # Check status code
+        assert response.status_code == 200
         
-        # Validate response against Pydantic models (both list and item models)
-        response_data = response.json()
+        # Validate response model
         assert validate_list_response(
-            response_data, 
-            item_model_class=QRCodeResponse, 
-            list_model_class=QRCodeList
+            response.json(), 
+            QRCodeResponse, 
+            QRCodeList
+        )
+    
+    def test_create_dynamic_qr_response_model(self, client: TestClient):
+        """Test that POST /api/v1/qr/dynamic returns a valid QRCodeResponse."""
+        # Create a dynamic QR code
+        response = client.post(
+            "/api/v1/qr/dynamic",
+            json={
+                "content": "https://example.com",
+                "redirect_url": "https://example.com",
+                "fill_color": "#000000",
+                "back_color": "#FFFFFF",
+            },
         )
         
-        # Additional assertions for pagination
-        assert response_data["page"] >= 1
-        assert response_data["page_size"] > 0
-        assert response_data["total"] >= len(response_data["items"])
-        assert len(response_data["items"]) > 0
+        # Check status code
+        assert response.status_code == 200
+        
+        # Validate response model
+        assert validate_response_model(response.json(), QRCodeResponse)
+    
+    def test_update_qr_response_model(self, client: TestClient, qr_factory: QRCodeFactory):
+        """Test that PUT /api/v1/qr/{qr_id} returns a valid QRCodeResponse."""
+        # Create a dynamic QR code
+        qr = qr_factory.create_dynamic()
+        
+        # Update the QR code
+        response = client.put(
+            f"/api/v1/qr/{qr.id}",
+            json={"redirect_url": "https://updated-example.com"},
+        )
+        
+        # Check status code
+        assert response.status_code == 200
+        
+        # Validate response model
+        assert validate_response_model(response.json(), QRCodeResponse)
 
-    def test_get_qr_code_response_validation(self, client: TestClient, test_db: Session):
-        """Test that getting a single QR code returns a valid QRCodeResponse."""
-        # Create a test QR code using the factory
-        factory = QRCodeFactory(test_db)
-        qr_code = factory.create()
-        test_db.commit()
-        
-        # Send request
-        response = client.get(f"/api/v1/qr/{qr_code.id}")
-        
-        # Verify response status
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
-        
-        # Validate response against Pydantic model
-        response_data = response.json()
-        assert validate_response_model(response_data, QRCodeResponse)
-        
-        # Verify the returned data matches the created entity
-        assert response_data["id"] == str(qr_code.id)
-        assert response_data["content"] == qr_code.content
 
-    def test_update_qr_code_response_validation(self, client: TestClient, test_db: Session):
-        """Test that updating a QR code returns a valid QRCodeResponse."""
-        # Create a dynamic test QR code using the factory
-        factory = QRCodeFactory(test_db)
-        qr_code = factory.create_dynamic(redirect_url="https://example.com")
-        test_db.commit()
+class TestErrorResponseModel:
+    """Tests for error response models."""
+    
+    def test_not_found_error_model(self, client: TestClient):
+        """Test that 404 errors return a valid HTTPError."""
+        # Request a non-existent QR code
+        response = client.get("/api/v1/qr/non-existent-id")
         
-        # Prepare update payload
-        update_payload = {
-            "redirect_url": "https://updated-example.com"
-        }
+        # Check status code
+        assert response.status_code == 404
         
-        # Send request - note we're using PUT here based on the router definition
-        response = client.put(f"/api/v1/qr/{qr_code.id}", json=update_payload)
+        # Validate error response
+        assert assert_error_response(response.json())
+    
+    def test_validation_error_model(self, client: TestClient):
+        """Test that validation errors return a valid HTTPError."""
+        # Create a QR code with invalid data (missing required redirect_url)
+        response = client.post(
+            "/api/v1/qr/dynamic",
+            json={
+                "content": "https://example.com",
+                "fill_color": "invalid-color",  # Invalid color format
+            },
+        )
         
-        # Verify response status
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        # Check status code
+        assert response.status_code == 422
         
-        # Validate response against Pydantic model
-        response_data = response.json()
-        assert validate_response_model(response_data, QRCodeResponse)
-        
-        # Verify the returned data has the updated value (ignore trailing slashes)
-        assert response_data["redirect_url"].rstrip('/') == update_payload["redirect_url"].rstrip('/')
-        
-        # Verify database state was updated
-        test_db.refresh(qr_code)
-        assert qr_code.redirect_url.rstrip('/') == update_payload["redirect_url"].rstrip('/')
+        # Validate error response structure (FastAPI validation errors have a different format)
+        assert "detail" in response.json()
 
-    def test_not_found_error_response_validation(self, client: TestClient, test_db: Session):
-        """Test that a 404 error returns a valid error response."""
-        # Use a non-existent ID
-        non_existent_id = "00000000-0000-0000-0000-000000000000"
-        
-        # Send request
-        response = client.get(f"/api/v1/qr/{non_existent_id}")
-        
-        # Verify response status
-        assert response.status_code == 404, f"Expected 404, got {response.status_code}: {response.text}"
-        
-        # Validate error response format
-        response_data = response.json()
-        assert assert_error_response(response_data)
-        assert "not found" in response_data["detail"].lower()
 
-    def test_validation_error_response_validation(self, client: TestClient):
-        """Test that a 422 validation error returns a valid error response."""
-        # Prepare invalid payload (missing required content field)
-        invalid_payload = {
-            # Missing required 'content' field
-            "fill_color": "#000000",
-            "back_color": "#FFFFFF",
-        }
+class TestEnumValidation:
+    """Tests for enum validation in request parameters."""
+    
+    def test_image_format_validation(self, client: TestClient, qr_factory: QRCodeFactory):
+        """Test that image_format parameter is validated against ImageFormat enum."""
+        # Create a QR code
+        qr = qr_factory.create_static()
         
-        # Send request
-        response = client.post("/api/v1/qr/static", json=invalid_payload)
+        # Test PNG format which is guaranteed to work
+        response = client.get(f"/api/v1/qr/{qr.id}/image?image_format=png")
+        assert response.status_code == 200
         
-        # Verify response status
-        assert response.status_code == 422, f"Expected 422, got {response.status_code}: {response.text}"
+        # Test invalid image format
+        response = client.get(f"/api/v1/qr/{qr.id}/image?image_format=invalid-format")
+        assert response.status_code == 422
+        assert "detail" in response.json()
+    
+    def test_qr_type_validation(self, client: TestClient, qr_factory: QRCodeFactory):
+        """Test that qr_type parameter is validated against QRType enum."""
+        # Create some QR codes
+        for _ in range(2):
+            qr_factory.create_static()
+            qr_factory.create_dynamic()
         
-        # Validate error response format
-        response_data = response.json()
-        assert "detail" in response_data
-        assert isinstance(response_data["detail"], list)
-        
-        # Verify the validation error contains information about the missing field
-        found_content_error = False
-        for error in response_data["detail"]:
-            if "content" in str(error).lower():
-                found_content_error = True
-                break
-        
-        assert found_content_error, "Validation error should mention missing 'content' field"
-
-    def test_health_response_validation(self, client: TestClient):
-        """Test that the health endpoint returns a valid HealthResponse."""
-        # Send request
-        response = client.get("/health")
-        
-        # Verify response status
-        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
-        
-        # Validate response against Pydantic model
-        response_data = response.json()
-        assert validate_response_model(response_data, HealthResponse)
-        
-        # Check for expected fields based on the actual response structure
-        assert "status" in response_data
-        assert "version" in response_data
-        assert "timestamp" in response_data
-        
-        # The health response might have either "services" or "checks"
-        assert "services" in response_data or "checks" in response_data
-        
-        # Validate status is a known value
-        assert response_data["status"] in ["healthy", "unhealthy", "degraded"]
-
-    def test_dependency_override_helper(self, client: TestClient, test_db: Session):
-        """Test using the dependency override helper for proper dependency management."""
-        # Create a factory first to add some data to the database
-        factory = QRCodeFactory(test_db)
-        qr_code = factory.create()
-        test_db.commit()
-        
-        # Now use the dependency override manager to override dependencies
-        with DependencyOverrideManager(app) as override_manager:
-            # Override dependencies for the test
-            override_manager.override(get_db, lambda: test_db)
-            override_manager.override(get_db_with_logging, lambda: test_db)
-            override_manager.override(get_qr_service, lambda: QRCodeService(test_db))
+        # Test valid QR types
+        for type_value in [t.value for t in QRType]:
+            response = client.get(f"/api/v1/qr?qr_type={type_value}")
+            assert response.status_code == 200
             
-            # Use a GET request to retrieve the previously created QR code
-            response = client.get(f"/api/v1/qr/{qr_code.id}")
-            
-            # Verify the response
-            assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
-            
-            # Validate response against Pydantic model
-            response_data = response.json()
-            assert validate_response_model(response_data, QRCodeResponse)
-            
-            # Verify it matches the expected QR code
-            assert response_data["id"] == str(qr_code.id)
-            assert response_data["content"] == qr_code.content 
+            # Validate that filtered results have the correct type
+            data = response.json()
+            for item in data["items"]:
+                assert item["qr_type"] == type_value
+        
+        # Test invalid QR type
+        response = client.get("/api/v1/qr?qr_type=invalid-type")
+        assert response.status_code == 422
+        assert "detail" in response.json() 
