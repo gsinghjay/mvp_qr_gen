@@ -254,79 +254,69 @@ class DependencyOverrideManager:
         self.overrides[dependency] = override_with
     
     def __enter__(self):
-        """
-        Apply all registered overrides when entering the context.
-        
-        Returns:
-            self: The manager instance for use in the with statement
-        """
-        # Save original overrides to restore them later
-        self.original_overrides = self.app.dependency_overrides.copy()
-        
-        # Apply our overrides
-        for dependency, override in self.overrides.items():
-            self.app.dependency_overrides[dependency] = override
+        """Apply all registered overrides when entering the context."""
+        # Store original overrides before applying new ones
+        for dependency, override_with in self.overrides.items():
+            self.original_overrides[dependency] = self.app.dependency_overrides.get(dependency)
+            self.app.dependency_overrides[dependency] = override_with
         
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Restore original dependencies when exiting the context.
-        
-        Args:
-            exc_type: Exception type if an exception was raised
-            exc_val: Exception value if an exception was raised
-            exc_tb: Exception traceback if an exception was raised
-        """
-        # Restore the original overrides
+        """Restore original dependencies when exiting the context."""
         self.restore()
-        
+        return False  # Don't suppress exceptions
+    
     def restore(self) -> None:
-        """
-        Restore original dependencies manually.
-        
-        This can be called to reset overrides without exiting the context.
-        """
-        # Restore original dependencies
-        self.app.dependency_overrides = self.original_overrides.copy()
+        """Restore original dependencies."""
+        for dependency, original in self.original_overrides.items():
+            if original is None:
+                # If there was no original override, remove our override
+                self.app.dependency_overrides.pop(dependency, None)
+            else:
+                # Restore the original override
+                self.app.dependency_overrides[dependency] = original
+                
+        # Clear the stored overrides
+        self.original_overrides = {}
 
     @classmethod
     def create_db_override(cls, app: FastAPI, db_session: Session) -> 'DependencyOverrideManager':
         """
-        Create a manager with common database session overrides.
+        Create a dependency manager with database overrides.
         
-        This is a convenience method for the common case of overriding
-        database dependencies with a test session.
+        This convenience method creates a manager with overrides for both
+        the database session and QRCodeService dependencies, using the
+        provided database session.
         
         Args:
             app: The FastAPI application instance
-            db_session: The SQLAlchemy session to use for tests
+            db_session: SQLAlchemy session to use for tests
             
         Returns:
-            DependencyOverrideManager: Configured with common DB overrides
+            A configured DependencyOverrideManager instance
         """
         from ..database import get_db, get_db_with_logging
-        from ..services.qr_service import QRCodeService
         from ..dependencies import get_qr_service
+        from ..services.qr_service import QRCodeService
         
-        # Create a new manager
         manager = cls(app)
         
-        # Create DB override function
+        # Define the DB session provider
         def override_db():
+            """Override the database session with the test session."""
             try:
                 yield db_session
             finally:
-                pass  # Session handled by test fixture
+                # Don't close the session here as it's managed by the test fixtures
+                pass
         
-        # Create QR service override
+        # Define the QR service provider using the test session
         def override_qr_service():
-            try:
-                yield QRCodeService(db_session)
-            finally:
-                pass  # Session handled by test fixture
+            """Override the QR service with one using the test session."""
+            yield QRCodeService(db_session)
         
-        # Add the overrides
+        # Register both overrides
         manager.override(get_db, override_db)
         manager.override(get_db_with_logging, override_db)
         manager.override(get_qr_service, override_qr_service)

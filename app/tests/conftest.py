@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+import pytest_asyncio  # Import pytest_asyncio explicitly
 
 from ..database import Base, get_db_with_logging, get_db
 from ..main import app
@@ -41,6 +42,8 @@ SQLALCHEMY_DATABASE_URL = f"sqlite:///{TEST_DB_PATH}"
 # For async tests
 ASYNC_SQLALCHEMY_DATABASE_URL = f"sqlite+aiosqlite:///{TEST_DB_PATH}"
 
+# Configure the default fixture loop scope for pytest-asyncio
+pytest_asyncio.plugin.default_fixture_loop_scope = "function"
 
 def configure_sqlite_connection(dbapi_connection, connection_record):
     """Configure SQLite connection with appropriate PRAGMAs."""
@@ -279,12 +282,16 @@ def reset_test_database():
 @pytest.fixture
 def test_db() -> Generator[Session, None, None]:
     """
-    Fixture providing a test database session that gets rolled back after the test.
+    Get a database session for testing.
     
-    Uses a savepoint to create a nested transaction that can be rolled back without
-    affecting the outer transaction, following SQLAlchemy's recommendation for testing.
+    This fixture provides an isolated database session that rolls back
+    automatically after each test. It uses nested transactions (savepoints)
+    to ensure test isolation.
+    
+    Returns:
+        SQLAlchemy Session object
     """
-    # Connect and begin a transaction
+    # Start a connection and a transaction
     connection = engine.connect()
     transaction = connection.begin()
     
@@ -294,7 +301,7 @@ def test_db() -> Generator[Session, None, None]:
     # Begin a nested transaction (savepoint)
     nested = connection.begin_nested()
     
-    # If the session rolls back or commits, use the savepoint again
+    # If the outer transaction is committed, we need to create a new savepoint
     @event.listens_for(session, "after_transaction_end")
     def end_savepoint(session, transaction):
         nonlocal nested
@@ -304,36 +311,36 @@ def test_db() -> Generator[Session, None, None]:
     try:
         yield session
     finally:
-        # Close the session
+        # Roll back the transaction and close the connection
         session.close()
-        # Rollback the transaction to clean up
         transaction.rollback()
-        # Close the connection
         connection.close()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def async_test_db() -> AsyncGenerator[AsyncSession, None]:
     """
-    Fixture providing an async test database session that gets rolled back after the test.
+    Get an async database session for testing.
     
-    Uses nested transactions for isolation following SQLAlchemy async best practices.
+    This fixture provides an isolated async database session that rolls back
+    automatically after each test. It uses nested transactions (savepoints)
+    to ensure test isolation.
+    
+    Returns:
+        SQLAlchemy AsyncSession object
     """
-    # Connect and begin a transaction
-    async with async_engine.connect() as connection:
-        # Begin a transaction
-        await connection.begin()
-        
+    # Start an async connection
+    async with async_engine.begin() as connection:
         # Begin a nested transaction (savepoint)
         await connection.begin_nested()
         
         # Create a session bound to this connection
         async_session = AsyncTestSessionLocal(bind=connection)
         
-        # If the session rolls back or commits, use the savepoint again
+        # Set up the end_savepoint listener for the sync session
         @event.listens_for(async_session.sync_session, "after_transaction_end")
         def end_savepoint(session, transaction):
-            if connection.in_nested_transaction():
+            if not connection.in_nested_transaction():
                 connection.sync_connection.begin_nested()
         
         try:
@@ -341,50 +348,29 @@ async def async_test_db() -> AsyncGenerator[AsyncSession, None]:
         finally:
             # Close the session
             await async_session.close()
-            # Rollback the transaction
-            await connection.rollback()
 
 
 @pytest.fixture
 def client(test_db) -> TestClient:
     """
-    TestClient with dependency override for database session.
+    Fixture providing a FastAPI test client with database overrides configured.
     
-    This ensures each test has its own isolated database session that gets rolled back.
-    Following FastAPI's recommended approach from documentation.
+    This fixture automatically configures the application with test database
+    dependencies using the DependencyOverrideManager.
+    
+    Args:
+        test_db: The test database session (injected from the test_db fixture)
+        
+    Returns:
+        TestClient: A configured FastAPI test client
     """
-    # Store original dependencies
-    original_dependencies = app.dependency_overrides.copy()
+    from .helpers import DependencyOverrideManager
     
-    # Create clean dependency override for this test
-    def override_get_db():
-        try:
-            yield test_db
-        finally:
-            pass  # Transaction handled by test_db fixture with rollback
-    
-    # Create QR service override that uses the test db session
-    def override_get_qr_service():
-        try:
-            yield QRCodeService(test_db)
-        finally:
-            pass  # Session handled by test_db fixture
-    
-    # Override the dependencies for DB access
-    app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_db_with_logging] = override_get_db
-    
-    # Override QR service to use our test database
-    from ..dependencies import get_qr_service
-    app.dependency_overrides[get_qr_service] = override_get_qr_service
-    
-    try:
-        # Yield the client with overridden dependencies
-        with TestClient(app) as test_client:
-            yield test_client
-    finally:
-        # Restore original dependencies after test
-        app.dependency_overrides = original_dependencies
+    # Create a dependency manager that overrides database dependencies
+    with DependencyOverrideManager.create_db_override(app, test_db) as manager:
+        # Create a test client with the dependencies overridden
+        with TestClient(app) as client:
+            yield client
 
 
 @pytest.fixture
