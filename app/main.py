@@ -7,6 +7,7 @@ import logging
 import os
 import uuid
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -20,6 +21,17 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .core.config import MIDDLEWARE_CONFIG, settings
+from .core.exceptions import (
+    AppBaseException,
+    QRCodeNotFoundError,
+    QRCodeValidationError,
+    DatabaseError,
+    InvalidQRTypeError,
+    RedirectURLError,
+    ResourceConflictError,
+    RateLimitExceededError,
+    ServiceUnavailableError,
+)
 from .database import init_db
 from .middleware import logging as logging_middleware
 from .middleware import metrics as metrics_middleware
@@ -236,6 +248,282 @@ async def add_request_id(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
+
+
+@app.exception_handler(AppBaseException)
+async def app_exception_handler(request: Request, exc: AppBaseException):
+    """
+    Handle all application-specific exceptions with a consistent response format.
+    
+    This handler processes all exceptions that inherit from AppBaseException,
+    providing a consistent response format with status code, detail message,
+    request path, timestamp, and request ID.
+    
+    Args:
+        request: The request that caused the exception
+        exc: The exception instance
+        
+    Returns:
+        JSONResponse with error details
+    """
+    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content=jsonable_encoder(
+            {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+                "path": request.url.path,
+                "method": request.method,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "request_id": request_id,
+            }
+        ),
+    )
+
+
+@app.exception_handler(QRCodeNotFoundError)
+async def qr_code_not_found_exception_handler(request: Request, exc: QRCodeNotFoundError):
+    """
+    Handle QRCodeNotFoundError with a 404 response.
+    
+    Args:
+        request: The request that caused the exception
+        exc: The exception instance
+        
+    Returns:
+        JSONResponse with error details
+    """
+    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content=jsonable_encoder(
+            {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+                "path": request.url.path,
+                "method": request.method,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "request_id": request_id,
+            }
+        ),
+    )
+
+
+@app.exception_handler(QRCodeValidationError)
+async def qr_code_validation_exception_handler(request: Request, exc: QRCodeValidationError):
+    """
+    Handle QRCodeValidationError with a 422 response.
+    
+    Args:
+        request: The request that caused the exception
+        exc: The exception instance
+        
+    Returns:
+        JSONResponse with error details
+    """
+    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content=jsonable_encoder(
+            {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+                "path": request.url.path,
+                "method": request.method,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "request_id": request_id,
+            }
+        ),
+    )
+
+
+@app.exception_handler(DatabaseError)
+async def database_exception_handler(request: Request, exc: DatabaseError):
+    """
+    Handle DatabaseError with a 500 response.
+    
+    Args:
+        request: The request that caused the exception
+        exc: The exception instance
+        
+    Returns:
+        JSONResponse with error details
+    """
+    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
+    logger.error(f"Database error: {str(exc.detail)}", exc_info=True)
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content=jsonable_encoder(
+            {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+                "path": request.url.path,
+                "method": request.method,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "request_id": request_id,
+            }
+        ),
+    )
+
+
+@app.exception_handler(InvalidQRTypeError)
+async def invalid_qr_type_exception_handler(request: Request, exc: InvalidQRTypeError):
+    """
+    Handle InvalidQRTypeError with a 400 response.
+    
+    Args:
+        request: The request that caused the exception
+        exc: The exception instance
+        
+    Returns:
+        JSONResponse with error details
+    """
+    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content=jsonable_encoder(
+            {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+                "path": request.url.path,
+                "method": request.method,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "request_id": request_id,
+            }
+        ),
+    )
+
+
+@app.exception_handler(RedirectURLError)
+async def redirect_url_exception_handler(request: Request, exc: RedirectURLError):
+    """
+    Handle RedirectURLError with a 422 response.
+    
+    Args:
+        request: The request that caused the exception
+        exc: The exception instance
+        
+    Returns:
+        JSONResponse with error details
+    """
+    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content=jsonable_encoder(
+            {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+                "path": request.url.path,
+                "method": request.method,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "request_id": request_id,
+            }
+        ),
+    )
+
+
+@app.exception_handler(ResourceConflictError)
+async def resource_conflict_exception_handler(request: Request, exc: ResourceConflictError):
+    """
+    Handle ResourceConflictError with a 409 response.
+    
+    Args:
+        request: The request that caused the exception
+        exc: The exception instance
+        
+    Returns:
+        JSONResponse with error details
+    """
+    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content=jsonable_encoder(
+            {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+                "path": request.url.path,
+                "method": request.method,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "request_id": request_id,
+            }
+        ),
+    )
+
+
+@app.exception_handler(RateLimitExceededError)
+async def rate_limit_exception_handler(request: Request, exc: RateLimitExceededError):
+    """
+    Handle RateLimitExceededError with a 429 response.
+    
+    Args:
+        request: The request that caused the exception
+        exc: The exception instance
+        
+    Returns:
+        JSONResponse with error details
+    """
+    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content=jsonable_encoder(
+            {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+                "path": request.url.path,
+                "method": request.method,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "request_id": request_id,
+            }
+        ),
+    )
+
+
+@app.exception_handler(ServiceUnavailableError)
+async def service_unavailable_exception_handler(request: Request, exc: ServiceUnavailableError):
+    """
+    Handle ServiceUnavailableError with a 503 response.
+    
+    Args:
+        request: The request that caused the exception
+        exc: The exception instance
+        
+    Returns:
+        JSONResponse with error details
+    """
+    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
+    logger.error(f"Service unavailable: {str(exc.detail)}", exc_info=True)
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content=jsonable_encoder(
+            {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+                "path": request.url.path,
+                "method": request.method,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "request_id": request_id,
+            }
+        ),
+    )
 
 
 """

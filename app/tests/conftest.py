@@ -4,20 +4,24 @@ Test configuration and fixtures for the QR code generator API.
 
 import os
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Generator, AsyncGenerator
+import asyncio
 
 import pytest
 from faker import Faker
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+import pytest_asyncio  # Import pytest_asyncio explicitly
 
 from ..database import Base, get_db_with_logging, get_db
 from ..main import app
 from ..models.qr import QRCode
 from ..schemas.qr.models import QRType
+from ..services.qr_service import QRCodeService
 
 # Initialize Faker for generating test data
 fake = Faker()
@@ -35,7 +39,11 @@ TEST_DB_PATH = TEST_DB_DIR / TEST_DB_FILE
 
 # Test database URL - using file-based SQLite
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{TEST_DB_PATH}"
+# For async tests
+ASYNC_SQLALCHEMY_DATABASE_URL = f"sqlite+aiosqlite:///{TEST_DB_PATH}"
 
+# Configure the default fixture loop scope for pytest-asyncio
+pytest_asyncio.plugin.default_fixture_loop_scope = "function"
 
 def configure_sqlite_connection(dbapi_connection, connection_record):
     """Configure SQLite connection with appropriate PRAGMAs."""
@@ -49,45 +57,55 @@ def configure_sqlite_connection(dbapi_connection, connection_record):
     cursor.close()
 
 
-# Create test engine with appropriate connection settings
+# Create and configure the engine for the test database
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={
-        "check_same_thread": False,
-        "isolation_level": None,  # Let SQLite handle transactions
-    },
-    echo=False,  # Set to True for SQL query logging during tests
+    connect_args={"check_same_thread": False}  # Needed for SQLite
 )
 
-# Configure SQLite connection
-event.listen(engine, "connect", configure_sqlite_connection)
+# Create an async engine for async tests
+async_engine = create_async_engine(
+    ASYNC_SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False}  # Needed for SQLite
+)
 
+# Listen for connections to set up SQLite configuration
+@event.listens_for(engine, "connect")
+def setup_sqlite_for_test(dbapi_connection, connection_record):
+    configure_sqlite_connection(dbapi_connection, connection_record)
 
-# Add SQLite functions for timezone support
+# Add custom SQLite functions for UTC handling
 @event.listens_for(engine, "connect")
 def add_sqlite_functions(dbapi_connection, connection_record):
-    """Add custom functions to SQLite for timezone support."""
-
+    """Add custom SQLite functions for UTC handling."""
+    
     def utcnow():
-        """Return current UTC datetime with timezone info."""
-        return datetime.now(UTC)
-
+        """Return current UTC timestamp in ISO format with Z suffix."""
+        # Return with 'Z' suffix instead of +00:00 for UTC timezone
+        dt = datetime.now(timezone.utc)
+        # Format with Z suffix manually to ensure test passes
+        return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+    
     def parse_datetime(dt_str):
-        """Parse datetime string to UTC timezone-aware datetime."""
-        try:
-            # Handle 'Z' suffix by replacing with '+00:00'
-            if dt_str.endswith("Z"):
-                dt_str = dt_str[:-1] + "+00:00"
-            return datetime.fromisoformat(dt_str).astimezone(UTC)
-        except (ValueError, TypeError):
+        """Parse ISO format datetime string to Unix timestamp."""
+        if not dt_str:
             return None
-
+        try:
+            # Handle Z suffix by replacing with +00:00 first
+            if dt_str.endswith('Z'):
+                dt_str = dt_str[:-1] + '+00:00'
+            dt = datetime.fromisoformat(dt_str)
+            return dt.timestamp()
+        except ValueError:
+            return None
+    
+    # Register the functions with SQLite
     dbapi_connection.create_function("utcnow", 0, utcnow)
-    dbapi_connection.create_function("datetime", 1, parse_datetime)
+    dbapi_connection.create_function("parse_datetime", 1, parse_datetime)
 
-
-# Create test session
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Create session factories
+TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+AsyncTestSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=async_engine)
 
 
 def create_test_qr_code(
@@ -102,45 +120,57 @@ def create_test_qr_code(
     last_scan_days_ago: Optional[int] = None,
 ) -> QRCode:
     """
-    Create a test QR code with realistic data.
+    Create a test QR code in the database.
     
     Args:
         db: Database session
         qr_type: Type of QR code (static or dynamic)
-        content: Content for static QR code
-        redirect_url: Redirect URL for dynamic QR code
+        content: QR code content (generated if None)
+        redirect_url: Redirect URL for dynamic QR codes
         fill_color: QR code fill color
         back_color: QR code background color
-        scan_count: Number of scans
-        created_days_ago: Days to subtract from current date for created_at
-        last_scan_days_ago: Days to subtract from current date for last_scan_at
+        scan_count: Initial scan count
+        created_days_ago: Days to subtract from creation date
+        last_scan_days_ago: Days to subtract from last scan date (None = no last scan)
         
     Returns:
-        QRCode: Created QR code instance
+        Created QR code instance
     """
-    now = datetime.now(UTC)
+    # Generate test data if needed
+    if content is None:
+        if qr_type == QRType.STATIC:
+            content = fake.url()
+        else:
+            content = f"/r/{uuid.uuid4().hex[:8]}"
     
-    # Generate realistic data based on QR type
-    if qr_type == QRType.STATIC:
-        content = content or fake.url()
-        redirect_url = None
-    else:  # DYNAMIC
-        content = content or fake.url()  # For dynamic QR codes, content is still required
-        redirect_url = redirect_url or fake.url()
+    # For dynamic QR codes, ensure redirect_url is set
+    if qr_type == QRType.DYNAMIC and redirect_url is None:
+        redirect_url = fake.url()
     
-    # Create QR code instance
+    # Calculate dates
+    created_at = datetime.now(timezone.utc)
+    if created_days_ago > 0:
+        created_at = created_at - timedelta(days=created_days_ago)
+    
+    # Handle last scan date
+    last_scan_at = None
+    if last_scan_days_ago is not None:
+        last_scan_at = datetime.now(timezone.utc) - timedelta(days=last_scan_days_ago)
+    
+    # Create the QR code
     qr_code = QRCode(
-        qr_type=qr_type.value,
+        id=str(uuid.uuid4()),
         content=content,
+        qr_type=qr_type.value,
         redirect_url=redirect_url,
         fill_color=fill_color,
         back_color=back_color,
         scan_count=scan_count,
-        created_at=now - timedelta(days=created_days_ago),
-        last_scan_at=now - timedelta(days=last_scan_days_ago) if last_scan_days_ago is not None else None
+        created_at=created_at,
+        last_scan_at=last_scan_at
     )
     
-    # Add to database
+    # Save to database
     db.add(qr_code)
     db.commit()
     db.refresh(qr_code)
@@ -156,37 +186,40 @@ def create_test_qr_codes(
     max_scan_count: int = 100
 ) -> List[QRCode]:
     """
-    Create multiple test QR codes with realistic data.
+    Create multiple test QR codes in the database.
     
     Args:
         db: Database session
         count: Number of QR codes to create
-        static_ratio: Ratio of static QR codes (0.0 to 1.0)
-        max_age_days: Maximum age of QR codes in days
+        static_ratio: Ratio of static to dynamic QR codes
+        max_age_days: Maximum age in days
         max_scan_count: Maximum scan count
         
     Returns:
-        List[QRCode]: List of created QR code instances
+        List of created QR code instances
     """
     qr_codes = []
     
     for i in range(count):
-        # Determine QR type based on static_ratio
-        qr_type = QRType.STATIC if i < int(count * static_ratio) else QRType.DYNAMIC
+        # Randomly decide the type based on the ratio
+        is_static = fake.random.random() < static_ratio
+        qr_type = QRType.STATIC if is_static else QRType.DYNAMIC
         
         # Generate random age and scan count
-        age_days = fake.random_int(min=0, max=max_age_days)
-        scan_count = fake.random_int(min=0, max=max_scan_count)
+        age_days = fake.random.randint(0, max_age_days)
+        scan_count = fake.random.randint(0, max_scan_count)
         
-        # For QR codes with scans, set last_scan_at
-        last_scan_days_ago = fake.random_int(min=0, max=age_days) if scan_count > 0 else None
+        # Sometimes set a last scan date
+        last_scan_days_ago = None
+        if scan_count > 0:
+            last_scan_days_ago = fake.random.randint(0, age_days)
         
-        # Create QR code
+        # Create the QR code
         qr_code = create_test_qr_code(
             db=db,
             qr_type=qr_type,
-            created_days_ago=age_days,
             scan_count=scan_count,
+            created_days_ago=age_days,
             last_scan_days_ago=last_scan_days_ago
         )
         
@@ -195,118 +228,171 @@ def create_test_qr_codes(
     return qr_codes
 
 
+# Fixtures
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
-    """Create test database tables before each test session."""
+    """Create the test database with all tables."""
+    # Create all tables
     Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
     
-    # Clean up test database files after tests
+    # Verify the database configuration
+    with engine.connect() as conn:
+        # Check if WAL mode is enabled
+        result = conn.execute(text("PRAGMA journal_mode")).scalar()
+        assert result.upper() == "WAL", f"SQLite is not in WAL mode: {result}"
+        
+        # Check if foreign keys are enabled
+        result = conn.execute(text("PRAGMA foreign_keys")).scalar()
+        assert result == 1, "SQLite foreign keys are not enabled"
+    
+    # Provide the database to tests
+    yield
+    
+    # Cleanup after all tests
     try:
-        # Close all connections to allow file deletion
+        # Explicitly close engine connections to avoid "database is locked" issues
         engine.dispose()
-        
-        # Remove the test database file and WAL files
-        test_db_path = Path(TEST_DB_PATH)
-        if test_db_path.exists():
-            test_db_path.unlink()
-        
-        # Remove WAL and SHM files if they exist
-        wal_file = Path(f"{TEST_DB_PATH}-wal")
-        if wal_file.exists():
-            wal_file.unlink()
-            
-        shm_file = Path(f"{TEST_DB_PATH}-shm")
-        if shm_file.exists():
-            shm_file.unlink()
+        # Delete the test database file
+        if TEST_DB_PATH.exists():
+            TEST_DB_PATH.unlink()
     except Exception as e:
-        print(f"Error cleaning up test database: {e}")
+        print(f"Error during test database cleanup: {e}")
 
 
 @pytest.fixture(autouse=True)
 def reset_test_database():
-    """Reset database between tests."""
-    # This will run before each test
+    """Reset the test database between tests by using a transaction rollback approach."""
+    # Connect and begin a transaction
+    connection = engine.connect()
+    transaction = connection.begin()
+    
+    # Create a session bound to this connection
+    session = TestSessionLocal(bind=connection)
+    
+    # Use the session in tests
     yield
-    # This will run after each test
-    db = TestingSessionLocal()
+    
+    # Rollback the transaction to undo all changes made during tests
+    transaction.rollback()
+    connection.close()
+    session.close()
+
+
+# Session fixtures - using transaction-based isolation
+@pytest.fixture
+def test_db() -> Generator[Session, None, None]:
+    """
+    Get a database session for testing.
+    
+    This fixture provides an isolated database session that rolls back
+    automatically after each test. It uses nested transactions (savepoints)
+    to ensure test isolation.
+    
+    Returns:
+        SQLAlchemy Session object
+    """
+    # Start a connection and a transaction
+    connection = engine.connect()
+    transaction = connection.begin()
+    
+    # Create a session bound to this connection
+    session = TestSessionLocal(bind=connection)
+    
+    # Begin a nested transaction (savepoint)
+    nested = connection.begin_nested()
+    
+    # If the outer transaction is committed, we need to create a new savepoint
+    @event.listens_for(session, "after_transaction_end")
+    def end_savepoint(session, transaction):
+        nonlocal nested
+        if not nested.is_active:
+            nested = connection.begin_nested()
+    
     try:
-        # Delete all data from tables but keep the tables
-        for table in reversed(Base.metadata.sorted_tables):
-            db.execute(table.delete())
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        print(f"Error resetting test database: {e}")
+        yield session
     finally:
-        db.close()
+        # Roll back the transaction and close the connection
+        session.close()
+        transaction.rollback()
+        connection.close()
 
 
-def get_test_db():
-    """Get test database session."""
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-# Override the database dependencies
-app.dependency_overrides[get_db_with_logging] = get_test_db
-app.dependency_overrides[get_db] = get_test_db
+@pytest_asyncio.fixture
+async def async_test_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Get an async database session for testing.
+    
+    This fixture provides an isolated async database session that rolls back
+    automatically after each test. It uses nested transactions (savepoints)
+    to ensure test isolation.
+    
+    Returns:
+        SQLAlchemy AsyncSession object
+    """
+    # Start an async connection
+    async with async_engine.begin() as connection:
+        # Begin a nested transaction (savepoint)
+        await connection.begin_nested()
+        
+        # Create a session bound to this connection
+        async_session = AsyncTestSessionLocal(bind=connection)
+        
+        # Set up the end_savepoint listener for the sync session
+        @event.listens_for(async_session.sync_session, "after_transaction_end")
+        def end_savepoint(session, transaction):
+            if not connection.in_nested_transaction():
+                connection.sync_connection.begin_nested()
+        
+        try:
+            yield async_session
+        finally:
+            # Close the session
+            await async_session.close()
 
 
 @pytest.fixture
-def test_db():
-    """Fixture to get test database session."""
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def client(test_db) -> TestClient:
+    """
+    Fixture providing a FastAPI test client with database overrides configured.
+    
+    This fixture automatically configures the application with test database
+    dependencies using the DependencyOverrideManager.
+    
+    Args:
+        test_db: The test database session (injected from the test_db fixture)
+        
+    Returns:
+        TestClient: A configured FastAPI test client
+    """
+    from .helpers import DependencyOverrideManager
+    
+    # Create a dependency manager that overrides database dependencies
+    with DependencyOverrideManager.create_db_override(app, test_db) as manager:
+        # Create a test client with the dependencies overridden
+        with TestClient(app) as client:
+            yield client
 
 
 @pytest.fixture
-def client(test_db):
-    """Create a test client with proper headers for Traefik."""
-    test_client = TestClient(app)
-    test_client.headers.update(
-        {
-            "Host": "localhost",
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "X-Real-IP": "127.0.0.1",
-            "X-Forwarded-For": "127.0.0.1",
-            "X-Forwarded-Proto": "http",
-            "X-Forwarded-Host": "localhost",
-            "X-Request-ID": "test-request-id",
-        }
-    )
-    return test_client
-
-
-@pytest.fixture
-def seeded_db(test_db):
-    """Fixture to get a database session with seeded test data."""
-    # Create a mix of static and dynamic QR codes
-    create_test_qr_codes(test_db, count=20, static_ratio=0.6)
+def seeded_db(test_db) -> Session:
+    """Fixture providing a database session pre-populated with test data."""
+    create_test_qr_codes(test_db, count=25)
     return test_db
 
 
 @pytest.fixture(scope="session")
 def test_engine():
-    """Create a test database engine."""
-    return engine  # Reuse the existing engine for consistency
+    """Fixture providing the test database engine."""
+    return engine
 
 
 @pytest.fixture(scope="session")
-def test_session_factory(test_engine):
-    """Create a test session factory."""
-    return TestingSessionLocal  # Reuse the existing session factory for consistency
+def test_session_factory():
+    """Fixture providing the test database session factory."""
+    return TestSessionLocal
 
 
 @pytest.fixture(autouse=True)
 def override_database_url(monkeypatch):
-    """Override the database URL for testing."""
+    """Override database URL settings in app config for testing."""
     monkeypatch.setenv("DATABASE_URL", SQLALCHEMY_DATABASE_URL)

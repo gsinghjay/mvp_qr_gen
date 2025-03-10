@@ -17,6 +17,7 @@ pytest-env>=1.1.1
 pytest-xdist>=3.5.0
 coverage>=7.4.1
 Faker>=22.5.1
+aiosqlite>=0.19.0  # Async SQLite driver for testing
 
 # Type checking
 types-SQLAlchemy>=1.4.0
