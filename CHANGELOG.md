@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.8.0 (2025-03-10)
+
+### Features
+
+- **api**: Improve router tags and remove prefix duplication
+  ([`de50cd4`](https://github.com/gsinghjay/mvp_qr_gen/commit/de50cd442e608142fac7f3d8026d8dfd35fdc082))
+
+### Refactoring
+
+- **router**: Reorganize router initialization with proper parent routers
+  ([`ca9af0f`](https://github.com/gsinghjay/mvp_qr_gen/commit/ca9af0f6bb5dac9601310c6b3a01c474c6d8538c))
+
+### Testing
+
+- **router**: Add test_router_structure.py to verify API path accessibility
+  ([`628be3d`](https://github.com/gsinghjay/mvp_qr_gen/commit/628be3d1d56e68e720a039bd25d5878417381adf))
+
+
 ## v0.7.0 (2025-03-10)
 
 ### Bug Fixes
