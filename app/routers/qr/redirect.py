@@ -19,7 +19,7 @@ from .common import logger
 
 router = APIRouter(
     prefix="/r",
-    tags=["redirects"],
+    tags=["QR Redirects"],
     responses={404: {"description": "Not found"}},
 )
 
