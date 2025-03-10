@@ -32,7 +32,7 @@ from .core.exceptions import (
     RateLimitExceededError,
     ServiceUnavailableError,
 )
-from .database import init_db
+from .database import init_db, engine
 from .middleware.logging import LoggingMiddleware
 from .middleware.metrics import MetricsMiddleware
 from .middleware.security import create_security_headers_middleware, create_cors_middleware, create_trusted_hosts_middleware
@@ -46,13 +46,32 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/stati
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan event handler for FastAPI application."""
+    """
+    Lifespan event handler for FastAPI application.
+    
+    This uses the recommended asynccontextmanager approach for handling application
+    lifecycle events in FastAPI.
+    """
     # Startup
-    init_db()
-    logger.info("Database initialized")
+    try:
+        # Initialize database tables and connections
+        init_db()
+        logger.info("Database initialized")
+    except Exception as e:
+        logger.error(f"Error during startup: {e}", exc_info=e)
+        # Re-raise to prevent app from starting with uninitialized resources
+        raise
+    
     yield
-    # Shutdown (if needed)
-
+    
+    # Shutdown
+    try:
+        # Dispose of database engine connections
+        engine.dispose()
+        logger.info("Database connections disposed")
+    except Exception as e:
+        logger.error(f"Error during shutdown: {e}", exc_info=e)
+        # No need to re-raise during shutdown
 
 def create_app() -> FastAPI:
     """
@@ -61,7 +80,7 @@ def create_app() -> FastAPI:
     Returns:
         FastAPI: The configured FastAPI application
     """
-    # Create FastAPI app with lifespan
+    # Create FastAPI app with lifespan manager
     app = FastAPI(
         title="QR Code Generator API",
         description="API for generating and managing QR codes",
