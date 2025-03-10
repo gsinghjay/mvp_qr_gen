@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .core.config import MIDDLEWARE_CONFIG, settings
+from .core.config import settings
 from .core.exceptions import (
     AppBaseException,
     QRCodeNotFoundError,
@@ -33,70 +33,16 @@ from .core.exceptions import (
     ServiceUnavailableError,
 )
 from .database import init_db
-from .middleware import logging as logging_middleware
-from .middleware import metrics as metrics_middleware
+from .middleware.logging import LoggingMiddleware
+from .middleware.metrics import MetricsMiddleware
+from .middleware.security import create_security_headers_middleware, create_cors_middleware, create_trusted_hosts_middleware
 from .routers import routers
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-
-def setup_middleware(app: FastAPI) -> None:
-    """
-    Set up middleware in the correct order based on configuration.
-    Middleware is added in reverse order (last added = first executed).
-    """
-    for middleware in reversed(MIDDLEWARE_CONFIG):
-        if not middleware["enabled"]:
-            continue
-
-        try:
-            middleware_class = middleware["class"]
-
-            # Handle built-in FastAPI middleware
-            if middleware_class == "fastapi.middleware.gzip.GZipMiddleware":
-                app.add_middleware(
-                    GZipMiddleware,
-                    minimum_size=middleware["kwargs"].get("minimum_size", 1000),
-                )
-            elif middleware_class == "app.middleware.create_cors_middleware":
-                app.add_middleware(
-                    CORSMiddleware,
-                    allow_origins=settings.CORS_ORIGINS,
-                    allow_credentials=True,
-                    allow_methods=["*"],
-                    allow_headers=settings.CORS_HEADERS,
-                )
-            elif middleware_class == "app.middleware.create_trusted_hosts_middleware":
-                app.add_middleware(
-                    TrustedHostMiddleware,
-                    allowed_hosts=settings.TRUSTED_HOSTS,
-                )
-            # Handle decorator-based middleware
-            elif middleware.get("is_decorator"):
-                module_path, function_name = middleware_class.rsplit(".", 1)
-                module = importlib.import_module(module_path)
-                middleware_func = getattr(module, function_name)
-                middleware_func(app)  # Apply the decorator middleware
-            # Handle class-based middleware
-            elif middleware_class == "app.middleware.MetricsMiddleware":
-                app.add_middleware(metrics_middleware.MetricsMiddleware)
-            elif middleware_class == "app.middleware.LoggingMiddleware":
-                app.add_middleware(logging_middleware.LoggingMiddleware)
-
-            logger.info(
-                f"Initialized middleware: {middleware_class}",
-                extra={
-                    "enabled": middleware["enabled"],
-                    "is_decorator": middleware.get("is_decorator", False),
-                    "args": middleware.get("args", []),
-                    "kwargs": middleware.get("kwargs", {}),
-                },
-            )
-        except Exception as e:
-            logger.error(f"Failed to initialize middleware {middleware_class}: {str(e)}")
-            raise
-
+# Configure static files - ensure correct directory in Docker context
+STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/static")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -108,27 +54,75 @@ async def lifespan(app: FastAPI):
     # Shutdown (if needed)
 
 
-# Create FastAPI app with lifespan
-app = FastAPI(
-    title="QR Code Generator API",
-    description="API for generating and managing QR codes",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
-    root_path="",  # Ensure root path is empty for Traefik
-)
+def create_app() -> FastAPI:
+    """
+    Create and configure the FastAPI application.
+    
+    Returns:
+        FastAPI: The configured FastAPI application
+    """
+    # Create FastAPI app with lifespan
+    app = FastAPI(
+        title="QR Code Generator API",
+        description="API for generating and managing QR codes",
+        version="1.0.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+        root_path="",  # Ensure root path is empty for Traefik
+        lifespan=lifespan,
+    )
 
-# Initialize middleware
-setup_middleware(app)
+    # Apply middleware directly - order is important (last added = first executed)
+    
+    # Logging should be last in chain (first to execute) to capture accurate timing
+    if settings.ENABLE_LOGGING:
+        app.add_middleware(LoggingMiddleware)
+        logger.info("Initialized LoggingMiddleware")
 
-# Include all routers
-for router in routers:
-    app.include_router(router)
+    # Metrics collection
+    if settings.ENABLE_METRICS:
+        app.add_middleware(MetricsMiddleware)
+        logger.info("Initialized MetricsMiddleware")
+    
+    # Security headers
+    create_security_headers_middleware(app)
+    logger.info("Initialized security headers middleware")
+    
+    # CORS - Note: In production, Traefik handles CORS, this is for development
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=settings.CORS_HEADERS,
+    )
+    logger.info("Initialized CORS middleware")
+    
+    # Trusted hosts - Note: In production, Traefik handles host validation
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=settings.TRUSTED_HOSTS,
+    )
+    logger.info("Initialized TrustedHost middleware")
+    
+    # GZip compression should be first in chain (last to execute)
+    if settings.ENABLE_GZIP:
+        app.add_middleware(
+            GZipMiddleware,
+            minimum_size=settings.GZIP_MIN_SIZE,
+        )
+        logger.info("Initialized GZip middleware")
 
-# Configure static files - ensure correct directory in Docker context
-STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/static")
+    # Include all routers
+    for router in routers:
+        app.include_router(router)
+    
+    return app
 
+
+# Create the application
+app = create_app()
 
 # Add middleware to force HTTPS for static files
 @app.middleware("http")

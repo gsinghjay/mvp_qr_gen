@@ -33,33 +33,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
-# Middleware configuration and order
-MIDDLEWARE_CONFIG = [
-    # GZip should be first to compress responses
-    {
-        "enabled": settings.ENABLE_GZIP,
-        "class": "fastapi.middleware.gzip.GZipMiddleware",
-        "kwargs": {"minimum_size": settings.GZIP_MIN_SIZE},
-    },
-    # Security middleware
-    {
-        "enabled": True,
-        "class": "app.middleware.create_trusted_hosts_middleware",
-        "args": [settings.TRUSTED_HOSTS],
-    },
-    {
-        "enabled": True,
-        "class": "app.middleware.create_cors_middleware",
-        "args": [settings.CORS_ORIGINS],
-    },
-    {
-        "enabled": True,
-        "class": "app.middleware.create_security_headers_middleware",
-        "is_decorator": True,
-    },
-    # Monitoring middleware
-    {"enabled": settings.ENABLE_METRICS, "class": "app.middleware.MetricsMiddleware"},
-    # Logging should be last to capture accurate timing
-    {"enabled": settings.ENABLE_LOGGING, "class": "app.middleware.LoggingMiddleware"},
-]
