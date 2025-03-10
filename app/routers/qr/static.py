@@ -16,8 +16,8 @@ from ...services.qr_service import QRCodeService
 from .common import logger
 
 router = APIRouter(
-    prefix="/api/v1/qr/static",
-    tags=["static-qr"],
+    prefix="/static",
+    tags=["Static QR"],
     responses={
         404: {"description": "QR code not found"},
         422: {"description": "Validation error"},
