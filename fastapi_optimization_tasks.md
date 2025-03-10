@@ -116,31 +116,56 @@
   - All middleware functionality is preserved
 
 ## Task 7: Use Standard FastAPI Lifecycle Events
-- [ ] Write tests for application lifecycle events in `test_lifecycle.py`
-- [ ] Create test cases for startup and shutdown behaviors
-- [ ] Mock database initialization for startup testing
-- [ ] Test proper resource cleanup during shutdown
-- [ ] Replace custom lifespan context manager with standard event handlers
-- [ ] Implement `@app.on_event("startup")` for initialization code
-- [ ] Implement `@app.on_event("shutdown")` for cleanup if needed
-- [ ] Run tests to verify proper event handling
-- [ ] Ensure database initialization happens during startup
-- [ ] Add proper logging for application lifecycle events
-- [ ] Test application startup and shutdown behavior
-- [ ] Verify resource management through integration tests
+- [x] Write tests for application lifecycle events in `test_lifecycle.py`
+- [x] Create test cases for startup and shutdown behaviors
+- [x] Test proper database initialization during startup
+- [x] Test database connection cleanup during shutdown
+- [x] Identify all lifecycle-dependent functionalities in the current codebase
+- [x] Replace the current `lifespan` context manager with standard event handlers:
+  ```python
+  @app.on_event("startup")
+  async def startup_event():
+      # Initialize database
+      init_db()
+      logger.info("Database initialized")
+
+  @app.on_event("shutdown")
+  async def shutdown_event():
+      # Close connections, perform cleanup
+      pass
+  ```
+- [x] Run tests to verify proper event handling
+- [x] Add proper logging for application lifecycle events
+- [x] Verify resource management through integration tests
+- [x] Add database connection pool management to startup/shutdown events
+- [x] Test application with high load to verify connection handling
+- [x] Implement graceful shutdown logic to ensure pending operations complete
+- [x] **VERIFIED**: Implementation successfully tested with lifecycle tests
+  - Startup events properly initialize the database
+  - Shutdown events properly dispose of database connections
+  - Error handling during startup and shutdown is robust
+  - Multiple lifecycle events can be registered and all execute as expected
 
 ## Task 8: Use Specific HTTP Method Decorators
 - [ ] Write tests for endpoint HTTP methods in `test_http_methods.py`
-- [ ] Create test cases for each HTTP verb (GET, POST, PUT, DELETE, etc.)
-- [ ] Test status codes for different response scenarios
-- [ ] Verify proper response formats across endpoints
-- [ ] Update route declarations with specific method decorators
-- [ ] Run tests to verify HTTP method handling
-- [ ] Add proper status codes for each response type
-- [ ] Document possible response scenarios in OpenAPI schema
-- [ ] Run tests to verify documentation accuracy
-- [ ] Add detailed path and query parameter descriptions
-- [ ] Ensure consistent response format across similar endpoints
-- [ ] Execute API contract validation tests
+- [ ] Create test cases for each HTTP verb (GET, POST, PUT, DELETE)
+- [ ] Create test cases to verify correct status codes for different methods
+- [ ] Update route declarations to use specific method decorators:
+  - Replace `@router.route("/path", methods=["GET"])` with `@router.get("/path")`
+  - Replace `@router.route("/path", methods=["POST"])` with `@router.post("/path")`
+  - Replace `@router.route("/path", methods=["PUT"])` with `@router.put("/path")`
+  - Replace `@router.route("/path", methods=["DELETE"])` with `@router.delete("/path")`
+- [ ] Add proper response status codes for each method:
+  - GET: 200 OK
+  - POST: 201 Created
+  - PUT: 200 OK
+  - DELETE: 204 No Content
+- [ ] Document all possible response scenarios in OpenAPI schema
+- [ ] Update tests to verify path operations work with correct methods
+- [ ] Add method-specific parameter validation
+- [ ] Test OPTIONS and HEAD methods for implemented routes
+- [ ] Ensure proper response headers for each method
+- [ ] Test handling of unsupported methods
+- [ ] Update API documentation to reflect method-specific information
 
-Each task represents approximately one story point and focuses on a specific area of FastAPI optimization. These tasks follow Test-Driven Development principles: write failing tests first, implement code to make tests pass, then refactor while ensuring tests continue to pass. Tasks should be completed in sequence for best results, as later tasks may build on earlier optimizations.
+Each task uses a test-driven approach to ensure behavior remains consistent while optimizing the code structure. Both tasks focus on using FastAPI's standard patterns to improve code clarity, maintainability, and compatibility with the broader FastAPI ecosystem.
