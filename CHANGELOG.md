@@ -1,6 +1,37 @@
 # CHANGELOG
 
 
+## v0.9.0 (2025-03-10)
+
+### Chores
+
+- Following fastapi_optimization_tasks.md
+  ([`ea3b248`](https://github.com/gsinghjay/mvp_qr_gen/commit/ea3b248a6d505013de66e4b5e1aa5db15a090874))
+
+### Documentation
+
+- **tasks**: Mark middleware simplification task as completed
+  ([`5872a8e`](https://github.com/gsinghjay/mvp_qr_gen/commit/5872a8e2d589e741426b2e8ea7f7f38dee19169e))
+
+### Features
+
+- **app**: Implement modern lifespan approach for FastAPI lifecycle management
+  ([`9a22572`](https://github.com/gsinghjay/mvp_qr_gen/commit/9a2257218acd76bde99f42c97d78ce779b0de0df))
+
+### Refactoring
+
+- **app**: Replace custom middleware loader with direct FastAPI middleware calls
+  ([`787e06b`](https://github.com/gsinghjay/mvp_qr_gen/commit/787e06b1b6f9eebd080ad4f23139d4968d030c2a))
+
+- **config**: Remove complex middleware configuration dictionary
+  ([`1fc5b53`](https://github.com/gsinghjay/mvp_qr_gen/commit/1fc5b53e28a4158a956c893eddb8c14eb7991a87))
+
+### Testing
+
+- **middleware**: Add comprehensive tests for middleware functionality
+  ([`00dd091`](https://github.com/gsinghjay/mvp_qr_gen/commit/00dd091912d66ae02b785acdf8948747cb19ae06))
+
+
 ## v0.8.0 (2025-03-10)
 
 ### Features
