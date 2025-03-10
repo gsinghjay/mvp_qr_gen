@@ -1,6 +1,144 @@
 # CHANGELOG
 
 
+## v0.7.0 (2025-03-10)
+
+### Bug Fixes
+
+- **api**: Update endpoint status codes to follow REST conventions
+  ([`19b6246`](https://github.com/gsinghjay/mvp_qr_gen/commit/19b624678e684c96c0bbcce6177d756cd71ead8e))
+
+- **health**: Adjust health service implementation for test compatibility
+  ([`572262b`](https://github.com/gsinghjay/mvp_qr_gen/commit/572262b9666c445551f57880c2862511d4147fbf))
+
+- **qr**: Ensure dynamic QR codes always use redirect path as content
+  ([`6e1398c`](https://github.com/gsinghjay/mvp_qr_gen/commit/6e1398cbcd316faea490e0565e9284638950f666))
+
+- **services**: Convert HttpUrl to string before saving to database
+  ([`ec2e4ef`](https://github.com/gsinghjay/mvp_qr_gen/commit/ec2e4efa28cd475668e33d94b2ddab92891ed94d))
+
+- **tasks**: Handle background task error states correctly
+  ([`f79d1ed`](https://github.com/gsinghjay/mvp_qr_gen/commit/f79d1ed1e9a4b86785b73999a4173be42082c1f9))
+
+- **tests**: Correct dependency injection and redirect status code in test_main.py
+  ([`510cd23`](https://github.com/gsinghjay/mvp_qr_gen/commit/510cd239a27119fac8214c99003882687267b041))
+
+- **tests**: Improve concurrent reads test with session isolation
+  ([`57aaf74`](https://github.com/gsinghjay/mvp_qr_gen/commit/57aaf74073bc2a869af06cdba0d686bdd9955b92))
+
+- **tests**: Replace UTC import with timezone.utc for compatibility
+  ([`dd5057a`](https://github.com/gsinghjay/mvp_qr_gen/commit/dd5057ad9cc0591db8e6e15383390aa8cdfc17d6))
+
+- **tests**: Resolve SQLite concurrency and WAL mode test failures
+  ([`9d9e355`](https://github.com/gsinghjay/mvp_qr_gen/commit/9d9e355491d7b110b70016072b7605ed0d190871))
+
+- **tests**: Update concurrent test assertion for dynamic test count
+  ([`f6a243b`](https://github.com/gsinghjay/mvp_qr_gen/commit/f6a243bacb718c8ad4943de2c385bff74a7697ff))
+
+- **tests**: Update SQLite UTC functions to return consistent Z-suffix format
+  ([`533028f`](https://github.com/gsinghjay/mvp_qr_gen/commit/533028fd3be0a9eac48ddb085507e835b7e1e34b))
+
+### Build System
+
+- **deps**: Add aiosqlite dependency for async SQLite support
+  ([`866c14f`](https://github.com/gsinghjay/mvp_qr_gen/commit/866c14f8f96611c463eaad99f22fb3ca54fad5eb))
+
+### Documentation
+
+- Complete test refactoring plan
+  ([`907c31e`](https://github.com/gsinghjay/mvp_qr_gen/commit/907c31ee297a7790d4f312ab2ce7ccd67f24f029))
+
+- Mark SQLite test refactoring tasks as completed
+  ([`70c8b15`](https://github.com/gsinghjay/mvp_qr_gen/commit/70c8b15d5ded3d5d43b8c8e6c85014d53af2a7be))
+
+- **refactor**: Mark dependency injection standardization task as completed
+  ([`c033150`](https://github.com/gsinghjay/mvp_qr_gen/commit/c033150f728928ec181ac76d13467721825aa86f))
+
+- **scripts**: Update API test script documentation
+  ([`67d3d5d`](https://github.com/gsinghjay/mvp_qr_gen/commit/67d3d5d0810a502cd17e42b6f439c199ff494dcf))
+
+### Features
+
+- **core**: Add centralized exception handling system
+  ([`1d59159`](https://github.com/gsinghjay/mvp_qr_gen/commit/1d5915998d5f311f86f504a5ad8f774cdff7eb0f))
+
+- **schemas**: Update schema exports to include parameter models
+  ([`a9c2f7e`](https://github.com/gsinghjay/mvp_qr_gen/commit/a9c2f7e6db72d760cc35589d336387eebbbd50c9))
+
+- **tests**: Add helper functions for DRY test assertions
+  ([`9fb6e87`](https://github.com/gsinghjay/mvp_qr_gen/commit/9fb6e87bbeb22991f28343635b2f0c9b17f3af1c))
+
+- **tests**: Implement DependencyOverrideManager for standardized dependency injection
+  ([`ca5011e`](https://github.com/gsinghjay/mvp_qr_gen/commit/ca5011e01d709c48ba1889b9bfd3c3b0709cc7eb))
+
+- **tests**: Implement factory pattern for test data generation
+  ([`86a93fe`](https://github.com/gsinghjay/mvp_qr_gen/commit/86a93fe9ecfe9afacce2d16612ba31540099f06f))
+
+- **validation**: Add parameter models with validation for QR code creation
+  ([`989ae4d`](https://github.com/gsinghjay/mvp_qr_gen/commit/989ae4d974da4c22095541c4ece408f0d4e677f1))
+
+### Refactoring
+
+- **api**: Update API endpoints to use parameter models
+  ([`18940cb`](https://github.com/gsinghjay/mvp_qr_gen/commit/18940cb7b98c29477518cbde9829de0da2a9d4c3))
+
+- **routers**: Update QR routers to use parameter models
+  ([`19ef336`](https://github.com/gsinghjay/mvp_qr_gen/commit/19ef3366795314f207897b5c555d3782c938a0f4))
+
+- **tests**: Consolidate QR service tests from real_db variant
+  ([`ed63efc`](https://github.com/gsinghjay/mvp_qr_gen/commit/ed63efcdf2975a6fe68a4efa04a290925e22778b))
+
+- **tests**: Enhance integration tests with consistent dependency handling
+  ([`3c3b34e`](https://github.com/gsinghjay/mvp_qr_gen/commit/3c3b34e418140862664aef909ba68a8e65afc8fb))
+
+- **tests**: Improve background task testing with proper async handling
+  ([`e56fdd4`](https://github.com/gsinghjay/mvp_qr_gen/commit/e56fdd45cb54255a6569c0f262d6fca0feaae29d))
+
+- **tests**: Improve database session management in conftest.py
+  ([`abedc0b`](https://github.com/gsinghjay/mvp_qr_gen/commit/abedc0b430c68cc2a212eb80e8512910269225bf))
+
+- **tests**: Parameterize QR service tests for better coverage
+  ([`0e12eb4`](https://github.com/gsinghjay/mvp_qr_gen/commit/0e12eb4e59bf63e86d3dd9f233f1fa5df1f85e16))
+
+- **tests**: Parameterize validation tests to reduce duplication
+  ([`3e19e04`](https://github.com/gsinghjay/mvp_qr_gen/commit/3e19e04e270392323c6f15266a3af96202ee5e07))
+
+- **tests**: Remove redundant real_db test files
+  ([`618bb83`](https://github.com/gsinghjay/mvp_qr_gen/commit/618bb831779c318d8bcb5a619df9e37f911affca))
+
+- **tests**: Replace in-memory SQLite with file-based SQLite for integration tests
+  ([`3ffb813`](https://github.com/gsinghjay/mvp_qr_gen/commit/3ffb8138ee4f5c3ea268c83812f0a30d625e4199))
+
+### Testing
+
+- Add real database tests for background tasks
+  ([`2e5f81a`](https://github.com/gsinghjay/mvp_qr_gen/commit/2e5f81a9219d46739f7789ced2b3991457753b83))
+
+- Add real database tests for QR service
+  ([`59b792c`](https://github.com/gsinghjay/mvp_qr_gen/commit/59b792c9bb7253a992bada870594fc1d12d27854))
+
+- Add SQLite-specific functionality tests
+  ([`0b41d74`](https://github.com/gsinghjay/mvp_qr_gen/commit/0b41d748a1c49bcbe80a3819a6439b85514c7ea0))
+
+- Add unit tests for factory pattern implementation
+  ([`59eb9e3`](https://github.com/gsinghjay/mvp_qr_gen/commit/59eb9e392b6f48d2f476069009cd8fc533908f6e))
+
+- Implement response model validation tests
+  ([`ad64279`](https://github.com/gsinghjay/mvp_qr_gen/commit/ad64279e2a3a772c85e988079de9e6ba9a3cd9c6))
+
+- **api**: Add comprehensive examples for dependency injection patterns
+  ([`19d75fe`](https://github.com/gsinghjay/mvp_qr_gen/commit/19d75fe457fdc8116de9cf84112ea1e09d267467))
+
+- **framework**: Improve test fixtures and dependency overrides
+  ([`c626f3e`](https://github.com/gsinghjay/mvp_qr_gen/commit/c626f3ef184533f8780aa5baa2cd8cc50a332340))
+
+- **integration**: Fix test assertions to expect correct status codes
+  ([`5aa6b3d`](https://github.com/gsinghjay/mvp_qr_gen/commit/5aa6b3df1a15a335e2b3897808c7e491799ffd02))
+
+- **response**: Update response model tests for parameter validation
+  ([`a7b342b`](https://github.com/gsinghjay/mvp_qr_gen/commit/a7b342b1c3698eefab1434ee1e212379f7a8531f))
+
+
 ## v0.6.0 (2025-03-05)
 
 ### Features
