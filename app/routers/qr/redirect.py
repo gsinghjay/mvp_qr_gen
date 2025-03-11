@@ -7,7 +7,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks, status
 from fastapi.responses import RedirectResponse
 
 from ...dependencies import get_qr_service
@@ -20,11 +20,24 @@ from .common import logger
 router = APIRouter(
     prefix="/r",
     tags=["QR Redirects"],
-    responses={404: {"description": "Not found"}},
+    responses={
+        302: {"description": "Redirect to target URL"},
+        404: {"description": "QR code not found"},
+        500: {"description": "Internal server error"},
+    },
 )
 
 
-@router.get("/{short_id}")
+@router.get(
+    "/{short_id}",
+    status_code=status.HTTP_302_FOUND,
+    response_class=RedirectResponse,
+    responses={
+        302: {"description": "Redirect to target URL"},
+        404: {"description": "QR code not found"},
+        500: {"description": "Internal server error"},
+    },
+)
 async def redirect_qr(
     short_id: str,
     request: Request,
