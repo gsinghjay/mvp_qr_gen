@@ -1,163 +1,266 @@
-## QR Code Generator Repository Documentation
+# QR Code Generator
 
-### What is it?
+A robust QR code generation and management API built with FastAPI and SQLite, featuring both static and dynamic QR codes with redirect URL support and scan tracking.
 
-This repository provides an API and web interface for generating and managing QR codes. It supports both static and dynamic QR codes. Dynamic QR codes offer redirect URLs and scan tracking. The API is built with FastAPI and uses a SQLite database.
+## Features
 
-### Quick Start
+- **Static QR Codes**: Generate permanent QR codes with customizable appearance
+- **Dynamic QR Codes**: Create scannable codes with updatable redirect URLs
+- **Scan Tracking**: Monitor usage with scan count and timestamp tracking
+- **Zero-Auth Architecture**: Security through network isolation and proper request validation
+- **Docker & Traefik Integration**: Production-ready deployment with HTTPS support
+- **SQLite Optimization**: WAL mode, connection pooling, and performance tuning
+- **Comprehensive API**: Well-documented endpoints with proper validation and error handling
+
+## Quick Start
 
 To run the QR Code Generator locally using Docker Compose:
 
-1.  Ensure Docker and Docker Compose are installed.
-2.  Clone the repository.
-3.  Navigate to the repository directory in your terminal.
-4.  Run: `docker-compose up --build`
+1. Ensure Docker and Docker Compose are installed
+2. Clone the repository
+3. Run: `docker-compose up --build`
 
-This command builds the Docker image and starts the application along with Traefik.
-Access the application at `https://localhost`.
-The API documentation is available at `https://localhost/docs`.
+The application will be available at:
+- Web interface: `https://localhost/`
+- API documentation: `https://localhost/docs`
+- API base URL: `https://localhost/api/v1`
+- Traefik dashboard: `http://localhost:8080/`
+- Prometheus metrics: `http://localhost:8082/metrics`
 
-### Configuration
+### Docker Container Configuration
 
-The application can be configured via environment variables and configuration files.
+The application runs in a multi-container environment:
 
-#### Environment Variables
+| Container | Purpose | Ports |
+|-----------|---------|-------|
+| `qr_generator_api` | FastAPI application | 8000 (internal) |
+| `qr_generator_traefik` | Reverse proxy, TLS termination | 80, 443, 8080, 8082 |
 
-Environment variables are set in `.env` file or directly in your environment.
+All containers run in an isolated `qr_generator_network` for security.
 
-*   **`DATABASE_URL`**:  Database connection string. Defaults to `sqlite:///./data/qr_codes.db`. For in-memory testing use `sqlite:///:memory:`.
-*   **`ENVIRONMENT`**:  Environment mode, `development` or `production`. Defaults to `development`.
-*   **`DEBUG`**: Enable debug mode. Defaults to `False`.
-*   **`TRUSTED_HOSTS`**:  List of trusted hosts. Defaults to `*`.
-*   **`CORS_ORIGINS`**: List of allowed CORS origins. Defaults to `*`.
-*   **`CORS_HEADERS`**: List of allowed CORS headers. Defaults to `*`.
-*   **`ENABLE_GZIP`**: Enable GZip compression. Defaults to `True`.
-*   **`GZIP_MIN_SIZE`**: Minimum size for GZip compression. Defaults to `1000`.
-*   **`ENABLE_METRICS`**: Enable metrics endpoint. Defaults to `True`.
-*   **`ENABLE_LOGGING`**: Enable request logging. Defaults to `True`.
-*   **`METRICS_ENDPOINT`**: Metrics endpoint path. Defaults to `/metrics`.
-*   **`LOG_LEVEL`**: Application log level. Defaults to `INFO`.
+## Infrastructure Architecture
 
-#### `app/core/config.py`
+The application follows a layered architecture with Docker containerization and Traefik for routing:
 
-This file defines application settings using Pydantic. It loads settings from environment variables and `.env` file. Refer to this file for detailed configuration options and defaults.
+```mermaid
+flowchart TD
+    USER((External User)) --> ENTRY
+    
+    subgraph traefik["Traefik Routing"]
+        direction LR
+        ENTRY["EntryPoints: web(:80), websecure(:443), traefik(:8080), metrics(:8082)"]
+        ROUTERS["Routers: api (HTTP/HTTPS)"]
+        SERVICES["Services: api(:8000)"]
+        ENTRY --> ROUTERS --> |"TLS"| SERVICES
+    end
+    
+    traefik --> dockerfile
 
-#### `dynamic_conf.yml`
-
-This Traefik dynamic configuration file defines routing rules and middleware. It sets up:
-
-*   Routers for API and dashboard.
-*   Middleware for HTTPS redirection.
-*   Service for the API application.
-
-#### `traefik.yml`
-
-This Traefik static configuration file sets up:
-
-*   Entrypoints for web (port 80), websecure (port 443), traefik (dashboard port 8080), and metrics (port 8082).
-*   Providers for Docker and file-based dynamic configuration.
-*   API dashboard and insecure access enabled (for development).
-*   Access logs and Prometheus metrics enabled.
-*   TLS configuration with a self-signed certificate for development.
-
-### Package Summary
-
-This repository provides a FastAPI application to generate and manage QR codes.
-The core functionalities are encapsulated within the `app` directory, creating a single deployable package.
-
-### API Documentation
-
-The API is structured into several routers:
-
-#### API Version 1 (`/api/v1`)
-
-*   **`GET /api/v1/qr`**: List QR codes with pagination and optional filtering by `qr_type`.
-    *   Query Parameters:
-        *   `skip` (int, optional):  Number of items to skip for pagination.
-        *   `limit` (int, optional): Maximum number of items per page.
-        *   `qr_type` (str, optional): Filter by QR code type (`static` or `dynamic`).
-    *   Response Model: `QRCodeList`
-*   **`GET /api/v1/qr/{qr_id}`**: Get QR code data by ID.
-    *   Path Parameter:
-        *   `qr_id` (str):  QR code identifier.
-    *   Response Model: `QRCodeResponse`
-*   **`GET /api/v1/qr/{qr_id}/image`**: Get QR code image by ID.
-    *   Path Parameter:
-        *   `qr_id` (str): QR code identifier.
-    *   Query Parameters:
-        *   `image_format` (str, optional):  Image format (`png`, `jpeg`, `jpg`, `svg`, `webp`). Defaults to `png`.
-        *   `image_quality` (int, optional): Image quality for JPEG and WebP (1-100).
-*   **`PUT /api/v1/qr/{qr_id}`**: Update QR code data by ID. Currently only updates `redirect_url` for dynamic QR codes.
-    *   Path Parameter:
-        *   `qr_id` (str): QR code identifier.
-    *   Request Body: `QRCodeUpdate`
-    *   Response Model: `QRCodeResponse`
-
-#### Dynamic QR Code Router (`/api/v1/qr/dynamic`)
-
-*   **`POST /api/v1/qr/dynamic`**: Create a new dynamic QR code.
-    *   Request Body: `QRCodeCreate` (must include `redirect_url`)
-    *   Response Model: `QRCodeResponse`
-*   **`PUT /api/v1/qr/dynamic/{qr_id}`**: Update a dynamic QR code's redirect URL.
-    *   Path Parameter:
-        *   `qr_id` (str): QR code identifier.
-    *   Request Body: `QRCodeUpdate` (must include `redirect_url`)
-    *   Response Model: `QRCodeResponse`
-
-#### Static QR Code Router (`/api/v1/qr/static`)
-
-*   **`POST /api/v1/qr/static`**: Create a new static QR code.
-    *   Request Body: `QRCodeCreate` (`redirect_url` must be None)
-    *   Response Model: `QRCodeResponse`
-
-#### Redirect Router (`/r`)
-
-*   **`GET /r/{short_id}`**: Redirect endpoint for dynamic QR codes.
-    *   Path Parameter:
-        *   `short_id` (str): Short identifier from the dynamic QR code content.
-
-#### Web Pages Router (`/`)
-
-*   **`GET /`**: Renders the home page with dashboard information.
-
-### Dependencies and Requirements
-
-*   Python 3.12+
-*   Dependencies listed in `requirements.txt` or `pyproject.toml`:
-    *   `alembic`
-    *   `fastapi`
-    *   `pydantic`
-    *   `pydantic-settings`
-    *   `prometheus-client`
-    *   `qrcode`
-    *   `SQLAlchemy`
-    *   `uvicorn`
-
-### Advanced Usage Examples
-
-#### Database Management
-
-The `app/scripts/manage_db.py` script provides tools for database management:
-
-*   `--init`: Initializes a fresh database, removing existing data.
-*   `--migrate`: Runs database migrations to the latest version.
-*   `--check`: Checks if migrations are needed.
-*   `--validate`: Validates the database structure.
-
-These commands can be executed inside the Docker container. For example, to initialize the database:
-
-```bash
-docker-compose exec api /app/scripts/manage_db.py --init
+    subgraph dockerfile["Docker Build"]
+        direction LR
+        subgraph builder["Builder Stage"]
+            B["python:3.12-slim + gcc, python3-dev + venv + requirements.txt"]
+        end
+        
+        subgraph runtime["Runtime Stage"]
+            R["python:3.12-slim + curl, sqlite3 + application code + scripts"]
+            ENV["ENV: PORT=8000, WORKERS=4, PYTHONPATH=/app"]
+            HEALTH["Healthcheck: /health endpoint (30s interval)"]
+        end
+        
+        builder --> runtime
+    end
+    
+    SERVICES --> API
+    
+    subgraph compose["Docker Compose"]
+        direction LR
+        subgraph services["Services"]
+            API["API Service"] 
+            PROXY["Traefik Proxy"]
+        end
+        
+        subgraph env["Environment"]
+            direction LR
+            subgraph DEV["Development (default)"]
+                DEV_FEATURES["Features: Hot reload, Debug, App mounting, Detailed logs"]
+            end
+            
+            PROD["Production: No hot reload, Optimized perf, Enhanced security"]
+        end
+        
+        subgraph storage["Storage & Network"]
+            direction LR
+            DB[("SQLite DB")] --- VOLUMES["Volumes: data, logs"]
+            NET["Network: qr_generator_network (bridge)"]
+        end
+        
+        services --> env --> storage
+    end
 ```
 
-#### Production Deployment with Traefik
+## API Documentation
 
-The provided `docker-compose.yml`, `Dockerfile`, `dynamic_conf.yml`, and `traefik.yml` are configured for production deployment using Traefik as a reverse proxy and TLS termination.
+### API Endpoints
 
-To deploy in production:
+#### QR Code Management
 
-1.  Set `ENVIRONMENT` environment variable to `production`.
-2.  Ensure proper TLS certificate configuration in `traefik.yml` for HTTPS.
-3.  Build and run the application using `docker-compose up --build -d`.
+- **GET /api/v1/qr**: List QR codes with pagination and filtering
+- **GET /api/v1/qr/{qr_id}**: Get QR code details by ID
+- **GET /api/v1/qr/{qr_id}/image**: Get QR code image by ID
+- **PUT /api/v1/qr/{qr_id}**: Update QR code (redirect URL for dynamic codes)
+- **DELETE /api/v1/qr/{qr_id}**: Delete QR code by ID
 
-Traefik automatically handles routing and HTTPS, and the application runs with production settings (e.g., hot-reloading disabled, multiple workers).
+#### Dynamic QR Codes
+
+- **POST /api/v1/qr/dynamic**: Create a new dynamic QR code
+- **PUT /api/v1/qr/dynamic/{qr_id}**: Update dynamic QR code redirect URL
+
+#### Static QR Codes
+
+- **POST /api/v1/qr/static**: Create a new static QR code
+
+#### Redirects
+
+- **GET /r/{short_id}**: Redirect endpoint for dynamic QR codes
+
+#### Health Check
+
+- **GET /health**: System health check with detailed metrics
+
+## Configuration
+
+The application can be configured via environment variables and configuration files:
+
+### Docker Environment Configuration
+
+The Docker environment is configured through the `docker-compose.yml` file. Key configuration options include:
+
+```yaml
+services:
+  api:
+    environment:
+      - DATABASE_URL=sqlite:////app/data/qr_codes.db
+      - ENVIRONMENT=${ENVIRONMENT:-development} # switch to production for deployment
+    volumes:
+      - ./data:/app/data  # Database persistence
+      - ./logs:/logs      # Log persistence
+      - ./app:/app/app    # Mount app directory for hot reloading (dev only)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
+
+For production deployment, modify the `docker-compose.yml` file to remove the app volume mount and set `ENVIRONMENT=production`.
+
+### Environment Variables
+
+- **`DATABASE_URL`**: Database connection string (default: `sqlite:///./data/qr_codes.db`)
+- **`ENVIRONMENT`**: `development` or `production` (default: `development`)
+- **`DEBUG`**: Enable debug mode (default: `False`)
+- **`TRUSTED_HOSTS`**: List of trusted hosts (default: `["*"]`)
+- **`CORS_ORIGINS`**: List of allowed CORS origins (default: `["*"]`)
+- **`ENABLE_GZIP`**: Enable GZip compression (default: `True`)
+- **`ENABLE_METRICS`**: Enable metrics endpoint (default: `True`)
+- **`ENABLE_LOGGING`**: Enable request logging (default: `True`)
+
+### Directory Structure
+
+- **`data/`**: Contains SQLite database and backups
+- **`logs/`**: Container logs for API, database, and Traefik
+- **`certificates/`**: TLS certificates for secure connections
+
+## Security Architecture
+
+The application implements a zero-auth architecture that leverages:
+
+1. **Docker Network Isolation**: Services run in an isolated network with Traefik controlling external access
+2. **CORS Configuration**: Properly configured to restrict access in production
+3. **Security Headers**: Comprehensive set of security headers to prevent common attacks
+4. **Database Operations**: Atomic updates and proper transaction management
+5. **TLS Encryption**: HTTPS with proper certificate handling through Traefik
+
+## Development and Testing
+
+### Setting Up Development Environment
+
+1. Clone the repository
+2. Create a virtual environment: `python -m venv venv`
+3. Activate the virtual environment and install dependencies: `pip install -r requirements.txt`
+4. Run tests: `pytest`
+
+### Docker Development Environment
+
+The application is fully containerized and can be developed and tested entirely within Docker:
+
+#### Running the Application with Docker
+
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Start in detached mode
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+```
+
+#### Running Tests through Docker
+
+The application includes a test environment configuration that uses an in-memory SQLite database:
+
+```bash
+# Run all tests with coverage
+docker-compose exec api pytest --cov -v
+
+# Run specific test modules
+docker-compose exec api pytest app/tests/test_qr_service.py -v
+
+# Run tests with specific markers
+docker-compose exec api pytest -m "integration" -v
+
+# Generate HTML coverage report
+docker-compose exec api pytest --cov --cov-report=html -v
+```
+
+#### Executing Database Management Scripts
+
+```bash
+# Initialize a fresh database
+docker-compose exec api /app/scripts/manage_db.py --init
+
+# Run database migrations
+docker-compose exec api /app/scripts/manage_db.py --migrate
+
+# Validate database structure
+docker-compose exec api /app/scripts/manage_db.py --validate
+```
+
+#### Testing the API Endpoints
+
+You can use the included test script to verify API endpoints:
+
+```bash
+# Run API test script
+docker-compose exec api /app/scripts/test_api_script.sh
+```
+
+### SQLite Production Tasks
+
+To-do:
+
+- **Implement Named Volumes**: Replace bind mounts with named volumes in docker-compose.yml
+- **Configure WAL Mode**: Enable Write-Ahead Logging for better concurrency
+- **Add Connection Pooling**: Optimize connection management
+- **Implement Backup Strategy**: Set up daily backups with rotation
+- **Add Database Integrity Checks**: Regular validation of database health
+
+## License
+
+[MIT License](LICENSE)
