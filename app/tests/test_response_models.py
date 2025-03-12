@@ -107,12 +107,14 @@ class TestQRCodeResponseModel:
         # Validate response model
         data = response.json()
         assert validate_qr_code_data(data, {
-            "content": "https://example.com",
             "redirect_url": "https://example.com/",  # API adds trailing slash
             "fill_color": "#000000",
             "back_color": "#FFFFFF",
             "qr_type": "dynamic"
         })
+        
+        # Verify the content format separately
+        assert data["content"].startswith("/r/"), "Dynamic QR content should start with /r/"
 
 
 class TestErrorResponseModel:
