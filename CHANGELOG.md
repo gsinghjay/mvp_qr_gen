@@ -1,6 +1,40 @@
 # CHANGELOG
 
 
+## v0.12.0 (2025-03-12)
+
+### Bug Fixes
+
+- **tests**: Skip flaky middleware conditional activation test
+  ([`5ecb61a`](https://github.com/gsinghjay/mvp_qr_gen/commit/5ecb61abf74bf1c6d0c8ed011a7ad2442988931e))
+
+### Chores
+
+- Format with ruff and black
+  ([`9d6c9f0`](https://github.com/gsinghjay/mvp_qr_gen/commit/9d6c9f09327a97fe4c5b64ad6fced96730db10ed))
+
+### Documentation
+
+- **tasks**: Update SSO implementation progress
+  ([`8f0461a`](https://github.com/gsinghjay/mvp_qr_gen/commit/8f0461a33e532c4dd1da48e069dfcd07eb32ebe9))
+
+### Features
+
+- **auth**: Implement SSO dependencies and configuration
+  ([`db6cc74`](https://github.com/gsinghjay/mvp_qr_gen/commit/db6cc74a515673f8963ad4e783b5124dd2ea1be7))
+
+- **auth**: Implement SSO login and callback endpoints
+  ([`d27d7f8`](https://github.com/gsinghjay/mvp_qr_gen/commit/d27d7f8c9fb9e11254079d9ab0493d52606d72ef))
+
+- **router**: Integrate authentication router into application
+  ([`ff07a3b`](https://github.com/gsinghjay/mvp_qr_gen/commit/ff07a3b4d00155d478f2a90d4ef79cce7bdac314))
+
+### Testing
+
+- **auth**: Add comprehensive tests for SSO endpoints
+  ([`4d8646f`](https://github.com/gsinghjay/mvp_qr_gen/commit/4d8646f16eeb9508203a990379d3148151388c2e))
+
+
 ## v0.11.0 (2025-03-12)
 
 ### Documentation
