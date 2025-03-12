@@ -1,13 +1,14 @@
 # QR Code Generator
 
-A robust QR code generation and management API built with FastAPI and SQLite, featuring both static and dynamic QR codes with redirect URL support and scan tracking.
+A robust QR code generation and management API built with FastAPI and SQLite, featuring both static and dynamic QR codes with redirect URL support, scan tracking, and Microsoft Azure AD authentication.
 
 ## Features
 
 - **Static QR Codes**: Generate permanent QR codes with customizable appearance
 - **Dynamic QR Codes**: Create scannable codes with updatable redirect URLs
 - **Scan Tracking**: Monitor usage with scan count and timestamp tracking
-- **Zero-Auth Architecture**: Security through network isolation and proper request validation
+- **Microsoft Azure AD Authentication**: Secure your QR codes with Single Sign-On (SSO)
+- **User-Associated QR Codes**: Track which user created each QR code
 - **Docker & Traefik Integration**: Production-ready deployment with HTTPS support
 - **SQLite Optimization**: WAL mode, connection pooling, and performance tuning
 - **Comprehensive API**: Well-documented endpoints with proper validation and error handling
@@ -18,7 +19,8 @@ To run the QR Code Generator locally using Docker Compose:
 
 1. Ensure Docker and Docker Compose are installed
 2. Clone the repository
-3. Run: `docker-compose up --build`
+3. Configure Azure AD credentials (see Authentication Setup below)
+4. Run: `docker-compose up --build`
 
 The application will be available at:
 - Web interface: `https://localhost/`
@@ -37,6 +39,34 @@ The application runs in a multi-container environment:
 | `qr_generator_traefik` | Reverse proxy, TLS termination | 80, 443, 8080, 8082 |
 
 All containers run in an isolated `qr_generator_network` for security.
+
+## Authentication Setup
+
+The application uses Microsoft Azure AD for authentication. To set it up:
+
+1. **Create an Azure AD Application**:
+   - Go to the [Azure Portal](https://portal.azure.com)
+   - Navigate to "Azure Active Directory" > "App registrations"
+   - Create a new registration
+   - Set the redirect URI to match your deployment (e.g., `https://localhost/auth/callback`)
+   - Note the Application (client) ID and create a client secret
+
+2. **Configure Environment Variables**:
+   Add the following to your environment or docker-compose.yml:
+   ```yaml
+   environment:
+     - AZURE_CLIENT_ID=your-client-id
+     - AZURE_CLIENT_SECRET=your-client-secret
+     - AZURE_TENANT_ID=your-tenant-id
+     - REDIRECT_URI=https://localhost/auth/callback
+     - SECRET_KEY=your-secure-secret-key
+   ```
+
+3. **Authentication Endpoints**:
+   - `/auth/login`: Redirects to Microsoft login page
+   - `/auth/callback`: Processes OAuth response
+   - `/auth/logout`: Clears authentication state
+   - `/auth/me`: Returns current user information (protected)
 
 ## Infrastructure Architecture
 
@@ -103,6 +133,13 @@ flowchart TD
 
 ### API Endpoints
 
+#### Authentication
+
+- **GET /auth/login**: Redirects to Microsoft login page
+- **GET /auth/callback**: Processes OAuth response from Microsoft
+- **GET /auth/logout**: Clears authentication state
+- **GET /auth/me**: Returns current user information (protected)
+
 #### QR Code Management
 
 - **GET /api/v1/qr**: List QR codes with pagination and filtering
@@ -142,6 +179,11 @@ services:
     environment:
       - DATABASE_URL=sqlite:////app/data/qr_codes.db
       - ENVIRONMENT=${ENVIRONMENT:-development} # switch to production for deployment
+      - AZURE_CLIENT_ID=your-client-id
+      - AZURE_CLIENT_SECRET=your-client-secret
+      - AZURE_TENANT_ID=your-tenant-id
+      - REDIRECT_URI=https://localhost/auth/callback
+      - SECRET_KEY=your-secure-secret-key
     volumes:
       - ./data:/app/data  # Database persistence
       - ./logs:/logs      # Log persistence
@@ -157,6 +199,7 @@ For production deployment, modify the `docker-compose.yml` file to remove the ap
 
 ### Environment Variables
 
+#### General Configuration
 - **`DATABASE_URL`**: Database connection string (default: `sqlite:///./data/qr_codes.db`)
 - **`ENVIRONMENT`**: `development` or `production` (default: `development`)
 - **`DEBUG`**: Enable debug mode (default: `False`)
@@ -166,6 +209,18 @@ For production deployment, modify the `docker-compose.yml` file to remove the ap
 - **`ENABLE_METRICS`**: Enable metrics endpoint (default: `True`)
 - **`ENABLE_LOGGING`**: Enable request logging (default: `True`)
 
+#### Authentication Configuration
+- **`AZURE_CLIENT_ID`**: Microsoft application client ID
+- **`AZURE_CLIENT_SECRET`**: Microsoft application client secret
+- **`AZURE_TENANT_ID`**: Microsoft tenant ID (default: "common")
+- **`REDIRECT_URI`**: Callback URL (e.g., "https://localhost/auth/callback")
+- **`SECRET_KEY`**: JWT signing key (must be secure in production)
+- **`SESSION_COOKIE_NAME`**: Name of the cookie storing the session token (default: "auth_token")
+- **`SESSION_COOKIE_SECURE`**: Whether to use secure cookies (default: True in production)
+- **`SESSION_COOKIE_HTTPONLY`**: Whether cookies are HTTP-only (default: True)
+- **`SESSION_COOKIE_SAMESITE`**: SameSite cookie policy (default: "lax")
+- **`SESSION_COOKIE_MAX_AGE`**: Cookie expiration in seconds (default: 3600)
+
 ### Directory Structure
 
 - **`data/`**: Contains SQLite database and backups
@@ -174,13 +229,15 @@ For production deployment, modify the `docker-compose.yml` file to remove the ap
 
 ## Security Architecture
 
-The application implements a zero-auth architecture that leverages:
+The application implements a comprehensive security architecture:
 
-1. **Docker Network Isolation**: Services run in an isolated network with Traefik controlling external access
-2. **CORS Configuration**: Properly configured to restrict access in production
-3. **Security Headers**: Comprehensive set of security headers to prevent common attacks
-4. **Database Operations**: Atomic updates and proper transaction management
-5. **TLS Encryption**: HTTPS with proper certificate handling through Traefik
+1. **Microsoft Azure AD Authentication**: Secure user authentication with SSO
+2. **JWT Token Management**: Secure token generation and validation
+3. **Docker Network Isolation**: Services run in an isolated network with Traefik controlling external access
+4. **CORS Configuration**: Properly configured to restrict access in production
+5. **Security Headers**: Comprehensive set of security headers to prevent common attacks
+6. **Database Operations**: Atomic updates and proper transaction management
+7. **TLS Encryption**: HTTPS with proper certificate handling through Traefik
 
 ## Development and Testing
 
@@ -229,6 +286,15 @@ docker-compose exec api pytest -m "integration" -v
 docker-compose exec api pytest --cov --cov-report=html -v
 ```
 
+#### Testing Authentication Flow
+
+You can use the included test script to verify the authentication flow:
+
+```bash
+# Run authentication test script
+docker-compose exec api /app/scripts/test_auth_flow.sh
+```
+
 #### Executing Database Management Scripts
 
 ```bash
@@ -260,6 +326,16 @@ To-do:
 - **Add Connection Pooling**: Optimize connection management
 - **Implement Backup Strategy**: Set up daily backups with rotation
 - **Add Database Integrity Checks**: Regular validation of database health
+
+## Troubleshooting Authentication
+
+If you encounter issues with authentication:
+
+1. **Redirect URI Mismatch**: Ensure the redirect URI in Azure AD matches exactly what's configured in your application
+2. **Environment Variables**: Verify all required authentication environment variables are set correctly
+3. **HTTPS Configuration**: For local development, ensure `allow_insecure_http=True` is set if using HTTP
+4. **Logs**: Check the application logs for authentication-related errors
+5. **Token Validation**: Verify the JWT token is being properly validated
 
 ## License
 
