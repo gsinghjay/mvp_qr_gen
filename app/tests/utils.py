@@ -16,6 +16,73 @@ from ..models.qr import QRCode
 from ..schemas.qr.models import QRType
 
 
+def validate_color_code(color: str) -> bool:
+    """
+    Validate a color code string.
+    
+    Args:
+        color: The color code to validate (e.g., "#FF0000")
+        
+    Returns:
+        True if valid, raises AssertionError otherwise
+    """
+    assert color.startswith("#"), "Color code must start with #"
+    assert len(color) in [4, 7], "Color code must be 4 or 7 characters long"
+    try:
+        # Remove # and try to convert to integer
+        int(color[1:], 16)
+        return True
+    except ValueError:
+        assert False, f"Invalid hex color code: {color}"
+
+
+def validate_redirect_url(url: str) -> bool:
+    """
+    Validate a redirect URL for dynamic QR codes.
+    
+    Args:
+        url: The URL to validate
+        
+    Returns:
+        True if valid, raises AssertionError otherwise
+    """
+    assert url.startswith(("http://", "https://")), "URL must start with http:// or https://"
+    # Basic URL format validation
+    parts = url.split("://", 1)
+    assert len(parts) == 2, "Invalid URL format"
+    assert len(parts[1]) > 0, "URL must have a domain"
+    return True
+
+
+def validate_scan_statistics(data: Dict[str, Any]) -> bool:
+    """
+    Validate QR code scan statistics data.
+    
+    Args:
+        data: The scan statistics data to validate
+        
+    Returns:
+        True if valid, raises AssertionError otherwise
+    """
+    # Check required fields
+    required_fields = ["scan_count", "last_scan_at"]
+    for field in required_fields:
+        assert field in data, f"Required field '{field}' missing from scan statistics"
+    
+    # Validate scan count
+    assert isinstance(data["scan_count"], int), "Scan count must be an integer"
+    assert data["scan_count"] >= 0, "Scan count cannot be negative"
+    
+    # Validate last scan timestamp if present and not null
+    if data["last_scan_at"] is not None:
+        try:
+            datetime.fromisoformat(data["last_scan_at"].replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            assert False, f"Invalid last_scan_at date format: {data['last_scan_at']}"
+    
+    return True
+
+
 def validate_qr_code_data(data: Dict[str, Any], expected: Optional[Dict[str, Any]] = None) -> bool:
     """
     Validate QR code data from API responses.
@@ -37,32 +104,29 @@ def validate_qr_code_data(data: Dict[str, Any], expected: Optional[Dict[str, Any
     assert isinstance(data["content"], str), "Content should be a string"
     assert data["qr_type"] in ["static", "dynamic"], f"Invalid QR type: {data['qr_type']}"
     
-    # Validate colors if present
+    # Validate colors if present using validate_color_code
     if "fill_color" in data:
-        assert data["fill_color"].startswith("#"), "Fill color should be a hex color code"
+        validate_color_code(data["fill_color"])
     if "back_color" in data:
-        assert data["back_color"].startswith("#"), "Back color should be a hex color code"
+        validate_color_code(data["back_color"])
     
-    # Check scan_count is an integer if present
+    # Validate scan statistics if present
     if "scan_count" in data:
-        assert isinstance(data["scan_count"], int), "Scan count should be an integer"
+        validate_scan_statistics({
+            "scan_count": data["scan_count"],
+            "last_scan_at": data.get("last_scan_at")
+        })
     
-    # Check redirect_url if QR type is dynamic
+    # Check redirect_url if QR type is dynamic using validate_redirect_url
     if data["qr_type"] == "dynamic":
         assert "redirect_url" in data, "Dynamic QR code should have redirect_url"
-        assert data["redirect_url"].startswith(("http://", "https://")), "Redirect URL should be a valid URL"
+        validate_redirect_url(data["redirect_url"])
     
-    # Validate date formats
+    # Validate created_at date format
     try:
         datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))
     except (ValueError, TypeError):
         assert False, f"Invalid created_at date format: {data['created_at']}"
-    
-    if "last_scan_at" in data and data["last_scan_at"] is not None:
-        try:
-            datetime.fromisoformat(data["last_scan_at"].replace("Z", "+00:00"))
-        except (ValueError, TypeError):
-            assert False, f"Invalid last_scan_at date format: {data['last_scan_at']}"
     
     # Check expected values if provided
     if expected:
