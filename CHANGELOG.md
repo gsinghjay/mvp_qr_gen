@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v0.11.0 (2025-03-12)
+
+### Documentation
+
+- **tests**: Enhance testing documentation with utility function examples
+  ([`45b7645`](https://github.com/gsinghjay/mvp_qr_gen/commit/45b764596c2fc2aee3b6b21492fd80e22a3f0838))
+
+### Features
+
+- **tests**: Add validation utility functions for colors, URLs, and scan statistics
+  ([`6f95507`](https://github.com/gsinghjay/mvp_qr_gen/commit/6f9550721a5099cf676e38b8d2b201f9f6ee2b4b))
+
+- **tests**: Add validation utility functions for colors, URLs, and scan statistics
+  ([`c875961`](https://github.com/gsinghjay/mvp_qr_gen/commit/c875961d35efccf2e23f82998bf05f4a54291be7))
+
+### Refactoring
+
+- **tests**: Update test files to use new validation utilities
+  ([`a8e450a`](https://github.com/gsinghjay/mvp_qr_gen/commit/a8e450a805c59b88d0a0c4edde4e414aa42de109))
+
+
 ## v0.10.0 (2025-03-12)
 
 ### Chores
