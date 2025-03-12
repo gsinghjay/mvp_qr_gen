@@ -41,10 +41,10 @@ class ColorValidator:
 
 class HTTPError(BaseModel):
     """Schema for HTTP error responses."""
-    
+
     detail: str = Field(..., description="Error message")
     status_code: int = Field(..., description="HTTP status code")
-    
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -52,4 +52,4 @@ class HTTPError(BaseModel):
                 "status_code": 500,
             }
         }
-    ) 
+    )

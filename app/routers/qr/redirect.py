@@ -3,18 +3,16 @@ Router for QR code redirects.
 """
 
 from datetime import UTC, datetime
-import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks, status
-from fastapi.responses import RedirectResponse
-
-from ...dependencies import get_qr_service
 from ...database import get_db
+from ...dependencies import get_qr_service
 from ...models.qr import QRCode
 from ...services.qr_service import QRCodeService
-from ...database import with_retry
 from .common import logger
 
 router = APIRouter(
@@ -43,7 +41,7 @@ async def redirect_qr(
     request: Request,
     background_tasks: BackgroundTasks,
     qr_service: QRCodeService = Depends(get_qr_service),
-    db = Depends(get_db),
+    db=Depends(get_db),
 ):
     """
     Redirect a QR code scan to the target URL.
@@ -69,7 +67,7 @@ async def redirect_qr(
             qr = result.scalars().first()
         except SQLAlchemyError as e:
             logger.error(f"Database error finding QR code: {str(e)}")
-            raise HTTPException(status_code=500, detail="Database error finding QR code") 
+            raise HTTPException(status_code=500, detail="Database error finding QR code")
 
         if not qr:
             logger.warning(f"QR code not found for path: {full_path}")
@@ -82,21 +80,17 @@ async def redirect_qr(
 
         # Get redirect URL before any background tasks run
         redirect_url = qr.redirect_url
-        
+
         # Update scan statistics in a background task to improve response time
         timestamp = datetime.now(UTC)
-        
+
         # Get client information for analytics
         client_ip = request.client.host if request.client else "unknown"
         user_agent = request.headers.get("user-agent", "unknown")
-        
+
         # Add the background task to update scan statistics with client info
         background_tasks.add_task(
-            qr_service.update_scan_statistics, 
-            qr.id, 
-            timestamp,
-            client_ip,
-            user_agent
+            qr_service.update_scan_statistics, qr.id, timestamp, client_ip, user_agent
         )
 
         # Log the scan event

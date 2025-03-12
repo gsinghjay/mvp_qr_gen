@@ -2,29 +2,21 @@
 API version 1 router.
 """
 
-import logging
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import Response
 
 from ...core.exceptions import (
-    QRCodeNotFoundError,
-    QRCodeValidationError,
-    DatabaseError,
     InvalidQRTypeError,
-    RedirectURLError,
-    ResourceConflictError,
 )
 from ...dependencies import get_qr_service
 from ...schemas import (
-    QRCodeList, 
-    QRCodeResponse, 
-    QRCodeUpdate,
-    QRListParameters,
+    QRCodeList,
+    QRCodeResponse,
     QRImageParameters,
+    QRListParameters,
     QRUpdateParameters,
 )
 from ...services.qr_service import QRCodeService
-from ..qr.common import logger
 
 router = APIRouter(
     prefix="/v1",
@@ -38,7 +30,7 @@ router = APIRouter(
 
 
 @router.get(
-    "/qr", 
+    "/qr",
     response_model=QRCodeList,
     responses={
         200: {"description": "List of QR codes"},
@@ -67,20 +59,20 @@ async def list_qr_codes(
     # Validate QR type if provided
     if params.qr_type and params.qr_type.value not in ["static", "dynamic"]:
         raise InvalidQRTypeError(f"Invalid QR type: {params.qr_type}")
-        
+
     qr_codes, total = qr_service.list_qr_codes(
-        skip=params.skip, 
-        limit=params.limit, 
-        qr_type=params.qr_type.value if params.qr_type else None
+        skip=params.skip,
+        limit=params.limit,
+        qr_type=params.qr_type.value if params.qr_type else None,
     )
 
     # Convert QRCode model objects to dictionaries for Pydantic validation
     qr_code_dicts = [qr.to_dict() for qr in qr_codes]
-    
+
     # Calculate page and page_size for pagination
     page = (params.skip // params.limit) + 1 if params.limit > 0 else 1
     page_size = params.limit
-        
+
     return {
         "items": qr_code_dicts,
         "total": total,
@@ -92,7 +84,7 @@ async def list_qr_codes(
 
 
 @router.get(
-    "/qr/{qr_id}", 
+    "/qr/{qr_id}",
     response_model=QRCodeResponse,
     responses={
         200: {"description": "QR code details"},
@@ -158,7 +150,7 @@ async def get_qr_image(
     """
     # Get the QR code
     qr = qr_service.get_qr_by_id(qr_id)
-    
+
     # Generate the QR code image
     return qr_service.generate_qr(
         data=qr.content,
@@ -172,7 +164,7 @@ async def get_qr_image(
 
 
 @router.put(
-    "/qr/{qr_id}", 
+    "/qr/{qr_id}",
     response_model=QRCodeResponse,
     responses={
         200: {"description": "QR code updated successfully"},
@@ -209,8 +201,8 @@ async def update_qr(
 
 
 @router.delete(
-    "/qr/{qr_id}", 
-    status_code=status.HTTP_204_NO_CONTENT, 
+    "/qr/{qr_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
     responses={
         204: {"description": "QR code deleted successfully"},

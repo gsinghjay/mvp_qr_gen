@@ -5,10 +5,11 @@ QR code database models.
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text
 from sqlalchemy.sql import func
 
 from app.database import Base
+
 from .base import UTCDateTime
 
 
@@ -86,4 +87,4 @@ class QRCode(Base):
             "back_color": self.back_color,
             "size": self.size,
             "border": self.border,
-        } 
+        }

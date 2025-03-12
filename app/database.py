@@ -5,14 +5,13 @@ Database configuration and session management for the QR code generator applicat
 import logging
 import os
 import time
-import sqlite3
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 logger = logging.getLogger(__name__)
 
@@ -35,26 +34,26 @@ def configure_sqlite_connection(dbapi_connection, connection_record):
     """Configure SQLite connection with appropriate PRAGMAs."""
     try:
         cursor = dbapi_connection.cursor()
-        
+
         # Essential settings
         cursor.execute("PRAGMA foreign_keys=ON")
-        
+
         # Performance optimizations
         cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for better concurrency
         cursor.execute("PRAGMA synchronous=NORMAL")  # Balance between safety and performance
-        
+
         # Additional optimizations
         cursor.execute("PRAGMA temp_store=MEMORY")  # Store temporary tables in memory
         cursor.execute("PRAGMA mmap_size=30000000")  # Use memory-mapped I/O (30MB)
         cursor.execute("PRAGMA cache_size=-6000")  # Use 6MB page cache (negative = kilobytes)
-        
+
         # Production-specific settings
         if os.getenv("ENVIRONMENT", "development") == "production":
             cursor.execute("PRAGMA busy_timeout=30000")  # Wait up to 30 seconds for locks
             cursor.execute("PRAGMA wal_autocheckpoint=1000")  # Checkpoint WAL after 1000 pages
         else:
             cursor.execute("PRAGMA busy_timeout=5000")  # Wait up to 5 seconds for locks
-            
+
         cursor.close()
     except Exception as e:
         logger.error(f"Error configuring SQLite connection: {e}")
@@ -64,6 +63,7 @@ def configure_sqlite_connection(dbapi_connection, connection_record):
 def add_sqlite_functions(dbapi_connection, connection_record):
     """Add custom functions to SQLite."""
     try:
+
         def utcnow():
             """Return current UTC datetime with timezone info."""
             return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S.%f%z")
@@ -150,6 +150,7 @@ class Base(DeclarativeBase):
 # Retry decorator for database operations
 def with_retry(max_retries=3, retry_delay=0.1):
     """Decorator to retry database operations on transient errors."""
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             retries = 0
@@ -161,14 +162,16 @@ def with_retry(max_retries=3, retry_delay=0.1):
                     if "database is locked" in str(e) and retries < max_retries - 1:
                         retries += 1
                         logger.warning(f"Database locked, retrying ({retries}/{max_retries}): {e}")
-                        time.sleep(retry_delay * (2 ** retries))  # Exponential backoff
+                        time.sleep(retry_delay * (2**retries))  # Exponential backoff
                     else:
                         raise
                 except Exception:
                     # Don't retry on other errors
                     raise
             return func(*args, **kwargs)  # Last attempt
+
         return wrapper
+
     return decorator
 
 

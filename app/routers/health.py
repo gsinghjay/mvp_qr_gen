@@ -3,12 +3,7 @@ Health check router for the application.
 """
 
 import logging
-import os
-import platform
-import time
-from datetime import UTC, datetime, timedelta
 
-import psutil
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -60,4 +55,4 @@ def health_check(db: Session = Depends(get_db)) -> HealthResponse:
             detail="Service is currently unhealthy. Please check the logs for more details.",
         )
 
-    return health_status 
+    return health_status

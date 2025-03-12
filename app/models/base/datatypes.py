@@ -2,7 +2,7 @@
 Custom database types for SQLAlchemy models.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC
 
 from sqlalchemy import DateTime, TypeDecorator
 
@@ -30,4 +30,4 @@ class UTCDateTime(TypeDecorator):
             if value.tzinfo is None:
                 value = value.replace(tzinfo=UTC)
             return value.astimezone(UTC)
-        return value 
+        return value

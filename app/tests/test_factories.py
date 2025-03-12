@@ -8,9 +8,9 @@ in other tests to generate test data consistently.
 import pytest
 from sqlalchemy.orm import Session
 
-from .factories import Factory, QRCodeFactory
 from ..models.qr import QRCode
 from ..schemas.common import QRType
+from .factories import Factory, QRCodeFactory
 
 
 class TestBaseFactory:
@@ -18,20 +18,22 @@ class TestBaseFactory:
 
     def test_factory_requires_model_class(self):
         """Test that a factory must have a model_class attribute."""
+
         # Create a subclass without setting model_class
         class BadFactory(Factory):
             pass
-        
+
         # Should raise AttributeError when used
         with pytest.raises(AttributeError):
             BadFactory().build()
 
     def test_build_method_creates_instance(self):
         """Test that build() creates an instance but doesn't save it."""
+
         # Create a factory with a model class
         class TestFactory(Factory[QRCode]):
             model_class = QRCode
-            
+
             def _get_default_attributes(self):
                 return {
                     "content": "test",
@@ -39,10 +41,10 @@ class TestBaseFactory:
                     "fill_color": "#000000",
                     "back_color": "#FFFFFF",
                 }
-        
+
         # Build an instance
         instance = TestFactory().build()
-        
+
         # Should be a QRCode
         assert isinstance(instance, QRCode)
         assert instance.content == "test"
@@ -55,7 +57,7 @@ class TestQRCodeFactory:
     def test_build_creates_unsaved_instance(self):
         """Test that build() creates a QRCode but doesn't save it."""
         qr = QRCodeFactory().build()
-        
+
         assert isinstance(qr, QRCode)
         assert qr.content is not None
         assert qr.qr_type == QRType.STATIC.value
@@ -63,7 +65,7 @@ class TestQRCodeFactory:
     def test_build_static_creates_static_qr(self):
         """Test that build_static() creates a static QRCode."""
         qr = QRCodeFactory().build_static()
-        
+
         assert isinstance(qr, QRCode)
         assert qr.qr_type == QRType.STATIC.value
         assert qr.redirect_url is None
@@ -71,7 +73,7 @@ class TestQRCodeFactory:
     def test_build_dynamic_creates_dynamic_qr(self):
         """Test that build_dynamic() creates a dynamic QRCode."""
         qr = QRCodeFactory().build_dynamic()
-        
+
         assert isinstance(qr, QRCode)
         assert qr.qr_type == QRType.DYNAMIC.value
         assert qr.redirect_url is not None
@@ -91,7 +93,7 @@ class TestQRCodeFactory:
         """Test that create() saves an instance to the database."""
         factory = QRCodeFactory(test_db)
         qr = factory.create()
-        
+
         # Should be able to query it
         db_qr = test_db.query(QRCode).filter_by(id=qr.id).first()
         assert db_qr is not None
@@ -101,10 +103,10 @@ class TestQRCodeFactory:
         """Test that create_static() saves a static QRCode."""
         factory = QRCodeFactory(test_db)
         qr = factory.create_static()
-        
+
         assert qr.qr_type == QRType.STATIC.value
         assert qr.redirect_url is None
-        
+
         # Should be able to query it
         db_qr = test_db.query(QRCode).filter_by(id=qr.id).first()
         assert db_qr is not None
@@ -114,10 +116,10 @@ class TestQRCodeFactory:
         """Test that create_dynamic() saves a dynamic QRCode."""
         factory = QRCodeFactory(test_db)
         qr = factory.create_dynamic()
-        
+
         assert qr.qr_type == QRType.DYNAMIC.value
         assert qr.redirect_url is not None
-        
+
         # Should be able to query it
         db_qr = test_db.query(QRCode).filter_by(id=qr.id).first()
         assert db_qr is not None
@@ -128,10 +130,10 @@ class TestQRCodeFactory:
         """Test that create_with_scans() adds scan history."""
         factory = QRCodeFactory(test_db)
         qr = factory.create_with_scans(scan_count=5)
-        
+
         assert qr.scan_count == 5
         assert qr.last_scan_at is not None
-        
+
         # Should be able to query it
         db_qr = test_db.query(QRCode).filter_by(id=qr.id).first()
         assert db_qr is not None
@@ -142,11 +144,11 @@ class TestQRCodeFactory:
         """Test that create_batch() creates multiple QRCode instances."""
         factory = QRCodeFactory(test_db)
         qrs = factory.create_batch(size=3)
-        
+
         assert len(qrs) == 3
         for qr in qrs:
             assert isinstance(qr, QRCode)
-        
+
         # Should have unique IDs
         ids = [qr.id for qr in qrs]
-        assert len(set(ids)) == 3 
+        assert len(set(ids)) == 3

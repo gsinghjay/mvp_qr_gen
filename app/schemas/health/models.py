@@ -4,7 +4,7 @@ Health check Pydantic models.
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union, Any
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -17,10 +17,7 @@ class SystemMetrics(BaseModel):
     disk_usage: float
     uptime_seconds: float = Field(0.0, description="System uptime in seconds")
 
-    model_config = ConfigDict(
-        populate_by_name=True,
-        extra="allow"
-    )
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     @field_validator("uptime_seconds", mode="before")
     @classmethod
@@ -37,14 +34,11 @@ class ServiceCheck(BaseModel):
     name: str = ""
     status: str
     latency: float = 0.0
-    message: Optional[str] = None
+    message: str | None = None
     last_check: datetime = Field(default_factory=datetime.now)
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
 
-    model_config = ConfigDict(
-        populate_by_name=True,
-        extra="allow"
-    )
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     @field_validator("latency", mode="before")
     @classmethod
@@ -87,9 +81,9 @@ class HealthResponse(BaseModel):
     environment: str = Field(default="development")
     timestamp: datetime = datetime.now()
     uptime_seconds: float = Field(default=0.0, description="Service uptime in seconds")
-    system_metrics: Optional[SystemMetrics] = None
-    services: Optional[Dict[str, ServiceStatus]] = None
-    checks: Optional[Dict[str, ServiceCheck]] = None
+    system_metrics: SystemMetrics | None = None
+    services: dict[str, ServiceStatus] | None = None
+    checks: dict[str, ServiceCheck] | None = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -102,14 +96,14 @@ class HealthResponse(BaseModel):
                     "cpu_usage": 10.5,
                     "memory_usage": 45.2,
                     "disk_usage": 68.3,
-                    "uptime": 3600.5
+                    "uptime": 3600.5,
                 },
                 "services": {
                     "database": {
                         "name": "PostgreSQL",
                         "version": "14.1",
                         "uptime": 3600.5,
-                        "environment": "production"
+                        "environment": "production",
                     }
                 },
                 "checks": [
@@ -118,9 +112,9 @@ class HealthResponse(BaseModel):
                         "status": "pass",
                         "latency": 0.05,
                         "message": "Connected successfully",
-                        "last_check": "2023-01-01T00:00:00"
+                        "last_check": "2023-01-01T00:00:00",
                     }
-                ]
+                ],
             }
         }
-    ) 
+    )

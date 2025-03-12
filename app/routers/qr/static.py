@@ -4,12 +4,6 @@ Router for static QR code operations.
 
 from fastapi import APIRouter, Depends, status
 
-from ...core.exceptions import (
-    QRCodeNotFoundError,
-    QRCodeValidationError,
-    DatabaseError,
-    ResourceConflictError,
-)
 from ...dependencies import get_qr_service
 from ...schemas import QRCodeResponse, StaticQRCreateParameters
 from ...services.qr_service import QRCodeService
@@ -27,7 +21,7 @@ router = APIRouter(
 
 
 @router.post(
-    "", 
+    "",
     response_model=QRCodeResponse,
     status_code=status.HTTP_201_CREATED,
     responses={

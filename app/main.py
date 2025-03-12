@@ -2,7 +2,6 @@
 Main FastAPI application module for the QR code generator.
 """
 
-import importlib
 import logging
 import os
 import uuid
@@ -23,19 +22,19 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .core.config import settings
 from .core.exceptions import (
     AppBaseException,
-    QRCodeNotFoundError,
-    QRCodeValidationError,
     DatabaseError,
     InvalidQRTypeError,
+    QRCodeNotFoundError,
+    QRCodeValidationError,
+    RateLimitExceededError,
     RedirectURLError,
     ResourceConflictError,
-    RateLimitExceededError,
     ServiceUnavailableError,
 )
-from .database import init_db, engine
+from .database import engine, init_db
 from .middleware.logging import LoggingMiddleware
 from .middleware.metrics import MetricsMiddleware
-from .middleware.security import create_security_headers_middleware, create_cors_middleware, create_trusted_hosts_middleware
+from .middleware.security import create_security_headers_middleware
 from .routers import routers
 
 # Configure logging
@@ -44,11 +43,12 @@ logger = logging.getLogger(__name__)
 # Configure static files - ensure correct directory in Docker context
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/static")
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Lifespan event handler for FastAPI application.
-    
+
     This uses the recommended asynccontextmanager approach for handling application
     lifecycle events in FastAPI.
     """
@@ -61,9 +61,9 @@ async def lifespan(app: FastAPI):
         logger.error(f"Error during startup: {e}", exc_info=e)
         # Re-raise to prevent app from starting with uninitialized resources
         raise
-    
+
     yield
-    
+
     # Shutdown
     try:
         # Dispose of database engine connections
@@ -73,10 +73,11 @@ async def lifespan(app: FastAPI):
         logger.error(f"Error during shutdown: {e}", exc_info=e)
         # No need to re-raise during shutdown
 
+
 def create_app() -> FastAPI:
     """
     Create and configure the FastAPI application.
-    
+
     Returns:
         FastAPI: The configured FastAPI application
     """
@@ -93,7 +94,7 @@ def create_app() -> FastAPI:
     )
 
     # Apply middleware directly - order is important (last added = first executed)
-    
+
     # Logging should be last in chain (first to execute) to capture accurate timing
     if settings.ENABLE_LOGGING:
         app.add_middleware(LoggingMiddleware)
@@ -103,11 +104,11 @@ def create_app() -> FastAPI:
     if settings.ENABLE_METRICS:
         app.add_middleware(MetricsMiddleware)
         logger.info("Initialized MetricsMiddleware")
-    
+
     # Security headers
     create_security_headers_middleware(app)
     logger.info("Initialized security headers middleware")
-    
+
     # CORS - Note: In production, Traefik handles CORS, this is for development
     app.add_middleware(
         CORSMiddleware,
@@ -117,14 +118,14 @@ def create_app() -> FastAPI:
         allow_headers=settings.CORS_HEADERS,
     )
     logger.info("Initialized CORS middleware")
-    
+
     # Trusted hosts - Note: In production, Traefik handles host validation
     app.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=settings.TRUSTED_HOSTS,
     )
     logger.info("Initialized TrustedHost middleware")
-    
+
     # GZip compression should be first in chain (last to execute)
     if settings.ENABLE_GZIP:
         app.add_middleware(
@@ -136,12 +137,13 @@ def create_app() -> FastAPI:
     # Include all routers
     for router in routers:
         app.include_router(router)
-    
+
     return app
 
 
 # Create the application
 app = create_app()
+
 
 # Add middleware to force HTTPS for static files
 @app.middleware("http")
@@ -267,20 +269,20 @@ async def add_request_id(request: Request, call_next):
 async def app_exception_handler(request: Request, exc: AppBaseException):
     """
     Handle all application-specific exceptions with a consistent response format.
-    
+
     This handler processes all exceptions that inherit from AppBaseException,
     providing a consistent response format with status code, detail message,
     request path, timestamp, and request ID.
-    
+
     Args:
         request: The request that caused the exception
         exc: The exception instance
-        
+
     Returns:
         JSONResponse with error details
     """
     request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         headers=exc.headers,
@@ -301,16 +303,16 @@ async def app_exception_handler(request: Request, exc: AppBaseException):
 async def qr_code_not_found_exception_handler(request: Request, exc: QRCodeNotFoundError):
     """
     Handle QRCodeNotFoundError with a 404 response.
-    
+
     Args:
         request: The request that caused the exception
         exc: The exception instance
-        
+
     Returns:
         JSONResponse with error details
     """
     request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         headers=exc.headers,
@@ -331,16 +333,16 @@ async def qr_code_not_found_exception_handler(request: Request, exc: QRCodeNotFo
 async def qr_code_validation_exception_handler(request: Request, exc: QRCodeValidationError):
     """
     Handle QRCodeValidationError with a 422 response.
-    
+
     Args:
         request: The request that caused the exception
         exc: The exception instance
-        
+
     Returns:
         JSONResponse with error details
     """
     request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         headers=exc.headers,
@@ -361,17 +363,17 @@ async def qr_code_validation_exception_handler(request: Request, exc: QRCodeVali
 async def database_exception_handler(request: Request, exc: DatabaseError):
     """
     Handle DatabaseError with a 500 response.
-    
+
     Args:
         request: The request that caused the exception
         exc: The exception instance
-        
+
     Returns:
         JSONResponse with error details
     """
     request_id = request.state.request_id if hasattr(request.state, "request_id") else None
     logger.error(f"Database error: {str(exc.detail)}", exc_info=True)
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         headers=exc.headers,
@@ -392,16 +394,16 @@ async def database_exception_handler(request: Request, exc: DatabaseError):
 async def invalid_qr_type_exception_handler(request: Request, exc: InvalidQRTypeError):
     """
     Handle InvalidQRTypeError with a 400 response.
-    
+
     Args:
         request: The request that caused the exception
         exc: The exception instance
-        
+
     Returns:
         JSONResponse with error details
     """
     request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         headers=exc.headers,
@@ -422,16 +424,16 @@ async def invalid_qr_type_exception_handler(request: Request, exc: InvalidQRType
 async def redirect_url_exception_handler(request: Request, exc: RedirectURLError):
     """
     Handle RedirectURLError with a 422 response.
-    
+
     Args:
         request: The request that caused the exception
         exc: The exception instance
-        
+
     Returns:
         JSONResponse with error details
     """
     request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         headers=exc.headers,
@@ -452,16 +454,16 @@ async def redirect_url_exception_handler(request: Request, exc: RedirectURLError
 async def resource_conflict_exception_handler(request: Request, exc: ResourceConflictError):
     """
     Handle ResourceConflictError with a 409 response.
-    
+
     Args:
         request: The request that caused the exception
         exc: The exception instance
-        
+
     Returns:
         JSONResponse with error details
     """
     request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         headers=exc.headers,
@@ -482,16 +484,16 @@ async def resource_conflict_exception_handler(request: Request, exc: ResourceCon
 async def rate_limit_exception_handler(request: Request, exc: RateLimitExceededError):
     """
     Handle RateLimitExceededError with a 429 response.
-    
+
     Args:
         request: The request that caused the exception
         exc: The exception instance
-        
+
     Returns:
         JSONResponse with error details
     """
     request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         headers=exc.headers,
@@ -512,17 +514,17 @@ async def rate_limit_exception_handler(request: Request, exc: RateLimitExceededE
 async def service_unavailable_exception_handler(request: Request, exc: ServiceUnavailableError):
     """
     Handle ServiceUnavailableError with a 503 response.
-    
+
     Args:
         request: The request that caused the exception
         exc: The exception instance
-        
+
     Returns:
         JSONResponse with error details
     """
     request_id = request.state.request_id if hasattr(request.state, "request_id") else None
     logger.error(f"Service unavailable: {str(exc.detail)}", exc_info=True)
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         headers=exc.headers,
