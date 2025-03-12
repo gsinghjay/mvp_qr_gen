@@ -6,7 +6,7 @@ import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Optional, Generator, AsyncGenerator
+from typing import List, Optional, Generator, AsyncGenerator, Dict, Any
 import asyncio
 
 import pytest
@@ -396,3 +396,227 @@ def test_session_factory():
 def override_database_url(monkeypatch):
     """Override database URL settings in app config for testing."""
     monkeypatch.setenv("DATABASE_URL", SQLALCHEMY_DATABASE_URL)
+
+# New fixtures for common test scenarios
+
+@pytest.fixture
+def static_qr(test_db) -> QRCode:
+    """
+    Fixture providing a basic static QR code for testing.
+    
+    Returns:
+        A static QR code instance
+    """
+    return create_test_qr_code(
+        db=test_db,
+        qr_type=QRType.STATIC,
+        content="https://example.com",
+        fill_color="#000000",
+        back_color="#FFFFFF"
+    )
+
+@pytest.fixture
+def dynamic_qr(test_db) -> QRCode:
+    """
+    Fixture providing a basic dynamic QR code for testing.
+    
+    Returns:
+        A dynamic QR code instance
+    """
+    return create_test_qr_code(
+        db=test_db,
+        qr_type=QRType.DYNAMIC,
+        redirect_url="https://example.com/landing",
+        fill_color="#000000",
+        back_color="#FFFFFF"
+    )
+
+@pytest.fixture
+def scanned_qr(test_db) -> QRCode:
+    """
+    Fixture providing a QR code with scan history for testing.
+    
+    Returns:
+        A QR code instance with scan history
+    """
+    return create_test_qr_code(
+        db=test_db,
+        qr_type=QRType.DYNAMIC,
+        redirect_url="https://example.com/scanned",
+        scan_count=10,
+        last_scan_days_ago=2
+    )
+
+@pytest.fixture
+def colored_qr(test_db) -> QRCode:
+    """
+    Fixture providing a QR code with custom colors for testing.
+    
+    Returns:
+        A QR code instance with custom colors
+    """
+    return create_test_qr_code(
+        db=test_db,
+        qr_type=QRType.STATIC,
+        content="https://example.com/colored",
+        fill_color="#FF5733",
+        back_color="#33FF57"
+    )
+
+@pytest.fixture
+def historical_qr(test_db) -> QRCode:
+    """
+    Fixture providing an older QR code for testing date filtering.
+    
+    Returns:
+        An older QR code instance
+    """
+    return create_test_qr_code(
+        db=test_db,
+        qr_type=QRType.STATIC,
+        created_days_ago=30,
+        scan_count=5,
+        last_scan_days_ago=15
+    )
+
+# Fixtures for common API request payloads
+
+@pytest.fixture
+def static_qr_payload() -> Dict[str, Any]:
+    """
+    Fixture providing a payload for creating a static QR code.
+    
+    Returns:
+        Dict with static QR code creation parameters
+    """
+    return {
+        "content": "https://example.com/test",
+        "qr_type": "static",
+        "fill_color": "#000000",
+        "back_color": "#FFFFFF"
+    }
+
+@pytest.fixture
+def dynamic_qr_payload() -> Dict[str, Any]:
+    """
+    Fixture providing a payload for creating a dynamic QR code.
+    
+    Returns:
+        Dict with dynamic QR code creation parameters
+    """
+    return {
+        "redirect_url": "https://example.com/redirect",
+        "qr_type": "dynamic",
+        "fill_color": "#000000",
+        "back_color": "#FFFFFF"
+    }
+
+@pytest.fixture
+def invalid_color_payload() -> Dict[str, Any]:
+    """
+    Fixture providing a payload with invalid color for testing validation.
+    
+    Returns:
+        Dict with invalid color parameters
+    """
+    return {
+        "content": "https://example.com/invalid-color",
+        "qr_type": "static",
+        "fill_color": "invalid-color",
+        "back_color": "#FFFFFF"
+    }
+
+@pytest.fixture
+def invalid_url_payload() -> Dict[str, Any]:
+    """
+    Fixture providing a payload with invalid URL for testing validation.
+    
+    Returns:
+        Dict with invalid URL parameters
+    """
+    return {
+        "redirect_url": "not-a-valid-url",
+        "qr_type": "dynamic",
+        "fill_color": "#000000",
+        "back_color": "#FFFFFF"
+    }
+
+# Fixtures for common client API requests
+
+@pytest.fixture
+def create_static_qr_request(client, static_qr_payload):
+    """
+    Fixture providing a function to create a static QR code via API.
+    
+    Returns:
+        Function that returns response from creating a static QR code
+    """
+    def _create(payload_override=None):
+        payload = static_qr_payload.copy()
+        if payload_override:
+            payload.update(payload_override)
+        return client.post("/api/v1/qr-codes/", json=payload)
+    return _create
+
+@pytest.fixture
+def create_dynamic_qr_request(client, dynamic_qr_payload):
+    """
+    Fixture providing a function to create a dynamic QR code via API.
+    
+    Returns:
+        Function that returns response from creating a dynamic QR code
+    """
+    def _create(payload_override=None):
+        payload = dynamic_qr_payload.copy()
+        if payload_override:
+            payload.update(payload_override)
+        return client.post("/api/v1/qr-codes/", json=payload)
+    return _create
+
+@pytest.fixture
+def get_qr_request(client):
+    """
+    Fixture providing a function to get a QR code by ID via API.
+    
+    Returns:
+        Function that returns response from getting a QR code
+    """
+    def _get(qr_id):
+        return client.get(f"/api/v1/qr-codes/{qr_id}")
+    return _get
+
+@pytest.fixture
+def update_qr_request(client):
+    """
+    Fixture providing a function to update a QR code by ID via API.
+    
+    Returns:
+        Function that returns response from updating a QR code
+    """
+    def _update(qr_id, payload):
+        return client.patch(f"/api/v1/qr-codes/{qr_id}", json=payload)
+    return _update
+
+@pytest.fixture
+def list_qr_request(client):
+    """
+    Fixture providing a function to list QR codes via API with pagination and filters.
+    
+    Returns:
+        Function that returns response from listing QR codes
+    """
+    def _list(params=None):
+        return client.get("/api/v1/qr-codes/", params=params)
+    return _list
+
+@pytest.fixture
+def redirect_qr_request(client):
+    """
+    Fixture providing a function to test QR code redirects.
+    
+    Returns:
+        Function that returns response from QR code redirect
+    """
+    def _redirect(path, follow_redirects=False):
+        return client.get(f"/r/{path}", follow_redirects=follow_redirects)
+    return _redirect
