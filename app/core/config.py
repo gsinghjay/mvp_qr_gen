@@ -28,6 +28,15 @@ class Settings(BaseSettings):
 
     # Logging
     LOG_LEVEL: str = "INFO"
+    
+    # SSO Configuration
+    AZURE_CLIENT_ID: str = ""
+    AZURE_CLIENT_SECRET: str = ""
+    AZURE_TENANT_ID: str = "common"
+    REDIRECT_URI: str = "http://localhost/auth/callback"
+    SESSION_SECRET_KEY: str = "your-secret-key-change-in-production"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ALLOW_INSECURE_HTTP: bool = True  # Only for development
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 

@@ -8,6 +8,12 @@ services:
     environment:
       - DATABASE_URL=sqlite:////app/data/qr_codes.db
       - ENVIRONMENT=${ENVIRONMENT:-development} # switch to production and remove hot-reloading for production
+      # SSO Configuration
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - SESSION_SECRET_KEY=${SESSION_SECRET_KEY}
+      - REDIRECT_URI=${REDIRECT_URI:-http://localhost/auth/callback}
     volumes:
       - ./data:/app/data
       - ./logs:/logs

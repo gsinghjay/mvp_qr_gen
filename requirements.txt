@@ -8,6 +8,8 @@ prometheus-client>=0.19.0  # Latest metrics client
 Pillow>=10.2.0  # Latest Pillow for image processing
 qrcode>=7.4.2  # QR code generation
 psutil>=5.9.8  # System metrics for health checks
+fastapi-sso>=0.10.0  # SSO integration for FastAPI
+python-jose[cryptography]>=3.3.0  # JWT token handling
 
 # Test dependencies
 pytest>=8.0.0
