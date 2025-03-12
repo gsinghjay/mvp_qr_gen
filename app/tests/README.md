@@ -22,6 +22,16 @@ app/tests/
 ├── test_validation_parameterized.py # Parameterized validation tests
 ```
 
+### Purpose of Test Files
+
+* **test_main.py**: Tests all FastAPI endpoints directly, focusing on HTTP aspects and API behavior
+* **test_integration.py**: End-to-end tests that verify complete application workflows
+* **test_middleware.py**: Tests middleware components in isolation and how they transform requests/responses
+* **test_background_tasks.py**: Tests asynchronous background task processing 
+* **test_qr_service.py**: Unit tests for the service layer business logic without API concerns
+* **test_response_models.py**: Tests that focus specifically on response model validation
+* **test_validation_parameterized.py**: Tests input validation using parameterized test cases for efficiency
+
 ## Testing Levels
 
 Our testing strategy includes multiple levels of testing:
@@ -97,7 +107,7 @@ The `conftest.py` file provides common fixtures that should be used across tests
 
 The `utils.py` file provides common utility functions for assertions and validations:
 
-- `validate_qr_code_data`: Validate QR code data structure
+- `validate_qr_code_data`: Validate QR code data from API responses
 - `validate_qr_code_list_response`: Validate list response structure
 - `validate_error_response`: Validate error response structure
 - `assert_successful_response`: Assert successful API response
@@ -105,6 +115,9 @@ The `utils.py` file provides common utility functions for assertions and validat
 - `assert_qr_redirects`: Assert QR code redirects correctly
 - `assert_validation_error`: Assert validation error response
 - `parameterize_test_cases`: Generate parameterized test cases
+- `validate_color_code`: Validate hex color codes used in QR codes
+- `validate_redirect_url`: Validate URLs for dynamic QR codes
+- `validate_scan_statistics`: Validate QR code scan statistics data
 
 ## Best Practices
 
@@ -150,6 +163,44 @@ The `utils.py` file provides common utility functions for assertions and validat
        # Test implementation...
    ```
 
+6. **Separate API and service tests**:
+   ```python
+   # In test_main.py - Test API behavior
+   def test_create_qr_api(client):
+       """Test API endpoint for creating QR codes."""
+       # Test HTTP aspects, status codes, and headers
+
+   # In test_qr_service.py - Test service logic 
+   def test_create_qr_service(test_db):
+       """Test business logic for creating QR codes."""
+       # Test internal logic and database operations
+   ```
+
+7. **Use validation utilities for consistent checking**:
+   ```python
+   # Instead of manually checking color format
+   assert data["fill_color"].startswith("#")
+   
+   # Use the validation utility
+   validate_color_code(data["fill_color"])
+   
+   # Instead of manually checking URL format
+   assert data["redirect_url"].startswith(("http://", "https://"))
+   
+   # Use the validation utility
+   validate_redirect_url(data["redirect_url"])
+   
+   # Instead of manual scan statistics validation
+   assert isinstance(data["scan_count"], int)
+   assert data["scan_count"] >= 0
+   
+   # Use the validation utility
+   validate_scan_statistics({
+       "scan_count": data["scan_count"],
+       "last_scan_at": data.get("last_scan_at")
+   })
+   ```
+
 ### Test Naming Conventions
 
 - Use descriptive test names that indicate what's being tested
@@ -178,6 +229,26 @@ For specific test cases:
 ```bash
 docker compose exec api pytest app/tests/test_main.py::test_create_static_qr -v
 ```
+
+## Test Development Workflow
+
+When adding new features or fixing bugs, follow this workflow:
+
+1. **Write failing tests first**: Create tests that validate the expected behavior
+2. **Implement the feature or fix the bug**: Make the failing tests pass
+3. **Refactor if needed**: Clean up the code without breaking tests
+4. **Add edge cases and error condition tests**: Ensure robust behavior
+
+For new tests, follow these guidelines:
+
+1. **Choose the right test file**: Place your test in the appropriate file based on what you're testing
+2. **Use existing fixtures**: Utilize fixtures from conftest.py rather than creating your own setup code
+3. **Use utility functions**: Leverage utils.py for common validation patterns
+4. **Follow naming conventions**: Name tests clearly as `test_<what>_<condition>`
+5. **Add descriptive docstrings**: Explain what aspect of functionality is being tested
+6. **Test both success and failure paths**: Don't just test the happy path
+7. **Keep tests focused**: Test one thing per test function
+8. **Maintain isolation**: Ensure tests don't affect each other
 
 ## Troubleshooting
 
