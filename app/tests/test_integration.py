@@ -15,6 +15,7 @@ from ..schemas import HealthResponse, HealthStatus, ServiceCheck, ServiceStatus,
 from ..schemas.qr.models import QRType
 from ..services.qr_service import QRCodeService
 from .conftest import create_test_qr_code, create_test_qr_codes
+from .utils import validate_qr_code_data
 
 
 def test_get_qr_service_dependency(test_db):
@@ -74,12 +75,12 @@ def test_static_qr_create_integration():
     # Verify the response
     assert response.status_code == 201  # API returns 201 Created for successful creation
     data = response.json()
-    assert data["qr_type"] == "static"
-    assert data["content"] == "https://example.com"
-    assert data["fill_color"] == "#000000"
-    assert data["back_color"] == "#FFFFFF"
-    assert "id" in data
-    assert "created_at" in data
+    assert validate_qr_code_data(data, {
+        "qr_type": "static",
+        "content": "https://example.com",
+        "fill_color": "#000000",
+        "back_color": "#FFFFFF"
+    })
 
 
 def test_dynamic_qr_create_integration():
@@ -101,12 +102,12 @@ def test_dynamic_qr_create_integration():
     # Verify the response
     assert response.status_code == 201  # API returns 201 Created for successful creation
     data = response.json()
-    assert data["qr_type"] == "dynamic"
-    assert data["redirect_url"] == "https://example.com/"  # API adds trailing slash
-    assert data["fill_color"] == "#000000"
-    assert data["back_color"] == "#FFFFFF"
-    assert "id" in data
-    assert "created_at" in data
+    assert validate_qr_code_data(data, {
+        "qr_type": "dynamic",
+        "redirect_url": "https://example.com/",  # API adds trailing slash
+        "fill_color": "#000000",
+        "back_color": "#FFFFFF"
+    })
 
 
 def test_test_data_generator(test_db):
