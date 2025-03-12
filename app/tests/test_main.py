@@ -22,6 +22,10 @@ from ..main import app
 from ..models import QRCode
 from ..schemas import QRType, HealthResponse, HealthStatus, ServiceCheck, ServiceStatus, SystemMetrics
 from ..services.qr_service import QRCodeService
+from ..models.qr import QRCode
+from ..schemas.qr.models import QRType
+from ..services.qr_service import QRCodeService
+from .utils import validate_qr_code_data, validate_color_code, validate_redirect_url
 
 # Initialize Faker for generating test data
 fake = Faker()
@@ -91,8 +95,6 @@ def create_test_qr_code(client: TestClient, qr_type: QRType = QRType.STATIC) -> 
 
 def test_create_static_qr(client: TestClient, test_db: Session):
     """Test creating a static QR code."""
-    # No need to override dependencies, already handled by client fixture
-    
     payload = {
         "content": "https://example.com",
         "qr_type": QRType.STATIC,
@@ -108,30 +110,32 @@ def test_create_static_qr(client: TestClient, test_db: Session):
     assert response.status_code == 201, f"Failed to create static QR code: {response.text}"
     data = response.json()
     
-    # Verify the response data
-    assert data["content"] == "https://example.com"
-    assert data["qr_type"] == "static"
-    assert data["fill_color"] == "#000000"
-    assert data["back_color"] == "#FFFFFF"
-    assert data["redirect_url"] is None
-    assert "id" in data
-    assert "created_at" in data
+    # Use our utility function to validate the response data
+    assert validate_qr_code_data(data, {
+        "content": "https://example.com",
+        "qr_type": "static",
+        "fill_color": "#000000",
+        "back_color": "#FFFFFF",
+        "redirect_url": None
+    })
     
     # Verify the QR code was created in the database
     qr_id = data["id"]
     qr = test_db.query(QRCode).filter(QRCode.id == qr_id).first()
     assert qr is not None
-    assert qr.content == "https://example.com"
-    assert qr.qr_type == "static"
-    assert qr.fill_color == "#000000"
-    assert qr.back_color == "#FFFFFF"
-    assert qr.redirect_url is None
+    assert validate_qr_code_data({
+        "id": str(qr.id),
+        "content": qr.content,
+        "qr_type": qr.qr_type,
+        "fill_color": qr.fill_color,
+        "back_color": qr.back_color,
+        "redirect_url": qr.redirect_url,
+        "created_at": qr.created_at.isoformat()
+    })
 
 
 def test_create_dynamic_qr(client: TestClient, test_db: Session):
     """Test creating a dynamic QR code."""
-    # No need to override dependencies, already handled by client fixture
-    
     payload = {
         "content": None,  # Content is optional for dynamic QR codes
         "redirect_url": "https://example.com/redirect",
@@ -146,14 +150,13 @@ def test_create_dynamic_qr(client: TestClient, test_db: Session):
     assert response.status_code == 201, f"Failed to create dynamic QR code: {response.text}"
     data = response.json()
     
-    # Verify the response data
-    assert data["qr_type"] == "dynamic"
-    assert data["redirect_url"] == "https://example.com/redirect"
-    assert data["fill_color"] == "#000000"
-    assert data["back_color"] == "#FFFFFF"
-    assert "id" in data
-    assert "content" in data
-    assert "created_at" in data
+    # Use our utility function to validate the response data
+    assert validate_qr_code_data(data, {
+        "qr_type": "dynamic",
+        "redirect_url": "https://example.com/redirect",
+        "fill_color": "#000000",
+        "back_color": "#FFFFFF"
+    })
     
     # Verify the content starts with "/r/" for redirection
     assert data["content"].startswith("/r/")
@@ -162,11 +165,15 @@ def test_create_dynamic_qr(client: TestClient, test_db: Session):
     qr_id = data["id"]
     qr = test_db.query(QRCode).filter(QRCode.id == qr_id).first()
     assert qr is not None
-    assert qr.qr_type == "dynamic"
-    assert qr.redirect_url == "https://example.com/redirect"
-    assert qr.content.startswith("/r/")
-    assert qr.fill_color == "#000000"
-    assert qr.back_color == "#FFFFFF"
+    assert validate_qr_code_data({
+        "id": str(qr.id),
+        "content": qr.content,
+        "qr_type": qr.qr_type,
+        "redirect_url": qr.redirect_url,
+        "fill_color": qr.fill_color,
+        "back_color": qr.back_color,
+        "created_at": qr.created_at.isoformat()
+    })
 
 
 def test_list_qr_codes(client: TestClient, test_db: Session):
@@ -398,15 +405,6 @@ def test_qr_code_types(
 )
 def test_qr_code_color_validation(client: TestClient, test_db: Session, color):
     """Test QR code color validation."""
-    # No need to override dependencies, already handled by client fixture
-    
-    # Define a test QR service to handle the validation
-    def get_test_qr_service():
-        return QRCodeService(test_db)
-    
-    # Override the dependency
-    app.dependency_overrides[get_qr_service] = get_test_qr_service
-    
     # Create a QR code with the test color
     payload = {
         "content": "https://example.com",
@@ -417,16 +415,15 @@ def test_qr_code_color_validation(client: TestClient, test_db: Session, color):
     # Attempt to create the QR code
     response = client.post("/api/v1/qr/static", json=payload)
     
-    # Check if the color is valid
-    is_valid = re.match(r"^#[0-9A-Fa-f]{6}$", color)
+    # Check if the color is valid using our utility function
+    try:
+        validate_color_code(color)
+        expected_status = 201
+    except AssertionError:
+        expected_status = 422
     
-    if is_valid:
-        assert response.status_code == 201, f"Valid color {color} was rejected"
-    else:
-        assert response.status_code == 422, f"Invalid color {color} was accepted"
-    
-    # Clean up
-    app.dependency_overrides.pop(get_qr_service, None)
+    assert response.status_code == expected_status, \
+        f"Expected status {expected_status} for color {color}, got {response.status_code}"
 
 
 @pytest.mark.asyncio

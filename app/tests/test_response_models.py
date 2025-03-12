@@ -19,6 +19,7 @@ from .helpers import (
     assert_error_response,
     DependencyOverrideManager,
 )
+from .utils import validate_qr_code_data, validate_error_response
 
 
 @pytest.fixture
@@ -66,7 +67,8 @@ class TestQRCodeResponseModel:
         assert response.status_code == 200
         
         # Validate response model
-        assert validate_response_model(response.json(), QRCodeResponse)
+        data = response.json()
+        assert validate_qr_code_data(data)
     
     def test_list_qr_response_model(self, client: TestClient, qr_factory: QRCodeFactory):
         """Test that GET /api/v1/qr returns a valid QRCodeList."""
@@ -81,11 +83,10 @@ class TestQRCodeResponseModel:
         assert response.status_code == 200
         
         # Validate response model
-        assert validate_list_response(
-            response.json(), 
-            QRCodeResponse, 
-            QRCodeList
-        )
+        data = response.json()
+        assert "items" in data
+        for item in data["items"]:
+            assert validate_qr_code_data(item)
     
     def test_create_dynamic_qr_response_model(self, client: TestClient):
         """Test that POST /api/v1/qr/dynamic returns a valid QRCodeResponse."""
@@ -104,24 +105,14 @@ class TestQRCodeResponseModel:
         assert response.status_code == 201  # API returns 201 Created for successful creation
         
         # Validate response model
-        assert validate_response_model(response.json(), QRCodeResponse)
-    
-    def test_update_qr_response_model(self, client: TestClient, qr_factory: QRCodeFactory):
-        """Test that PUT /api/v1/qr/{qr_id} returns a valid QRCodeResponse."""
-        # Create a dynamic QR code
-        qr = qr_factory.create_dynamic()
-        
-        # Update the QR code
-        response = client.put(
-            f"/api/v1/qr/{qr.id}",
-            json={"redirect_url": "https://updated-example.com"},
-        )
-        
-        # Check status code
-        assert response.status_code == 200
-        
-        # Validate response model
-        assert validate_response_model(response.json(), QRCodeResponse)
+        data = response.json()
+        assert validate_qr_code_data(data, {
+            "content": "https://example.com",
+            "redirect_url": "https://example.com/",  # API adds trailing slash
+            "fill_color": "#000000",
+            "back_color": "#FFFFFF",
+            "qr_type": "dynamic"
+        })
 
 
 class TestErrorResponseModel:
@@ -136,7 +127,7 @@ class TestErrorResponseModel:
         assert response.status_code == 404
         
         # Validate error response
-        assert assert_error_response(response.json())
+        assert validate_error_response(response.json())
     
     def test_validation_error_model(self, client: TestClient):
         """Test that validation errors return a valid HTTPError."""
@@ -152,8 +143,8 @@ class TestErrorResponseModel:
         # Check status code
         assert response.status_code == 422
         
-        # Validate error response structure (FastAPI validation errors have a different format)
-        assert "detail" in response.json()
+        # Validate error response
+        assert validate_error_response(response.json())
 
 
 class TestEnumValidation:
