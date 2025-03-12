@@ -14,32 +14,32 @@ This document outlines a direct approach to implementing Single Sign-On (SSO) fo
 - [x] Verify tests pass
 
 ### Task 1.2: Implement SSO Login Endpoints
-- [ ] Write tests for login and callback handlers
-- [ ] Implement `MicrosoftSSO` integration with fastapi-sso
-- [ ] Create login endpoint that redirects to Microsoft
-- [ ] Implement callback endpoint that processes OAuth response
-- [ ] Generate JWT tokens for successful authentication
-- [ ] Store tokens in cookies for authentication state
-- [ ] Test authentication flow with mock responses
-- [ ] Verify tests pass
+- [x] Write tests for login and callback handlers
+- [x] Implement `MicrosoftSSO` integration with fastapi-sso
+- [x] Create login endpoint that redirects to Microsoft
+- [x] Implement callback endpoint that processes OAuth response
+- [x] Generate JWT tokens for successful authentication
+- [x] Store tokens in cookies for authentication state
+- [x] Test authentication flow with mock responses
+- [x] Verify tests pass
 
 ### Task 1.3: Create Authentication Utilities
-- [ ] Write tests for authentication utility functions
-- [ ] Create helper functions for token validation
-- [ ] Implement a FastAPI dependency for requiring authentication
-- [ ] Add user information extraction utilities
-- [ ] Test token validation and extraction
-- [ ] Verify tests pass
+- [x] Write tests for authentication utility functions
+- [x] Create helper functions for token validation
+- [x] Implement a FastAPI dependency for requiring authentication
+- [x] Add user information extraction utilities
+- [x] Test token validation and extraction
+- [x] Verify tests pass
 
 ## 2. Route Protection Implementation
 
 ### Task 2.1: Create Authentication Dependencies
-- [ ] Write tests for authentication dependencies
-- [ ] Create `get_current_user` dependency for protected routes
-- [ ] Implement `get_optional_user` for routes that work with and without auth
-- [ ] Add support for different authentication scopes/roles if needed
-- [ ] Test dependencies with various authentication scenarios
-- [ ] Verify tests pass
+- [x] Write tests for authentication dependencies
+- [x] Create `get_current_user` dependency for protected routes
+- [x] Implement `get_optional_user` for routes that work with and without auth
+- [x] Add support for different authentication scopes/roles if needed
+- [x] Test dependencies with various authentication scenarios
+- [x] Verify tests pass
 
 ### Task 2.2: Set Up Route-Based Authentication
 - [ ] Write tests for protected and public route configurations
@@ -93,11 +93,11 @@ This document outlines a direct approach to implementing Single Sign-On (SSO) fo
 - [ ] Verify tests pass
 
 ### Task 4.2: Implement Logout Integration
-- [ ] Write tests for logout functionality
-- [ ] Add logout endpoint to auth service
+- [x] Write tests for logout functionality
+- [x] Add logout endpoint to auth service
 - [ ] Configure Traefik to handle logout properly
-- [ ] Test complete logout flow
-- [ ] Verify tests pass
+- [x] Test complete logout flow
+- [x] Verify tests pass
 
 ### Task 4.3: Add Login UI Elements
 - [ ] Write tests for UI components
@@ -398,11 +398,11 @@ def get_qr_codes_by_user(self, user_id: str, skip: int = 0, limit: int = 100) ->
 - [ ] Verify all integration tests pass
 
 ### Task 6.2: Write Unit Tests for Auth Components
-- [ ] Create unit tests for token generation and validation
-- [ ] Test auth dependencies with mock requests
-- [ ] Verify error handling for expired/invalid tokens
-- [ ] Test session management functionality
-- [ ] Verify all unit tests pass
+- [x] Create unit tests for token generation and validation
+- [x] Test auth dependencies with mock requests
+- [x] Verify error handling for expired/invalid tokens
+- [x] Test session management functionality
+- [x] Verify all unit tests pass
 
 ### Task 6.3: Document Architecture and Configuration
 - [ ] Create documentation explaining the authentication architecture
