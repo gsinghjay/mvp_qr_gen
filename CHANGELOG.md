@@ -1,6 +1,46 @@
 # CHANGELOG
 
 
+## v0.10.0 (2025-03-12)
+
+### Chores
+
+- Remove obsolete optimization tasks file
+  ([`807064b`](https://github.com/gsinghjay/mvp_qr_gen/commit/807064bfa8caa3afceb0e8a79eb65e6f6e739693))
+
+- Updated docs
+  ([`d06d707`](https://github.com/gsinghjay/mvp_qr_gen/commit/d06d707339b4f98a5c82c104a594f52be3b3cc7c))
+
+### Documentation
+
+- Mark HTTP method decorator task as complete
+  ([`388b56d`](https://github.com/gsinghjay/mvp_qr_gen/commit/388b56d5123d3f66ad8860d4b76b5dca59d3c06b))
+
+- Update task tracking for completed test fixtures
+  ([`f108ad5`](https://github.com/gsinghjay/mvp_qr_gen/commit/f108ad5fc04dcee276228d6405d3cc9672ce49ef))
+
+- **tests**: Add comprehensive testing documentation
+  ([`c99a1f4`](https://github.com/gsinghjay/mvp_qr_gen/commit/c99a1f4b130c0d5389471139119700ca3ad308b6))
+
+### Features
+
+- **tests**: Add comprehensive test fixtures for QR code testing
+  ([`a99f12e`](https://github.com/gsinghjay/mvp_qr_gen/commit/a99f12eab8579215e0bfaf11eef04a9f7447bdb3))
+
+- **tests**: Add reusable test utilities and assertions
+  ([`7b01d4e`](https://github.com/gsinghjay/mvp_qr_gen/commit/7b01d4e8207f62c0cdbbfd227c2f9d9f8872b2c9))
+
+### Refactoring
+
+- Update redirect endpoint with proper status code and response documentation
+  ([`3cb20a9`](https://github.com/gsinghjay/mvp_qr_gen/commit/3cb20a90b2d572753ad6c67bf34eaa7ece81b942))
+
+### Testing
+
+- Add HTTP method decorator tests
+  ([`3008600`](https://github.com/gsinghjay/mvp_qr_gen/commit/3008600c453baa59c0ba8751adf5d571ec1349ac))
+
+
 ## v0.9.0 (2025-03-10)
 
 ### Chores
