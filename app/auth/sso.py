@@ -5,8 +5,8 @@ This module provides integration with Microsoft Azure AD for Single Sign-On (SSO
 """
 
 from datetime import datetime, timedelta, UTC
-from typing import Dict, Optional
-
+from typing import Dict, Optional, List
+import httpx
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from fastapi_sso.sso.microsoft import MicrosoftSSO
@@ -22,6 +22,7 @@ class User(BaseModel):
     id: str
     email: str
     display_name: str
+    groups: List[str] = []
     
     @property
     def identity(self) -> str:
@@ -40,13 +41,60 @@ def get_microsoft_sso() -> MicrosoftSSO:
     Returns:
         MicrosoftSSO: A configured Microsoft SSO client.
     """
+    # Include GroupMember.Read.All in the scopes
+    scope = "openid profile email User.Read GroupMember.Read.All"
+    
     return MicrosoftSSO(
         client_id=settings.AZURE_CLIENT_ID,
         client_secret=settings.AZURE_CLIENT_SECRET,
         tenant=settings.AZURE_TENANT_ID,
         redirect_uri=settings.REDIRECT_URI,
         allow_insecure_http=settings.ENVIRONMENT != "production",
+        scope=scope
     )
+
+
+async def get_user_groups(access_token: str) -> List[str]:
+    """
+    Fetch the groups that the user is a member of using Microsoft Graph API.
+    
+    Args:
+        access_token: The Microsoft Graph API access token.
+        
+    Returns:
+        List[str]: List of group IDs the user is a member of.
+        
+    Raises:
+        HTTPException: If the API request fails.
+    """
+    try:
+        # Microsoft Graph API endpoint for user's group memberships
+        graph_api_url = "https://graph.microsoft.com/v1.0/me/memberOf"
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                graph_api_url,
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            
+            if response.status_code != 200:
+                # Log the error but don't fail the authentication
+                print(f"Failed to fetch user groups: {response.status_code}, {response.text}")
+                return []
+            
+            data = response.json()
+            
+            # Extract group IDs from the response
+            groups = []
+            for item in data.get("value", []):
+                if item.get("@odata.type", "").endswith("group"):
+                    groups.append(item.get("id"))
+            
+            return groups
+    except Exception as e:
+        # Log the error but don't fail the authentication
+        print(f"Error fetching user groups: {str(e)}")
+        return []
 
 
 def create_access_token(data: Dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -98,13 +146,48 @@ async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)
         user_id = payload.get("sub")
         email = payload.get("email")
         name = payload.get("name")
+        groups = payload.get("groups", [])
         
         if user_id is None or email is None:
             raise credentials_exception
             
-        return User(id=user_id, email=email, display_name=name)
+        return User(id=user_id, email=email, display_name=name, groups=groups)
     except JWTError:
         raise credentials_exception
+
+
+def is_user_in_group(user: User, group_id: str) -> bool:
+    """
+    Check if a user is a member of a specific group.
+    
+    Args:
+        user: The user to check.
+        group_id: The group ID to check membership for.
+        
+    Returns:
+        bool: True if the user is a member of the group, False otherwise.
+    """
+    return group_id in user.groups
+
+
+def requires_group(group_id: str):
+    """
+    Dependency factory to require membership in a specific group.
+    
+    Args:
+        group_id: The group ID that is required for access.
+        
+    Returns:
+        callable: A dependency that checks if the current user is in the specified group.
+    """
+    async def dependency(current_user: User = Depends(get_current_user)):
+        if not is_user_in_group(current_user, group_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied: User is not a member of the required group"
+            )
+        return current_user
+    return dependency
 
 
 async def get_optional_user(request: Request, token: str = Depends(oauth2_scheme)) -> Optional[User]:
