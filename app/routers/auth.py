@@ -4,8 +4,9 @@ Authentication router for the FastAPI application.
 This module provides endpoints for authentication using Microsoft Azure AD.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Annotated
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -18,6 +19,8 @@ from app.auth.sso import (
     get_current_user,
     get_microsoft_sso,
     get_optional_user,
+    get_user_groups,
+    requires_group,
 )
 from app.core.config import settings
 
@@ -68,12 +71,22 @@ async def callback(request: Request):
             detail="Authentication failed"
         )
     
-    # Create access token
+    # Get the access token from the user object provided by fastapi-sso
+    # This is needed to call the Microsoft Graph API
+    ms_access_token = getattr(user, "access_token", None)
+    
+    # Fetch user groups if we have an access token
+    groups = []
+    if ms_access_token:
+        groups = await get_user_groups(ms_access_token)
+    
+    # Create access token with groups included
     access_token = create_access_token(
         data={
             "sub": user.id,
             "email": user.email,
-            "name": user.display_name
+            "name": user.display_name,
+            "groups": groups  # Include the groups in the token
         },
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
@@ -87,21 +100,90 @@ async def callback(request: Request):
         secure=settings.ENVIRONMENT == "production",  # Only secure in production
         samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",  # Ensure cookie is available throughout the site
     )
     
     return response
 
 
 @router.get("/logout")
-async def logout():
+async def logout(request: Request):
     """
-    Log out the user by clearing the auth token cookie.
+    Log out the user completely by clearing the auth token cookie,
+    ensuring proper cache invalidation, and redirecting to Azure AD
+    logout to terminate the SSO session.
     
+    Args:
+        request: The request object
+        
     Returns:
-        RedirectResponse: Redirect to home page.
+        RedirectResponse: Redirect to login page
     """
-    response = RedirectResponse(url="/")
-    response.delete_cookie("auth_token")
+    # First, determine if we need to logout from Azure AD
+    # We need to check if the user is currently authenticated
+    current_token = request.cookies.get("auth_token")
+    
+    # Create response that redirects to login page
+    redirect_url = "/portal-login"
+    
+    # For Azure AD logout
+    # Always perform Azure AD logout if settings are configured, regardless of environment
+    # This is crucial to completely end the SSO session
+    if settings.AZURE_CLIENT_ID and settings.AZURE_TENANT_ID:
+        try:
+            # Azure AD Logout URL (for both B2C and regular Azure AD)
+            azure_logout_base_url = f"https://login.microsoftonline.com/{settings.AZURE_TENANT_ID}/oauth2/v2.0/logout"
+            
+            # The post_logout_redirect_uri must be pre-registered in Azure AD
+            post_logout_redirect_uri = f"{request.base_url.scheme}://{request.base_url.netloc}/portal-login"
+            
+            logout_params = {
+                "client_id": settings.AZURE_CLIENT_ID,
+                "post_logout_redirect_uri": post_logout_redirect_uri
+            }
+            
+            # Update the redirect URL to go to Azure AD logout first
+            # Azure AD will then redirect back to our local login page
+            redirect_url = f"{azure_logout_base_url}?{urlencode(logout_params)}"
+        except Exception as e:
+            # Log the error but continue with local logout
+            print(f"Error creating Azure AD logout URL: {str(e)}")
+    
+    response = RedirectResponse(url=redirect_url)
+    
+    # Clear the auth token cookie with all security properties
+    response.delete_cookie(
+        key="auth_token",
+        path="/",                     # Apply to all paths
+        domain=None,                  # Use the domain from the request
+        secure=settings.ENVIRONMENT == "production",  # Match login security setting
+        httponly=True,                # Not accessible via JavaScript
+        samesite="lax"                # CSRF protection
+    )
+    
+    # Set the cookie with an expired date in the past for browser compatibility
+    expires = datetime.now(UTC) - timedelta(hours=1)
+    response.set_cookie(
+        key="auth_token",
+        value="",                     # Empty value
+        expires=expires.strftime("%a, %d %b %Y %H:%M:%S GMT"),
+        path="/",
+        domain=None,
+        secure=settings.ENVIRONMENT == "production",
+        httponly=True,
+        samesite="lax",
+        max_age=0                     # Expire immediately
+    )
+    
+    # Add cache control headers to prevent caching
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    
+    # Attempt to send Azure AD OIDC end_session_endpoint request
+    # This is another approach to terminate the SSO session
+    # Note: This would typically be done client-side but we're making it server-side for completeness
+    
     return response
 
 
@@ -153,6 +235,7 @@ async def get_scopes():
         "group_scopes_needed": group_scopes,
         "group_scopes_configured": configured_group_scopes,
         "has_group_access": any(scope in configured_scopes for scope in group_scopes),
+        "group_membership_available": "GroupMember.Read.All" in configured_scopes,
         "missing_group_scopes": [scope for scope in group_scopes if scope not in configured_scopes],
         "documentation_url": "https://learn.microsoft.com/en-us/graph/permissions-reference"
     }
@@ -197,4 +280,42 @@ async def read_users_me_debug(request: Request, token: str = Depends(oauth2_sche
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid token format: {str(e)}"
-        ) 
+        )
+
+
+@router.get("/me/groups")
+async def read_user_groups(current_user: Annotated[User, Depends(get_current_user)]):
+    """
+    Get the groups that the current authenticated user is a member of.
+    
+    Args:
+        current_user: The current authenticated user.
+        
+    Returns:
+        dict: The user's group information.
+    """
+    return {
+        "user_id": current_user.id,
+        "email": current_user.email,
+        "groups": current_user.groups,
+        "group_count": len(current_user.groups)
+    }
+
+
+@router.get("/admin-only")
+async def admin_only_endpoint(current_user: Annotated[User, Depends(requires_group("admin-group"))]):
+    """
+    Example endpoint that requires membership in the admin-group.
+    
+    Args:
+        current_user: The current authenticated user who is in the admin-group.
+        
+    Returns:
+        dict: A message confirming the user has admin access.
+    """
+    return {
+        "message": "You have admin access!",
+        "user_id": current_user.id,
+        "email": current_user.email,
+        "admin_access": True
+    }
