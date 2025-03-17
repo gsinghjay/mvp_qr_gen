@@ -64,6 +64,9 @@ async def list_qr_codes(
         skip=params.skip,
         limit=params.limit,
         qr_type=params.qr_type.value if params.qr_type else None,
+        search=params.search,
+        sort_by=params.sort_by,
+        sort_desc=params.sort_desc,
     )
 
     # Convert QRCode model objects to dictionaries for Pydantic validation

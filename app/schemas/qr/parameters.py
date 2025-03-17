@@ -18,6 +18,15 @@ class QRListParameters(BaseModel):
     qr_type: QRType | None = Field(
         default=None, description="Filter by QR code type (static or dynamic)"
     )
+    search: str | None = Field(
+        default=None, description="Search term for filtering content or redirect URL"
+    )
+    sort_by: str | None = Field(
+        default=None, description="Field to sort by (created_at, scan_count, etc.)"
+    )
+    sort_desc: bool = Field(
+        default=False, description="Sort in descending order if true"
+    )
 
 
 class QRImageParameters(BaseModel):

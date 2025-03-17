@@ -13,7 +13,7 @@ import qrcode.image.svg
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
-from sqlalchemy import update
+from sqlalchemy import update, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -550,6 +550,9 @@ class QRCodeService:
         skip: int = 0,
         limit: int = 100,
         qr_type: str | None = None,
+        search: str | None = None,
+        sort_by: str | None = None,
+        sort_desc: bool = False,
     ) -> tuple[list[QRCode], int]:
         """
         List QR codes with pagination and optional filtering.
@@ -558,6 +561,9 @@ class QRCodeService:
             skip: Number of records to skip
             limit: Maximum number of records to return
             qr_type: Optional QR code type to filter by
+            search: Optional search term for filtering content or redirect URL
+            sort_by: Optional field to sort by
+            sort_desc: Sort in descending order if true
 
         Returns:
             A tuple of (list of QR codes, total count)
@@ -575,12 +581,38 @@ class QRCodeService:
                 if qr_type not in [QRType.STATIC.value, QRType.DYNAMIC.value]:
                     raise InvalidQRTypeError(f"Invalid QR type: {qr_type}")
                 query = query.filter(QRCode.qr_type == qr_type)
+                
+            # Apply search if provided
+            if search:
+                search_term = f"%{search}%"
+                query = query.filter(
+                    or_(
+                        QRCode.content.ilike(search_term),
+                        QRCode.redirect_url.ilike(search_term)
+                    )
+                )
 
             # Get total count
             total = query.count()
 
+            # Apply sorting
+            if sort_by:
+                if hasattr(QRCode, sort_by):
+                    sort_column = getattr(QRCode, sort_by)
+                    if sort_desc:
+                        sort_column = sort_column.desc()
+                    else:
+                        sort_column = sort_column.asc()
+                    query = query.order_by(sort_column)
+                else:
+                    # Default sort if invalid column specified
+                    query = query.order_by(QRCode.created_at.desc())
+            else:
+                # Default sort by creation date, newest first
+                query = query.order_by(QRCode.created_at.desc())
+
             # Apply pagination
-            qr_codes = query.order_by(QRCode.created_at.desc()).offset(skip).limit(limit).all()
+            qr_codes = query.offset(skip).limit(limit).all()
 
             return qr_codes, total
         except SQLAlchemyError as e:
