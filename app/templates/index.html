@@ -248,26 +248,27 @@
                             </div>
                         </div>
                         <div class="table-responsive">
-                            <table class="table table-hover" id="qr-code-list">
-                                <thead>
+                            <table class="table table-hover table-striped align-middle rounded-0 border" id="qr-code-list">
+                                <caption class="caption-top">List of all QR codes in the system</caption>
+                                <thead class="table-light">
                                     <tr>
-                                        <th>
+                                        <th scope="col" class="text-nowrap">
                                             <i class="bi bi-key me-2"></i>
                                             ID
                                         </th>
-                                        <th>
+                                        <th scope="col" class="text-nowrap">
                                             <i class="bi bi-link-45deg me-2"></i>
                                             Destination URL
                                         </th>
-                                        <th>
+                                        <th scope="col" class="text-nowrap">
                                             <i class="bi bi-calendar me-2"></i>
                                             Created
                                         </th>
-                                        <th>
+                                        <th scope="col" class="text-nowrap">
                                             <i class="bi bi-bar-chart me-2"></i>
                                             Scans
                                         </th>
-                                        <th class="text-end">
+                                        <th scope="col" class="text-end text-nowrap">
                                             <i class="bi bi-gear me-2"></i>
                                             Actions
                                         </th>
@@ -275,16 +276,25 @@
                                 </thead>
                                 <tbody>
                                     <tr id="empty-state">
-                                        <td colspan="5">
-                                            <i class="bi bi-inbox"></i>
-                                            <p>No QR codes found</p>
-                                            <button class="btn" onclick="location.href='#create-qr'">
-                                                <i class="bi bi-plus-circle"></i>
-                                                Create your first QR code
-                                            </button>
+                                        <td colspan="5" class="text-center py-5">
+                                            <div class="empty-state-container">
+                                                <i class="bi bi-inbox fs-1 text-muted mb-3"></i>
+                                                <p class="mb-3">No QR codes found</p>
+                                                <button class="btn btn-primary rounded-0" onclick="location.href='#create-qr'">
+                                                    <i class="bi bi-plus-circle me-2"></i>
+                                                    Create your first QR code
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
+                                <tfoot class="table-light d-none">
+                                    <tr>
+                                        <td colspan="5" class="text-center">
+                                            <small class="text-muted">Showing <span id="qr-count">0</span> QR codes</small>
+                                        </td>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
                     </div>
