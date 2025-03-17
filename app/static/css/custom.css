@@ -129,6 +129,36 @@ footer {
     padding: 1rem;
 }
 
+/* Sortable table headers */
+.table th[data-sort] {
+    cursor: pointer;
+    user-select: none;
+}
+
+.table th[data-sort]:hover {
+    background-color: #f1f1f1;
+}
+
+.table th[data-sort] .sort-icon {
+    opacity: 0.3;
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+
+.table th[data-sort]:hover .sort-icon {
+    opacity: 0.8;
+}
+
+.table th[data-sort].sort-asc .sort-icon {
+    opacity: 1;
+    transform: rotate(180deg);
+}
+
+.table th[data-sort].sort-desc .sort-icon {
+    opacity: 1;
+    transform: rotate(0deg);
+}
+
 .table td {
     padding: 1rem;
     vertical-align: middle;

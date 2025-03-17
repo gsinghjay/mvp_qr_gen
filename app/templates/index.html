@@ -237,40 +237,74 @@
                             </div>
                             <div class="qr-search-container">
                                 <div class="input-group">
-                                    <span class="input-group-text">
+                                    <span class="input-group-text rounded-0">
                                         <i class="bi bi-search"></i>
                                     </span>
-                                    <input type="text" class="form-control" id="qr-search" placeholder="Search QR codes...">
+                                    <input type="text" class="form-control rounded-0" id="qr-search" placeholder="Search QR codes..." aria-label="Search QR codes">
+                                    <button class="btn btn-outline-secondary rounded-0 clear-search d-none" type="button" aria-label="Clear search">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                    <span class="input-group-text rounded-0 search-spinner d-none">
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    </span>
                                 </div>
-                                <button class="btn btn-outline-light" id="refresh-list">
+                                <button class="btn btn-outline-light rounded-0" id="refresh-list">
                                     <i class="bi bi-arrow-clockwise"></i>
                                 </button>
                             </div>
                         </div>
+                        
+                        <!-- QR Type Filter Buttons -->
+                        <div class="btn-group mb-3" role="group" aria-label="QR type filter">
+                            <button type="button" class="btn btn-outline-secondary rounded-0 active" data-qr-filter="all">
+                                <i class="bi bi-grid-3x3-gap me-1"></i> All
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary rounded-0" data-qr-filter="static">
+                                <i class="bi bi-lock me-1"></i> Static
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary rounded-0" data-qr-filter="dynamic">
+                                <i class="bi bi-arrow-repeat me-1"></i> Dynamic
+                            </button>
+                        </div>
+                        
                         <div class="table-responsive">
                             <table class="table table-hover table-striped align-middle rounded-0 border" id="qr-code-list">
                                 <caption class="caption-top">List of all QR codes in the system</caption>
                                 <thead class="table-light">
                                     <tr>
-                                        <th scope="col" class="text-nowrap">
-                                            <i class="bi bi-key me-2"></i>
-                                            ID
+                                        <th scope="col" class="text-nowrap" data-sort="id">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-key me-2"></i>
+                                                <span>ID</span>
+                                                <i class="bi bi-arrow-down-up ms-1 sort-icon"></i>
+                                            </div>
                                         </th>
-                                        <th scope="col" class="text-nowrap">
-                                            <i class="bi bi-link-45deg me-2"></i>
-                                            Destination URL
+                                        <th scope="col" class="text-nowrap" data-sort="content">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-link-45deg me-2"></i>
+                                                <span>Destination URL</span>
+                                                <i class="bi bi-arrow-down-up ms-1 sort-icon"></i>
+                                            </div>
                                         </th>
-                                        <th scope="col" class="text-nowrap">
-                                            <i class="bi bi-calendar me-2"></i>
-                                            Created
+                                        <th scope="col" class="text-nowrap" data-sort="created_at">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-calendar me-2"></i>
+                                                <span>Created</span>
+                                                <i class="bi bi-arrow-down-up ms-1 sort-icon"></i>
+                                            </div>
                                         </th>
-                                        <th scope="col" class="text-nowrap">
-                                            <i class="bi bi-bar-chart me-2"></i>
-                                            Scans
+                                        <th scope="col" class="text-nowrap" data-sort="scan_count">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-bar-chart me-2"></i>
+                                                <span>Scans</span>
+                                                <i class="bi bi-arrow-down-up ms-1 sort-icon"></i>
+                                            </div>
                                         </th>
                                         <th scope="col" class="text-end text-nowrap">
-                                            <i class="bi bi-gear me-2"></i>
-                                            Actions
+                                            <div class="d-flex align-items-center justify-content-end">
+                                                <i class="bi bi-gear me-2"></i>
+                                                <span>Actions</span>
+                                            </div>
                                         </th>
                                     </tr>
                                 </thead>
@@ -296,6 +330,26 @@
                                     </tr>
                                 </tfoot>
                             </table>
+                            <!-- Pagination Controls -->
+                            <nav aria-label="QR code pagination" class="mt-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div id="pagination-info" class="text-muted small">
+                                        Page <span id="current-page">1</span> of <span id="total-pages">1</span>
+                                    </div>
+                                    <ul id="qr-pagination" class="pagination pagination-sm mb-0">
+                                        <li class="page-item disabled">
+                                            <button id="pagination-prev" class="page-link rounded-0" aria-label="Previous page">
+                                                <i class="bi bi-chevron-left"></i>
+                                            </button>
+                                        </li>
+                                        <li class="page-item disabled">
+                                            <button id="pagination-next" class="page-link rounded-0" aria-label="Next page">
+                                                <i class="bi bi-chevron-right"></i>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </nav>
                         </div>
                     </div>
                 </div>
