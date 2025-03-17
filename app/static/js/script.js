@@ -132,6 +132,23 @@ async function handleFormSubmit(event) {
     }
 }
 
+/**
+ * Handles clicking on a QR code row
+ * @param {string} qrId - The QR code ID
+ */
+function handleRowClick(qrId) {
+    ui.updateQRPreview(qrId);
+    // Highlight the selected row
+    const rows = document.querySelectorAll(`${config.SELECTORS.QR_LIST} tbody tr`);
+    rows.forEach(row => {
+        if (row.getAttribute('data-qr-id') === qrId) {
+            row.classList.add('selected');
+        } else {
+            row.classList.remove('selected');
+        }
+    });
+}
+
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Set up sidebar toggle
@@ -143,9 +160,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up event delegation for the table
     const qrCodeList = document.querySelector(config.SELECTORS.QR_LIST);
     if (qrCodeList) {
+        // Use event delegation for all QR table interactions
         qrCodeList.addEventListener('click', (event) => {
+            // Handle row click for view details
+            const row = event.target.closest('tr[data-qr-id]');
+            if (row && event.target.tagName !== 'BUTTON' && !event.target.closest('button')) {
+                const qrId = row.getAttribute('data-qr-id');
+                if (qrId) {
+                    handleRowClick(qrId);
+                    return;
+                }
+            }
+            
+            // Handle button actions
             const button = event.target.closest('button');
             if (!button) return;
+            
+            const qrId = button.getAttribute('data-qr-id') || 
+                        (button.closest('tr') ? button.closest('tr').getAttribute('data-qr-id') : null);
+            
+            if (!qrId) return;
 
             if (button.classList.contains('view-image-btn')) {
                 handleViewImage(event);
@@ -153,6 +187,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 handleUpdate(event);
             } else if (button.classList.contains('delete-btn')) {
                 handleDelete(event);
+            }
+        });
+        
+        // Add hover effect for better UX
+        qrCodeList.addEventListener('mouseover', (event) => {
+            const row = event.target.closest('tr[data-qr-id]');
+            if (row) {
+                row.classList.add('highlighted');
+            }
+        });
+        
+        qrCodeList.addEventListener('mouseout', (event) => {
+            const row = event.target.closest('tr[data-qr-id]');
+            if (row) {
+                row.classList.remove('highlighted');
             }
         });
     }
