@@ -65,18 +65,47 @@ export const api = {
      * @param {number} [options.skip=0] - Number of records to skip
      * @param {number} [options.limit=10] - Number of records to return
      * @param {string} [options.qr_type] - Filter by QR type (static/dynamic)
+     * @param {string} [options.search] - Search term for filtering by content or URL
+     * @param {string} [options.sort_by] - Field to sort by (created_at, scan_count, etc.)
+     * @param {boolean} [options.sort_desc=false] - Sort in descending order if true
      * @returns {Promise<{items: QRCodeResponse[], total: number, page: number, page_size: number}>}
      */
-    async fetchQRCodes({ skip = 0, limit = 10, qr_type = null } = {}) {
+    async fetchQRCodes({ skip = 0, limit = 10, qr_type = null, search = null, sort_by = null, sort_desc = false } = {}) {
         try {
             const params = new URLSearchParams({ skip: skip.toString(), limit: limit.toString() });
             if (qr_type) params.append('qr_type', qr_type);
+            if (search) params.append('search', search);
+            if (sort_by) {
+                params.append('sort_by', sort_by);
+                if (sort_desc) {
+                    params.append('sort_desc', 'true');
+                }
+            }
+            
+            // Debug output
+            console.log('API Request:', {
+                endpoint: `${config.API.BASE_URL}${config.API.ENDPOINTS.QR_LIST}?${params}`,
+                params: {
+                    skip,
+                    limit,
+                    qr_type,
+                    search,
+                    sort_by,
+                    sort_desc
+                }
+            });
             
             const response = await fetch(
                 `${config.API.BASE_URL}${config.API.ENDPOINTS.QR_LIST}?${params}`,
                 createFetchOptions()
             );
             const data = await handleResponse(response);
+            
+            // Debug output
+            console.log('API Response:', {
+                total: data.total,
+                items: data.items.length
+            });
             
             // Ensure we always return an object with items array
             return {
@@ -264,4 +293,4 @@ export const api = {
             throw error;
         }
     }
-}; 
+};

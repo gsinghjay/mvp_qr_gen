@@ -19,12 +19,17 @@ export const config = {
         BACK_COLOR: '#FFFFFF',
         SIZE: 10,
         BORDER: 4,
-        IMAGE_FORMAT: 'png'
+        IMAGE_FORMAT: 'png',
+        PAGE_SIZE: 10
     },
     SELECTORS: {
         FORM: '#create-qr-form',
         QR_LIST: '#qr-code-list',
         QR_IMAGE: '#qr-code-image',
-        QR_TABLE_BODY: '#qr-code-list tbody'
+        QR_TABLE_BODY: '#qr-code-list tbody',
+        PAGINATION: '#qr-pagination',
+        PAGINATION_PREV: '#pagination-prev',
+        PAGINATION_NEXT: '#pagination-next',
+        PAGINATION_INFO: '#pagination-info'
     }
 }; 

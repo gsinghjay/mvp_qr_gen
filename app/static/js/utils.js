@@ -3,6 +3,24 @@
  */
 
 /**
+ * Creates a debounced function that delays invoking func until after wait milliseconds
+ * @param {Function} func - The function to debounce
+ * @param {number} wait - The number of milliseconds to delay
+ * @return {Function} - The debounced function
+ */
+export function debounce(func, wait = 300) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+/**
  * Validates if a string is a valid URL
  * @param {string} string - The string to validate
  * @returns {boolean} - True if valid URL, false otherwise
