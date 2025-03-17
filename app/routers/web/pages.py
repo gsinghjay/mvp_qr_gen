@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 from ...database import get_db_with_logging
 from ...models import QRCode
 from ..qr.common import logger
+from ...auth.sso import get_optional_user, User
+from typing import Optional
 
 
 # Configure templates with context processors
@@ -78,6 +80,45 @@ async def home(request: Request, db: Session = Depends(get_db_with_logging)):
                 "total_qr_codes": 0,
                 "recent_qr_codes": [],
                 "error": "Unable to load QR code data",
+            },
+            status_code=500,
+        )
+
+
+@router.get("/portal-login", response_class=HTMLResponse)
+async def portal_login(
+    request: Request, 
+    current_user: Optional[User] = Depends(get_optional_user)
+):
+    """
+    Render the portal login page.
+    
+    This endpoint displays login options for students and faculty.
+    If the user is already authenticated, their information will be included in the context.
+    
+    Args:
+        request: The FastAPI request object.
+        current_user: The current authenticated user (if any).
+        
+    Returns:
+        HTMLResponse: The rendered portal login page.
+    """
+    try:
+        return templates.TemplateResponse(
+            name="portal-login.html",
+            context={
+                "request": request,  # Required by Jinja2Templates
+                "current_user": current_user,
+                "is_authenticated": current_user is not None,
+            },
+        )
+    except Exception as e:
+        logger.error("Error in portal login page", extra={"error": str(e)})
+        return templates.TemplateResponse(
+            name="portal-login.html",
+            context={
+                "request": request,  # Required by Jinja2Templates
+                "error": "An error occurred while loading the login page",
             },
             status_code=500,
         )
