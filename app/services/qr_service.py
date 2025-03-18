@@ -24,6 +24,7 @@ from ..core.exceptions import (
     QRCodeValidationError,
     RedirectURLError,
 )
+from ..core.config import settings
 from ..database import with_retry
 from ..models.qr import QRCode
 from ..schemas.common import QRType
@@ -157,11 +158,14 @@ class QRCodeService:
         try:
             # Generate a short unique identifier for the redirect path
             short_id = str(uuid.uuid4())[:8]
+            
+            # Create full URL with BASE_URL
+            full_url = f"{settings.BASE_URL}/r/{short_id}"
 
             # Create QR code data
             qr_data = QRCodeCreate(
                 id=str(uuid.uuid4()),
-                content=f"/r/{short_id}",
+                content=full_url,
                 qr_type=QRType.DYNAMIC,
                 redirect_url=str(data.redirect_url),  # Explicitly convert to string
                 fill_color=data.fill_color,

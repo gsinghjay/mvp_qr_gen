@@ -3,16 +3,19 @@ Router for QR code redirects.
 """
 
 from datetime import UTC, datetime
+import re
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.exc import SQLAlchemyError
 
 from ...database import get_db
 from ...dependencies import get_qr_service
 from ...models.qr import QRCode
 from ...services.qr_service import QRCodeService
+from ...core.config import settings
 from .common import logger
 
 router = APIRouter(
@@ -57,12 +60,22 @@ async def redirect_qr(
         A redirect response to the target URL
     """
     try:
-        # The full path that would be in the QR code content
-        full_path = f"/r/{short_id}"
-
-        # More efficient direct query instead of listing all QRs
+        # The short path that would be in old QR codes
+        relative_path = f"/r/{short_id}"
+        
+        # The full URL that would be in new QR codes
+        full_url = f"{settings.BASE_URL}/r/{short_id}"
+        
+        # More efficient query to handle both full URLs and relative paths
         try:
-            stmt = select(QRCode).where(QRCode.content == full_path)
+            stmt = select(QRCode).where(
+                or_(
+                    QRCode.content == relative_path,
+                    QRCode.content == full_url,
+                    # Handle case where content contains just the short_id for very old QR codes
+                    QRCode.content == short_id
+                )
+            )
             result = db.execute(stmt)
             qr = result.scalars().first()
         except SQLAlchemyError as e:
@@ -70,8 +83,20 @@ async def redirect_qr(
             raise HTTPException(status_code=500, detail="Database error finding QR code")
 
         if not qr:
-            logger.warning(f"QR code not found for path: {full_path}")
-            raise HTTPException(status_code=404, detail="QR code not found")
+            # Try matching on partial URLs (backward compatibility)
+            try:
+                # Find QR codes with content that ends with the short_id
+                pattern = f"%/r/{short_id}"
+                stmt = select(QRCode).where(QRCode.content.like(pattern))
+                result = db.execute(stmt)
+                qr = result.scalars().first()
+            except SQLAlchemyError as e:
+                logger.error(f"Database error in fallback search: {str(e)}")
+                pass
+            
+            if not qr:
+                logger.warning(f"QR code not found for path: {relative_path} or {full_url}")
+                raise HTTPException(status_code=404, detail="QR code not found")
 
         # Validate QR code type and redirect URL
         if qr.qr_type != "dynamic" or not qr.redirect_url:

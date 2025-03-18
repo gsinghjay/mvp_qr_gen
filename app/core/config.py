@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./data/qr_codes.db"
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
+    
+    # Base URL for QR codes (full domain with protocol)
+    # Override with BASE_URL environment variable in production
+    BASE_URL: str = "http://localhost:8000"
 
     # Security
     TRUSTED_HOSTS: list[str] = ["*"]
