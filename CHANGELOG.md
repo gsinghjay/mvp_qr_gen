@@ -1,6 +1,96 @@
 # CHANGELOG
 
 
+## v0.13.0 (2025-03-18)
+
+### Bug Fixes
+
+- Update QR code redirection with proper BASE_URL handling
+  ([`f84c2a7`](https://github.com/gsinghjay/mvp_qr_gen/commit/f84c2a799fff834b553a2814b28440289514063e))
+
+- Update test script to handle full URL format with BASE_URL
+  ([`db47110`](https://github.com/gsinghjay/mvp_qr_gen/commit/db471104702920cb0c72a98c8c7565cbc24c6838))
+
+- Update UI components and CSS styles for improved layout
+  ([`f24039f`](https://github.com/gsinghjay/mvp_qr_gen/commit/f24039f783875c8222c31f50edb1297d30723f4c))
+
+### Chores
+
+- Update Docker configuration with BASE_URL environment
+  ([`70c8573`](https://github.com/gsinghjay/mvp_qr_gen/commit/70c857316e9b6d6c8c9c1f5d820960bef39d3608))
+
+- Updated diagrams
+  ([`48e0527`](https://github.com/gsinghjay/mvp_qr_gen/commit/48e052771e4297e374b7352e3f11d42d923bec47))
+
+### Code Style
+
+- **portal**: Enhance styling for portal login page
+  ([`cca70bd`](https://github.com/gsinghjay/mvp_qr_gen/commit/cca70bd8f0ad7340333ffe838ef2cded0eae53d4))
+
+- **ui**: Add styles for table rows and interaction states
+  ([`c40e0d0`](https://github.com/gsinghjay/mvp_qr_gen/commit/c40e0d0b79d79e60ef00c9472fdd84c5c2269bf0))
+
+### Documentation
+
+- Remove obsolete task_msal.md file
+  ([`0570c93`](https://github.com/gsinghjay/mvp_qr_gen/commit/0570c93a495f0a1450a59058117a56dba0ecce8a))
+
+### Features
+
+- Add QR content display to modal view for better user experience
+  ([`82da8c4`](https://github.com/gsinghjay/mvp_qr_gen/commit/82da8c4f550a2e07d386f9ce1840ee749cd3701b))
+
+- **api**: Add search and sorting functionality to QR code listing
+  ([`073415c`](https://github.com/gsinghjay/mvp_qr_gen/commit/073415c6e7165cbb3e973819c148d3204b4ab388))
+
+- **auth**: Add group membership support to SSO implementation
+  ([`74e40f7`](https://github.com/gsinghjay/mvp_qr_gen/commit/74e40f77a6d78314838b761643d43d7a0e52081b))
+
+- **auth**: Add group-based endpoints and authorization
+  ([`8678671`](https://github.com/gsinghjay/mvp_qr_gen/commit/8678671739b8f4cf18661ac548bc7dd3e27f76e0))
+
+- **auth**: Add scope inspection endpoints for OAuth debugging and RBAC support
+  ([`431fbd8`](https://github.com/gsinghjay/mvp_qr_gen/commit/431fbd8789ce456085a7d0a844f0598f88023bff))
+
+- **js**: Add search and sort functionality to QR code dashboard
+  ([`b73119d`](https://github.com/gsinghjay/mvp_qr_gen/commit/b73119d7fc3d413d224decd079118f1dd26cc73c))
+
+- **portal**: Add client-side functionality for portal login
+  ([`0d9e3dd`](https://github.com/gsinghjay/mvp_qr_gen/commit/0d9e3dd60204b4d08f2e16bb3c682fb80d9b1c1a))
+
+- **portal**: Update portal login template for improved user experience
+  ([`2b431f7`](https://github.com/gsinghjay/mvp_qr_gen/commit/2b431f72f935d353e0cb5cf817996167d7d3c225))
+
+- **templates**: Create portal-login.html template
+  ([`0624d60`](https://github.com/gsinghjay/mvp_qr_gen/commit/0624d60848e4921a9e644ce05fbefcab8aeaedfa))
+
+- **ui**: Enhance QR code table with semantic HTML5 elements
+  ([`761a585`](https://github.com/gsinghjay/mvp_qr_gen/commit/761a58564ef59aa76dd56918cf402fe7408b59fc))
+
+- **ui**: Implement event delegation for table interactions
+  ([`9a1dae3`](https://github.com/gsinghjay/mvp_qr_gen/commit/9a1dae3973e2a0b1fed49d8013792b2450cba761))
+
+- **ui**: Implement table header sorting with visual indicators
+  ([`162040e`](https://github.com/gsinghjay/mvp_qr_gen/commit/162040e3797d7cb542bc4fe4a45cf7779cbd2663))
+
+- **ui**: Improve QR list rendering with better data formatting
+  ([`26b4f6b`](https://github.com/gsinghjay/mvp_qr_gen/commit/26b4f6b9776499ea3783f21a4a3e46d1229da1a3))
+
+- **web**: Add portal login route in pages.py
+  ([`78cba5a`](https://github.com/gsinghjay/mvp_qr_gen/commit/78cba5a8b15e46e4eb49ab218f10ca94ea59bd2c))
+
+### Testing
+
+- **auth**: Add comprehensive tests for logout functionality
+  ([`ee2a12d`](https://github.com/gsinghjay/mvp_qr_gen/commit/ee2a12dfba24ae1b41d22896e8aa40dfc846eb9e))
+
+- **auth**: Add tests for group membership functionality
+  ([`f9da740`](https://github.com/gsinghjay/mvp_qr_gen/commit/f9da7400ec4a59e80feed26a3e77e6d38f103aeb))
+
+- **auth**: Update auth endpoint tests for group support
+  ([`41cb2db`](https://github.com/gsinghjay/mvp_qr_gen/commit/41cb2db59268c285c769b69aaa75afa11964b810))
+
+
 ## v0.12.0 (2025-03-12)
 
 ### Bug Fixes
