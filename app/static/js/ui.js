@@ -75,7 +75,7 @@ export const ui = {
                     </td>
                     <td class="text-end">
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-secondary rounded-0 view-btn" data-qr-id="${qrCode.id}" data-bs-toggle="modal" data-bs-target="#previewModal">
+                            <button class="btn btn-outline-secondary rounded-0 view-btn" data-id="${qrCode.id}" data-bs-toggle="modal" data-bs-target="#qrDetailsModal">
                                 <i class="bi bi-eye"></i>
                             </button>
                             ${qrCode.qr_type === 'dynamic' ? `

@@ -400,4 +400,139 @@ footer {
 /* Prevent transform on button group hover */
 .btn-group .btn:hover {
     transform: none;
+}
+
+/* QR Code Placeholder - Pure CSS solution */
+.placeholder-qr {
+    background-color: #f8f9fa;
+    min-height: 200px;
+    min-width: 200px;
+    position: relative;
+    display: inline-block;
+    border: 1px solid #dee2e6;
+}
+
+.placeholder-qr::before {
+    content: "";
+    position: absolute;
+    width: 80%;
+    height: 80%;
+    top: 10%;
+    left: 10%;
+    background: 
+        /* Large square pattern - outer frame */
+        linear-gradient(#000, #000) top left no-repeat,
+        linear-gradient(#000, #000) top right no-repeat,
+        linear-gradient(#000, #000) bottom left no-repeat,
+        linear-gradient(#000, #000) bottom right no-repeat,
+        
+        /* Small square patterns inside */
+        linear-gradient(#000, #000) center no-repeat,
+        
+        /* Background color */
+        #fff;
+    background-size: 
+        25% 25%, /* Top-left large square */
+        25% 25%, /* Top-right large square */
+        25% 25%, /* Bottom-left large square */
+        25% 25%, /* Bottom-right large square */
+        15% 15%; /* Center square */
+    z-index: 1;
+}
+
+/* Enhanced loading spinner - Bootstrap compatible */
+.loading-spinner {
+    position: relative;
+}
+
+.loading-spinner::after {
+    content: "";
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    top: 50%;
+    left: 50%;
+    margin-top: -20px;
+    margin-left: -20px;
+    border-radius: 50%;
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-top: 4px solid #0d6efd; /* Bootstrap primary color */
+    animation: spin 1s linear infinite;
+    z-index: 10;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Form loading state */
+.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-top: -15px;
+    margin-left: -15px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-top-color: #0d6efd; /* Bootstrap primary color */
+    animation: spin 1s linear infinite;
+    z-index: 10;
+}
+
+/* QR Code Placeholder error state */
+.placeholder-error {
+    border-color: #dc3545 !important; /* Bootstrap danger color */
+}
+
+.placeholder-error::after {
+    content: "\f071"; /* Bootstrap exclamation triangle icon */
+    font-family: "Bootstrap-icons";
+    font-size: 24px;
+    color: #dc3545;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+}
+
+/* Fix for input groups - complete solution */
+.input-group {
+    flex-wrap: nowrap;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* Reset all borders and spacing */
+.input-group > * {
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
+/* Make the left icon box have full border */
+.input-group > .input-group-text:first-child {
+    border-right: 1px solid #dee2e6 !important;
+    border-top-left-radius: 0.25rem !important;
+    border-bottom-left-radius: 0.25rem !important;
+}
+
+/* Make the right input field have full border */
+.input-group > .form-control:last-child {
+    border-left: 1px solid #dee2e6 !important;
+    border-top-right-radius: 0.25rem !important;
+    border-bottom-right-radius: 0.25rem !important;
+}
+
+/* Override any Bootstrap margins */
+.input-group-text + .form-control {
+    margin-left: -1px !important;
 } 

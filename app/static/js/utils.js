@@ -68,17 +68,125 @@ export function isValidUrl(string) {
 /**
  * Shows an error message to the user
  * @param {string} message - The error message to display
+ * @param {number} [duration=5000] - How long to show the message in milliseconds
  */
-export function showError(message) {
-    alert(message);
+export function showError(message, duration = 5000) {
+    // Check if Bootstrap is available
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap not available for alert:', message);
+        alert(message);
+        return;
+    }
+
+    // Create alert container if it doesn't exist
+    let alertContainer = document.getElementById('alert-container');
+    if (!alertContainer) {
+        alertContainer = document.createElement('div');
+        alertContainer.id = 'alert-container';
+        alertContainer.className = 'position-fixed top-0 start-50 translate-middle-x p-3';
+        alertContainer.style.zIndex = '9999';
+        document.body.appendChild(alertContainer);
+    }
+    
+    // Create the alert
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger alert-dismissible fade show rounded-0';
+    alert.role = 'alert';
+    
+    // Add the icon and message
+    alert.innerHTML = `
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // Add to container
+    alertContainer.appendChild(alert);
+    
+    try {
+        // Initialize Bootstrap alert
+        const bsAlert = new bootstrap.Alert(alert);
+        
+        // Auto dismiss after duration
+        if (duration > 0) {
+            setTimeout(() => {
+                bsAlert.close();
+            }, duration);
+        }
+        
+        // Remove from DOM after closed
+        alert.addEventListener('closed.bs.alert', () => {
+            alert.remove();
+        });
+    } catch (error) {
+        console.error('Error initializing Bootstrap alert:', error);
+        // Fallback if Bootstrap fails
+        setTimeout(() => {
+            alert.remove();
+        }, duration);
+    }
 }
 
 /**
  * Shows a success message to the user
  * @param {string} message - The success message to display
+ * @param {number} [duration=5000] - How long to show the message in milliseconds
  */
-export function showSuccess(message) {
-    alert(message);
+export function showSuccess(message, duration = 5000) {
+    // Check if Bootstrap is available
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap not available for alert:', message);
+        alert(message);
+        return;
+    }
+
+    // Create alert container if it doesn't exist
+    let alertContainer = document.getElementById('alert-container');
+    if (!alertContainer) {
+        alertContainer = document.createElement('div');
+        alertContainer.id = 'alert-container';
+        alertContainer.className = 'position-fixed top-0 start-50 translate-middle-x p-3';
+        alertContainer.style.zIndex = '9999';
+        document.body.appendChild(alertContainer);
+    }
+    
+    // Create the alert
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success alert-dismissible fade show rounded-0';
+    alert.role = 'alert';
+    
+    // Add the icon and message
+    alert.innerHTML = `
+        <i class="bi bi-check-circle me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // Add to container
+    alertContainer.appendChild(alert);
+    
+    try {
+        // Initialize Bootstrap alert
+        const bsAlert = new bootstrap.Alert(alert);
+        
+        // Auto dismiss after duration
+        if (duration > 0) {
+            setTimeout(() => {
+                bsAlert.close();
+            }, duration);
+        }
+        
+        // Remove from DOM after closed
+        alert.addEventListener('closed.bs.alert', () => {
+            alert.remove();
+        });
+    } catch (error) {
+        console.error('Error initializing Bootstrap alert:', error);
+        // Fallback if Bootstrap fails
+        setTimeout(() => {
+            alert.remove();
+        }, duration);
+    }
 }
 
 /**

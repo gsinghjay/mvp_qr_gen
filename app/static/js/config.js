@@ -24,6 +24,8 @@ export const config = {
     },
     SELECTORS: {
         FORM: '#create-qr-form',
+        STATIC_FORM: '#create-static-qr-form',
+        DYNAMIC_FORM: '#create-dynamic-qr-form',
         QR_LIST: '#qr-code-list',
         QR_IMAGE: '#qr-code-image',
         QR_TABLE_BODY: '#qr-code-list tbody',
