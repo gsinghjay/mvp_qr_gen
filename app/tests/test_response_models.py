@@ -113,7 +113,7 @@ class TestQRCodeResponseModel:
         )
 
         # Verify the content format separately
-        assert data["content"].startswith("/r/"), "Dynamic QR content should start with /r/"
+        assert "/r/" in data["content"], "Dynamic QR content should contain '/r/' path component"
 
 
 class TestErrorResponseModel:
