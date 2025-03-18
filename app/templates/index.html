@@ -155,41 +155,248 @@
                                     </h2>
                                 </div>
                                 <div class="card-body">
-                                    <form id="create-qr-form" class="needs-validation" novalidate>
-                                        <div class="mb-4">
-                                            <label for="redirect_url" class="form-label">
-                                                <i class="bi bi-link me-1"></i>
-                                                Destination URL
-                                            </label>
-                                            <div class="input-group rounded-0">
-                                                <span class="input-group-text rounded-0"><i class="bi bi-link-45deg"></i></span>
-                                                <input type="url" class="form-control rounded-0" id="redirect_url" name="redirect_url" required 
-                                                    placeholder="https://example.com">
-                                                <div class="invalid-feedback">Please enter a valid URL</div>
-                                            </div>
+                                    <!-- QR Code Creation Tabs -->
+                                    <ul class="nav nav-tabs mb-4" id="qrTypeTabs" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active rounded-0" id="static-tab" data-bs-toggle="tab" data-bs-target="#static-qr" type="button" role="tab" aria-controls="static-qr" aria-selected="true">
+                                                <i class="bi bi-qr-code me-1"></i> Static QR
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link rounded-0" id="dynamic-tab" data-bs-toggle="tab" data-bs-target="#dynamic-qr" type="button" role="tab" aria-controls="dynamic-qr" aria-selected="false">
+                                                <i class="bi bi-link me-1"></i> Dynamic QR
+                                            </button>
+                                        </li>
+                                    </ul>
+                                    
+                                    <!-- Tab Content -->
+                                    <div class="tab-content" id="qrTypeTabsContent">
+                                        <!-- Static QR Tab -->
+                                        <div class="tab-pane fade show active" id="static-qr" role="tabpanel" aria-labelledby="static-tab">
+                                            <form id="create-static-qr-form" class="needs-validation" novalidate>
+                                                <input type="hidden" name="qr_type" value="static">
+                                                
+                                                <div class="mb-3">
+                                                    <label for="content" class="form-label">
+                                                        <i class="bi bi-text-paragraph me-1"></i>
+                                                        Content
+                                                    </label>
+                                                    <div class="input-group has-validation">
+                                                        <span class="input-group-text rounded-0"><i class="bi bi-card-text"></i></span>
+                                                        <input type="text" class="form-control rounded-0" id="content" name="content" required
+                                                            placeholder="Text, URL, or info to encode" maxlength="2048">
+                                                        <div class="invalid-feedback">Please enter content for your QR code</div>
+                                                    </div>
+                                                    <div class="form-text">Up to 2048 characters. For URLs, include http:// or https://</div>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="static-title" class="form-label">
+                                                        <i class="bi bi-type me-1"></i>
+                                                        Title
+                                                    </label>
+                                                    <input type="text" class="form-control rounded-0" id="static-title" name="title" 
+                                                        placeholder="Enter a descriptive title">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="static-description" class="form-label">
+                                                        <i class="bi bi-text-paragraph me-1"></i>
+                                                        Description
+                                                    </label>
+                                                    <textarea class="form-control rounded-0" id="static-description" name="description" rows="2"
+                                                        placeholder="Add additional details about this QR code"></textarea>
+                                                </div>
+                                                
+                                                <!-- Advanced Options Collapse -->
+                                                <div class="mb-3">
+                                                    <a class="btn btn-outline-secondary btn-sm rounded-0 d-flex align-items-center" 
+                                                       data-bs-toggle="collapse" href="#staticAdvancedOptions" role="button" 
+                                                       aria-expanded="false" aria-controls="staticAdvancedOptions">
+                                                        <i class="bi bi-gear me-1"></i>
+                                                        Advanced Options
+                                                        <i class="bi bi-chevron-down ms-1"></i>
+                                                    </a>
+                                                </div>
+                                                
+                                                <div class="collapse mb-3" id="staticAdvancedOptions">
+                                                    <div class="card card-body rounded-0 border-0 bg-light">
+                                                        <div class="row">
+                                                            <div class="col-md-6">
+                                                                <div class="mb-3">
+                                                                    <label for="static-size" class="form-label">
+                                                                        <i class="bi bi-arrows-angle-expand me-1"></i>
+                                                                        Size
+                                                                    </label>
+                                                                    <input type="range" class="form-range" id="static-size" name="size" 
+                                                                        min="5" max="20" value="10" step="1">
+                                                                    <div class="d-flex justify-content-between">
+                                                                        <small>Small</small>
+                                                                        <small>Large</small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <div class="mb-3">
+                                                                    <label for="static-border" class="form-label">
+                                                                        <i class="bi bi-border-outer me-1"></i>
+                                                                        Border Size
+                                                                    </label>
+                                                                    <input type="range" class="form-range" id="static-border" name="border" 
+                                                                        min="0" max="10" value="4" step="1">
+                                                                    <div class="d-flex justify-content-between">
+                                                                        <small>None</small>
+                                                                        <small>Large</small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="row">
+                                                            <div class="col-md-6">
+                                                                <div class="mb-3">
+                                                                    <label for="static-fill-color" class="form-label">
+                                                                        <i class="bi bi-palette me-1"></i>
+                                                                        QR Color
+                                                                    </label>
+                                                                    <input type="color" class="form-control form-control-color rounded-0" 
+                                                                        id="static-fill-color" name="fill_color" value="#000000">
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <div class="mb-3">
+                                                                    <label for="static-back-color" class="form-label">
+                                                                        <i class="bi bi-palette2 me-1"></i>
+                                                                        Background Color
+                                                                    </label>
+                                                                    <input type="color" class="form-control form-control-color rounded-0" 
+                                                                        id="static-back-color" name="back_color" value="#FFFFFF">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <button type="submit" class="btn btn-dark rounded-0 d-flex align-items-center">
+                                                    <i class="bi bi-plus-circle me-2"></i>
+                                                    Create Static QR Code
+                                                    <span class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+                                                </button>
+                                            </form>
                                         </div>
-                                        <div class="mb-4">
-                                            <label for="title" class="form-label">
-                                                <i class="bi bi-type me-1"></i>
-                                                Title
-                                            </label>
-                                            <input type="text" class="form-control rounded-0" id="title" name="title" 
-                                                placeholder="Enter a descriptive title">
+                                        
+                                        <!-- Dynamic QR Tab -->
+                                        <div class="tab-pane fade" id="dynamic-qr" role="tabpanel" aria-labelledby="dynamic-tab">
+                                            <form id="create-dynamic-qr-form" class="needs-validation" novalidate>
+                                                <input type="hidden" name="qr_type" value="dynamic">
+                                                
+                                                <div class="mb-3">
+                                                    <label for="redirect_url" class="form-label">
+                                                        <i class="bi bi-link me-1"></i>
+                                                        Destination URL
+                                                    </label>
+                                                    <div class="input-group has-validation">
+                                                        <span class="input-group-text rounded-0"><i class="bi bi-link-45deg"></i></span>
+                                                        <input type="url" class="form-control rounded-0" id="redirect_url" name="redirect_url" required 
+                                                            placeholder="https://example.com">
+                                                        <div class="invalid-feedback">Please enter a valid URL (must include https://)</div>
+                                                    </div>
+                                                    <div class="form-text">The URL where your QR code will redirect to when scanned</div>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="dynamic-title" class="form-label">
+                                                        <i class="bi bi-type me-1"></i>
+                                                        Title
+                                                    </label>
+                                                    <input type="text" class="form-control rounded-0" id="dynamic-title" name="title" 
+                                                        placeholder="Enter a descriptive title">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="dynamic-description" class="form-label">
+                                                        <i class="bi bi-text-paragraph me-1"></i>
+                                                        Description
+                                                    </label>
+                                                    <textarea class="form-control rounded-0" id="dynamic-description" name="description" rows="2"
+                                                        placeholder="Add additional details about this QR code"></textarea>
+                                                </div>
+                                                
+                                                <!-- Advanced Options Collapse -->
+                                                <div class="mb-3">
+                                                    <a class="btn btn-outline-secondary btn-sm rounded-0 d-flex align-items-center" 
+                                                       data-bs-toggle="collapse" href="#dynamicAdvancedOptions" role="button" 
+                                                       aria-expanded="false" aria-controls="dynamicAdvancedOptions">
+                                                        <i class="bi bi-gear me-1"></i>
+                                                        Advanced Options
+                                                        <i class="bi bi-chevron-down ms-1"></i>
+                                                    </a>
+                                                </div>
+                                                
+                                                <div class="collapse mb-3" id="dynamicAdvancedOptions">
+                                                    <div class="card card-body rounded-0 border-0 bg-light">
+                                                        <div class="row">
+                                                            <div class="col-md-6">
+                                                                <div class="mb-3">
+                                                                    <label for="dynamic-size" class="form-label">
+                                                                        <i class="bi bi-arrows-angle-expand me-1"></i>
+                                                                        Size
+                                                                    </label>
+                                                                    <input type="range" class="form-range" id="dynamic-size" name="size" 
+                                                                        min="5" max="20" value="10" step="1">
+                                                                    <div class="d-flex justify-content-between">
+                                                                        <small>Small</small>
+                                                                        <small>Large</small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <div class="mb-3">
+                                                                    <label for="dynamic-border" class="form-label">
+                                                                        <i class="bi bi-border-outer me-1"></i>
+                                                                        Border Size
+                                                                    </label>
+                                                                    <input type="range" class="form-range" id="dynamic-border" name="border" 
+                                                                        min="0" max="10" value="4" step="1">
+                                                                    <div class="d-flex justify-content-between">
+                                                                        <small>None</small>
+                                                                        <small>Large</small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="row">
+                                                            <div class="col-md-6">
+                                                                <div class="mb-3">
+                                                                    <label for="dynamic-fill-color" class="form-label">
+                                                                        <i class="bi bi-palette me-1"></i>
+                                                                        QR Color
+                                                                    </label>
+                                                                    <input type="color" class="form-control form-control-color rounded-0" 
+                                                                        id="dynamic-fill-color" name="fill_color" value="#000000">
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <div class="mb-3">
+                                                                    <label for="dynamic-back-color" class="form-label">
+                                                                        <i class="bi bi-palette2 me-1"></i>
+                                                                        Background Color
+                                                                    </label>
+                                                                    <input type="color" class="form-control form-control-color rounded-0" 
+                                                                        id="dynamic-back-color" name="back_color" value="#FFFFFF">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <button type="submit" class="btn btn-dark rounded-0 d-flex align-items-center">
+                                                    <i class="bi bi-plus-circle me-2"></i>
+                                                    Create Dynamic QR Code
+                                                    <span class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+                                                </button>
+                                            </form>
                                         </div>
-                                        <div class="mb-4">
-                                            <label for="description" class="form-label">
-                                                <i class="bi bi-text-paragraph me-1"></i>
-                                                Description
-                                            </label>
-                                            <textarea class="form-control rounded-0" id="description" name="description" rows="3"
-                                                placeholder="Add additional details about this QR code"></textarea>
-                                        </div>
-                                        <button type="submit" class="btn btn-dark rounded-0 d-flex align-items-center">
-                                            <i class="bi bi-plus-circle me-2"></i>
-                                            Create Dynamic QR Code
-                                            <span class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
-                                        </button>
-                                    </form>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -237,70 +444,125 @@
                             </div>
                             <div class="qr-search-container">
                                 <div class="input-group">
-                                    <span class="input-group-text">
+                                    <span class="input-group-text rounded-0">
                                         <i class="bi bi-search"></i>
                                     </span>
-                                    <input type="text" class="form-control" id="qr-search" placeholder="Search QR codes...">
+                                    <input type="text" class="form-control rounded-0" id="qr-search" placeholder="Search QR codes..." aria-label="Search QR codes">
+                                    <button class="btn btn-outline-secondary rounded-0 clear-search d-none" type="button" aria-label="Clear search">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                    <span class="input-group-text rounded-0 search-spinner d-none">
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    </span>
                                 </div>
-                                <button class="btn btn-outline-light" id="refresh-list">
+                                <button class="btn btn-outline-light rounded-0" id="refresh-list">
                                     <i class="bi bi-arrow-clockwise"></i>
                                 </button>
                             </div>
                         </div>
+                        
+                        <!-- QR Type Filter Buttons -->
+                        <div class="btn-group mb-3" role="group" aria-label="QR type filter">
+                            <button type="button" class="btn btn-outline-secondary rounded-0 active" data-qr-filter="all">
+                                <i class="bi bi-grid-3x3-gap me-1"></i> All
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary rounded-0" data-qr-filter="static">
+                                <i class="bi bi-lock me-1"></i> Static
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary rounded-0" data-qr-filter="dynamic">
+                                <i class="bi bi-arrow-repeat me-1"></i> Dynamic
+                            </button>
+                        </div>
+                        
                         <div class="table-responsive">
-                            <table class="table table-hover" id="qr-code-list">
-                                <thead>
+                            <table class="table table-hover table-striped align-middle rounded-0 border" id="qr-code-list">
+                                <caption class="caption-top">List of all QR codes in the system</caption>
+                                <thead class="table-light">
                                     <tr>
-                                        <th>
-                                            <i class="bi bi-key me-2"></i>
-                                            ID
+                                        <th scope="col" class="text-nowrap" data-sort="id">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-key me-2"></i>
+                                                <span>ID</span>
+                                                <i class="bi bi-arrow-down-up ms-1 sort-icon"></i>
+                                            </div>
                                         </th>
-                                        <th>
-                                            <i class="bi bi-link-45deg me-2"></i>
-                                            Destination URL
+                                        <th scope="col" class="text-nowrap" data-sort="content">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-link-45deg me-2"></i>
+                                                <span>Destination URL</span>
+                                                <i class="bi bi-arrow-down-up ms-1 sort-icon"></i>
+                                            </div>
                                         </th>
-                                        <th>
-                                            <i class="bi bi-calendar me-2"></i>
-                                            Created
+                                        <th scope="col" class="text-nowrap" data-sort="created_at">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-calendar me-2"></i>
+                                                <span>Created</span>
+                                                <i class="bi bi-arrow-down-up ms-1 sort-icon"></i>
+                                            </div>
                                         </th>
-                                        <th>
-                                            <i class="bi bi-bar-chart me-2"></i>
-                                            Scans
+                                        <th scope="col" class="text-nowrap" data-sort="scan_count">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-bar-chart me-2"></i>
+                                                <span>Scans</span>
+                                                <i class="bi bi-arrow-down-up ms-1 sort-icon"></i>
+                                            </div>
                                         </th>
-                                        <th class="text-end">
-                                            <i class="bi bi-gear me-2"></i>
-                                            Actions
+                                        <th scope="col" class="text-end text-nowrap">
+                                            <div class="d-flex align-items-center justify-content-end">
+                                                <i class="bi bi-gear me-2"></i>
+                                                <span>Actions</span>
+                                            </div>
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr id="empty-state">
-                                        <td colspan="5">
-                                            <i class="bi bi-inbox"></i>
-                                            <p>No QR codes found</p>
-                                            <button class="btn" onclick="location.href='#create-qr'">
-                                                <i class="bi bi-plus-circle"></i>
-                                                Create your first QR code
-                                            </button>
+                                        <td colspan="5" class="text-center py-5">
+                                            <div class="empty-state-container">
+                                                <i class="bi bi-inbox fs-1 text-muted mb-3"></i>
+                                                <p class="mb-3">No QR codes found</p>
+                                                <button class="btn btn-primary rounded-0" onclick="location.href='#create-qr'">
+                                                    <i class="bi bi-plus-circle me-2"></i>
+                                                    Create your first QR code
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
+                                <tfoot class="table-light d-none">
+                                    <tr>
+                                        <td colspan="5" class="text-center">
+                                            <small class="text-muted">Showing <span id="qr-count">0</span> QR codes</small>
+                                        </td>
+                                    </tr>
+                                </tfoot>
                             </table>
+                            <!-- Pagination Controls -->
+                            <nav aria-label="QR code pagination" class="mt-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div id="pagination-info" class="text-muted small">
+                                        Page <span id="current-page">1</span> of <span id="total-pages">1</span>
+                                    </div>
+                                    <ul id="qr-pagination" class="pagination pagination-sm mb-0">
+                                        <li class="page-item disabled">
+                                            <button id="pagination-prev" class="page-link rounded-0" aria-label="Previous page">
+                                                <i class="bi bi-chevron-left"></i>
+                                            </button>
+                                        </li>
+                                        <li class="page-item disabled">
+                                            <button id="pagination-next" class="page-link rounded-0" aria-label="Next page">
+                                                <i class="bi bi-chevron-right"></i>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </nav>
                         </div>
                     </div>
                 </div>
             </main>
         </div>
     </div>
-
-    <!-- Bootstrap JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <!-- Custom JS -->
-    <script type="module" src="{{ url_for('static', path='/js/script.js') }}"></script>
-    <script type="module" src="{{ url_for('static', path='/js/api.js') }}"></script>
-    <script type="module" src="{{ url_for('static', path='/js/utils.js') }}"></script>
-    <script type="module" src="{{ url_for('static', path='/js/ui.js') }}"></script>
-    <script type="module" src="{{ url_for('static', path='/js/config.js') }}"></script>
 
     <!-- Environment banner for non-production -->
     {% if environment != "production" %}
@@ -318,5 +580,179 @@
     <footer class="text-center text-muted py-3">
         <small>&copy; {{ current_year }} QR Code Generator. All rights reserved.</small>
     </footer>
+
+    <!-- QR Details Modal -->
+    <div class="modal fade" id="qrDetailsModal" tabindex="-1" aria-labelledby="qrDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content rounded-0">
+                <div class="modal-header bg-dark text-white rounded-0">
+                    <h5 class="modal-title" id="qrDetailsModalLabel">QR Code Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- QR Code Preview -->
+                        <div class="col-md-5 text-center">
+                            <div class="qr-preview mb-3">
+                                <img id="modal-qr-image" src="" alt="QR Code" class="img-fluid border rounded-0">
+                            </div>
+                            <div class="download-options mb-3">
+                                <div class="btn-group w-100">
+                                    <button type="button" class="btn btn-dark rounded-0 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-download me-1"></i> Download
+                                    </button>
+                                    <ul class="dropdown-menu rounded-0 w-100">
+                                        <li><a class="dropdown-item" href="#" data-format="png" id="download-png"><i class="bi bi-file-image me-2"></i>PNG</a></li>
+                                        <li><a class="dropdown-item" href="#" data-format="svg" id="download-svg"><i class="bi bi-filetype-svg me-2"></i>SVG</a></li>
+                                        <li><a class="dropdown-item" href="#" data-format="pdf" id="download-pdf"><i class="bi bi-filetype-pdf me-2"></i>PDF</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- QR Code Details -->
+                        <div class="col-md-7">
+                            <h6 class="border-bottom pb-2 mb-3">Information</h6>
+                            <div class="mb-3">
+                                <div class="row mb-2">
+                                    <div class="col-sm-4 text-muted">ID:</div>
+                                    <div class="col-sm-8 text-break" id="modal-qr-id"></div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-sm-4 text-muted">Title:</div>
+                                    <div class="col-sm-8" id="modal-qr-title">-</div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-sm-4 text-muted">Type:</div>
+                                    <div class="col-sm-8" id="modal-qr-type"></div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-sm-4 text-muted">Created:</div>
+                                    <div class="col-sm-8" id="modal-qr-created"></div>
+                                </div>
+                                <div class="row mb-2" id="modal-content-row">
+                                    <div class="col-sm-4 text-muted">QR Content:</div>
+                                    <div class="col-sm-8 text-break" id="modal-qr-content"></div>
+                                </div>
+                                <div class="row mb-2" id="modal-redirect-row">
+                                    <div class="col-sm-4 text-muted">Redirect URL:</div>
+                                    <div class="col-sm-8 text-break">
+                                        <a href="#" target="_blank" id="modal-qr-redirect"></a>
+                                    </div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-sm-4 text-muted">Description:</div>
+                                    <div class="col-sm-8" id="modal-qr-description">-</div>
+                                </div>
+                            </div>
+                            
+                            <h6 class="border-bottom pb-2 mb-3">Statistics</h6>
+                            <div class="mb-3">
+                                <div class="row mb-2">
+                                    <div class="col-sm-4 text-muted">Scans:</div>
+                                    <div class="col-sm-8" id="modal-qr-scans">0</div>
+                                </div>
+                                <div class="row mb-2" id="modal-last-scan-row">
+                                    <div class="col-sm-4 text-muted">Last Scan:</div>
+                                    <div class="col-sm-8" id="modal-qr-last-scan">Never</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Actions Section (Edit/Delete for dynamic QR codes) -->
+                            <div id="modal-dynamic-actions" class="d-none">
+                                <h6 class="border-bottom pb-2 mb-3">Actions</h6>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-primary rounded-0" id="modal-edit-btn">
+                                        <i class="bi bi-pencil me-1"></i> Edit Redirect
+                                    </button>
+                                    <button class="btn btn-outline-danger rounded-0" id="modal-delete-btn">
+                                        <i class="bi bi-trash me-1"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary rounded-0" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit URL Modal -->
+    <div class="modal fade" id="editUrlModal" tabindex="-1" aria-labelledby="editUrlModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content rounded-0">
+                <div class="modal-header bg-dark text-white rounded-0">
+                    <h5 class="modal-title" id="editUrlModalLabel">Edit Redirect URL</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-url-form">
+                        <input type="hidden" id="edit-qr-id">
+                        <div class="mb-3">
+                            <label for="edit-redirect-url" class="form-label">New Redirect URL</label>
+                            <div class="input-group mb-3">
+                                <span class="input-group-text rounded-0"><i class="bi bi-link-45deg"></i></span>
+                                <input type="url" class="form-control rounded-0" id="edit-redirect-url" required
+                                    placeholder="https://example.com">
+                                <div class="invalid-feedback">Please enter a valid URL</div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary rounded-0" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary rounded-0" id="save-url-btn">
+                        <i class="bi bi-check2 me-1"></i> Save Changes
+                        <span class="spinner-border spinner-border-sm ms-1 d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content rounded-0">
+                <div class="modal-header bg-danger text-white rounded-0">
+                    <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this QR code? This action cannot be undone.</p>
+                    <input type="hidden" id="delete-qr-id">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary rounded-0" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger rounded-0" id="confirm-delete-btn">
+                        <i class="bi bi-trash me-1"></i> Delete
+                        <span class="spinner-border spinner-border-sm ms-1 d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JavaScript Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    
+    <!-- Make Bootstrap globally available -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure bootstrap is globally available
+            window.bootstrap = bootstrap;
+        });
+    </script>
+
+    <!-- Application JavaScript Modules -->
+    <script type="module" src="{{ url_for('static', path='/js/main.js') }}"></script>
+    <script type="module" src="{{ url_for('static', path='/js/config.js') }}"></script>
+    <script type="module" src="{{ url_for('static', path='/js/api.js') }}"></script>
+    <script type="module" src="{{ url_for('static', path='/js/utils.js') }}"></script>
+    <script type="module" src="{{ url_for('static', path='/js/ui.js') }}"></script>
+    <script type="module" src="{{ url_for('static', path='/js/script.js') }}"></script>
 </body>
 </html> 

@@ -10,6 +10,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Set BASE_URL to match the application's setting
+BASE_URL="https://localhost"
+echo -e "${YELLOW}Using BASE_URL: ${BASE_URL}${NC}"
+
 # Function to print status
 print_status() {
     local status=$1
@@ -143,8 +147,23 @@ test_update_dynamic_qr() {
 # Function to test QR code redirection
 test_qr_redirection() {
     echo -e "\n${YELLOW}Testing QR Code Redirection...${NC}"
+    
+    # Get the full content of the dynamic QR code
+    local CONTENT=$(curl -k -s https://localhost/api/v1/qr/$DYNAMIC_QR_ID | jq -r '.content')
+    echo -e "${YELLOW}QR code content:${NC} $CONTENT"
+    
     # Extract short ID from the dynamic QR code's content
-    local SHORT_ID=$(curl -k -s https://localhost/api/v1/qr/$DYNAMIC_QR_ID | jq -r '.content' | sed 's/\/r\///')
+    local SHORT_ID=$(echo "$CONTENT" | sed 's/.*\/r\///')
+    echo -e "${YELLOW}Extracted short ID:${NC} $SHORT_ID"
+    
+    # Check if content starts with expected BASE_URL
+    if [[ "$CONTENT" == "$BASE_URL/r/"* ]]; then
+        echo -e "${GREEN}✓ PASS:${NC} QR code content has expected BASE_URL format"
+    else
+        echo -e "${YELLOW}⚠ WARNING:${NC} QR code content does not match BASE_URL format"
+        echo -e "Expected format: ${BASE_URL}/r/{short_id}"
+        echo -e "Actual content: $CONTENT"
+    fi
     
     # Check redirection
     local redirect_response=$(curl -k -s -L -o /dev/null -w "%{http_code}" https://localhost/r/$SHORT_ID)
@@ -205,9 +224,22 @@ test_background_tasks_scan_statistics() {
     echo "$response" | jq . > /dev/null
     print_status $? "Created QR code for background task testing"
     
+    # Get the full content of the dynamic QR code
+    local CONTENT=$(echo "$response" | jq -r '.content')
+    echo -e "${YELLOW}QR code content:${NC} $CONTENT"
+    
     # Extract short ID from the dynamic QR code's content
-    local SHORT_ID=$(echo "$response" | jq -r '.content' | sed 's/\/r\///')
-    echo -e "${YELLOW}Short ID for redirection:${NC} $SHORT_ID"
+    local SHORT_ID=$(echo "$CONTENT" | sed 's/.*\/r\///')
+    echo -e "${YELLOW}Extracted short ID:${NC} $SHORT_ID"
+    
+    # Check if content starts with expected BASE_URL
+    if [[ "$CONTENT" == "$BASE_URL/r/"* ]]; then
+        echo -e "${GREEN}✓ PASS:${NC} QR code content has expected BASE_URL format"
+    else
+        echo -e "${YELLOW}⚠ WARNING:${NC} QR code content does not match BASE_URL format"
+        echo -e "Expected format: ${BASE_URL}/r/{short_id}"
+        echo -e "Actual content: $CONTENT"
+    fi
     
     # Get initial scan count
     local initial_response=$(curl -k -s https://localhost/api/v1/qr/$bg_qr_id)

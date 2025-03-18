@@ -169,7 +169,7 @@ def test_create_dynamic_qr(client: TestClient, test_db: Session):
     )
 
     # Verify the content starts with "/r/" for redirection
-    assert data["content"].startswith("/r/")
+    assert "/r/" in data["content"], f"Content should contain '/r/': {data['content']}"
 
     # Verify the QR code was created in the database
     qr_id = data["id"]
@@ -279,7 +279,7 @@ async def test_dynamic_qr_redirect(client: TestClient, test_db: Session):
 
     # Extract the path from the content (should be like "/r/abc123")
     redirect_path = qr["content"]
-    assert redirect_path.startswith("/r/")
+    assert "/r/" in redirect_path, f"Redirect path should contain '/r/': {redirect_path}"
 
     # Test the redirection
     response = client.get(redirect_path, follow_redirects=False)
