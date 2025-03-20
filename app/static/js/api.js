@@ -34,11 +34,39 @@ import { showError } from './utils.js';
  * @returns {Promise} - JSON response or throws error
  */
 async function handleResponse(response) {
-    const data = await response.json();
+    // First check if the response is ok (status in the range 200-299)
     if (!response.ok) {
-        throw new Error(data.detail || 'API request failed');
+        // Try to get error details from the response body
+        let errorMessage = `API request failed with status ${response.status}`;
+        try {
+            const errorData = await response.json();
+            if (errorData.detail) {
+                errorMessage = errorData.detail;
+            }
+        } catch (e) {
+            // If parsing JSON fails, try to get the text
+            try {
+                const errorText = await response.text();
+                if (errorText) {
+                    errorMessage += `: ${errorText}`;
+                }
+            } catch (textError) {
+                // If even getting text fails, just use the status
+                console.error('Could not parse error response', textError);
+            }
+        }
+        
+        console.error('API Error:', errorMessage);
+        throw new Error(errorMessage);
     }
-    return data;
+    
+    // For successful responses, parse the JSON
+    try {
+        return await response.json();
+    } catch (jsonError) {
+        console.error('Error parsing JSON response', jsonError);
+        throw new Error('Invalid JSON response from API');
+    }
 }
 
 /**
@@ -47,15 +75,20 @@ async function handleResponse(response) {
  * @returns {Object} - Extended fetch options
  */
 function createFetchOptions(options = {}) {
-    // In development, we need to accept self-signed certificates
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        return {
-            ...options,
-            mode: 'cors',
-            credentials: 'same-origin',
-        };
+    // Clone the options to avoid modifying the original
+    const fetchOptions = { ...options };
+    
+    // Always include credentials for same-origin requests
+    fetchOptions.credentials = 'same-origin';
+    
+    // Add CORS mode for cross-origin requests
+    if (window.location.hostname !== new URL(config.API.BASE_URL).hostname) {
+        fetchOptions.mode = 'cors';
     }
-    return options;
+    
+    console.log('Fetch options:', fetchOptions);
+    
+    return fetchOptions;
 }
 
 export const api = {
@@ -133,12 +166,21 @@ export const api = {
      */
     async getQR(id) {
         try {
+            const apiUrl = `${config.API.BASE_URL}${config.API.ENDPOINTS.QR_DETAIL(id)}`;
+            
+            console.log('Fetching QR code:', apiUrl);
+            
             const response = await fetch(
-                `${config.API.BASE_URL}/api/v1/qr/${id}`,
+                apiUrl,
                 createFetchOptions()
             );
+            
+            // Log response status
+            console.log('API Response status:', response.status);
+            
             return handleResponse(response);
         } catch (error) {
+            console.error('Error fetching QR code:', error);
             showError(`Error fetching QR code: ${error.message}`);
             throw error;
         }
@@ -151,8 +193,17 @@ export const api = {
      */
     async createStaticQR(data) {
         try {
+            // Ensure URL has https:// for production environments
+            const apiUrl = `${config.API.BASE_URL}${config.API.ENDPOINTS.QR_STATIC}`;
+            
+            // Debug output
+            console.log('Creating static QR code with:', {
+                url: apiUrl,
+                data: data
+            });
+            
             const response = await fetch(
-                `${config.API.BASE_URL}/api/v1/qr/static`,
+                apiUrl,
                 createFetchOptions({
                     method: 'POST',
                     headers: {
@@ -161,8 +212,22 @@ export const api = {
                     body: JSON.stringify(data)
                 })
             );
-            return handleResponse(response);
+            
+            // Log response status
+            console.log('API Response status:', response.status);
+            
+            // If not OK, try to log response body
+            if (!response.ok) {
+                const errorBody = await response.text();
+                console.error('API Error response:', errorBody);
+                throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
+            }
+            
+            const responseData = await response.json();
+            console.log('API Success response:', responseData);
+            return responseData;
         } catch (error) {
+            console.error('Error creating static QR code:', error);
             showError(`Error creating static QR code: ${error.message}`);
             throw error;
         }
@@ -175,8 +240,17 @@ export const api = {
      */
     async createDynamicQR(data) {
         try {
+            // Ensure URL has https:// for production environments
+            const apiUrl = `${config.API.BASE_URL}${config.API.ENDPOINTS.QR_DYNAMIC}`;
+            
+            // Debug output
+            console.log('Creating dynamic QR code with:', {
+                url: apiUrl,
+                data: data
+            });
+            
             const response = await fetch(
-                `${config.API.BASE_URL}${config.API.ENDPOINTS.QR_DYNAMIC}`,
+                apiUrl,
                 createFetchOptions({
                     method: 'POST',
                     headers: {
@@ -185,8 +259,22 @@ export const api = {
                     body: JSON.stringify(data)
                 })
             );
-            return handleResponse(response);
+            
+            // Log response status
+            console.log('API Response status:', response.status);
+            
+            // If not OK, try to log response body
+            if (!response.ok) {
+                const errorBody = await response.text();
+                console.error('API Error response:', errorBody);
+                throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
+            }
+            
+            const responseData = await response.json();
+            console.log('API Success response:', responseData);
+            return responseData;
         } catch (error) {
+            console.error('Error creating dynamic QR code:', error);
             showError(`Error creating dynamic QR code: ${error.message}`);
             throw error;
         }
@@ -245,14 +333,20 @@ export const api = {
     /**
      * Gets the QR code image URL
      * @param {string} id - QR code ID
-     * @param {Object} options - Image options
-     * @param {string} [options.format='png'] - Image format (png/jpeg/jpg/svg/webp)
+     * @param {Object} [options] - Options for the QR code image
+     * @param {string} [options.format] - Image format (png, svg, etc.)
      * @param {number} [options.quality] - Image quality (1-100, for jpeg/webp)
      * @returns {string} - QR code image URL
      */
     getQRImageUrl(id, { format = 'png', quality = null } = {}) {
+        if (!id) {
+            console.warn('Missing QR ID for getQRImageUrl');
+            return '';
+        }
+        
         const params = new URLSearchParams({ image_format: format });
         if (quality !== null) params.append('image_quality', quality.toString());
+        
         return `${config.API.BASE_URL}/api/v1/qr/${id}/image?${params}`;
     },
 
@@ -266,7 +360,7 @@ export const api = {
     },
 
     /**
-     * Deletes a QR code by ID
+     * Deletes a QR code
      * @param {string} id - QR code ID
      * @returns {Promise<void>}
      */
@@ -274,23 +368,14 @@ export const api = {
         try {
             const response = await fetch(
                 `${config.API.BASE_URL}/api/v1/qr/${id}`,
-                createFetchOptions({
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
+                createFetchOptions({ method: 'DELETE' })
             );
-            
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                throw new Error(data.detail || `Failed to delete QR code: ${response.status}`);
-            }
-            
-            return true;
+            return handleResponse(response);
         } catch (error) {
-            showError(`Error deleting QR code: ${error.message}`);
+            console.error(`Error deleting QR code: ${error.message}`);
             throw error;
         }
-    }
+    },
+
+    // Analytics functions removed - not supported by backend
 };

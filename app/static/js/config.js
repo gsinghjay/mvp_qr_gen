@@ -8,7 +8,9 @@ export const config = {
         BASE_URL: window.location.origin.replace('http://', 'https://'),
         ENDPOINTS: {
             QR_LIST: '/api/v1/qr',
+            QR_STATIC: '/api/v1/qr/static',
             QR_DYNAMIC: '/api/v1/qr/dynamic',
+            QR_DETAIL: (id) => `/api/v1/qr/${id}`,
             QR_IMAGE: (id) => `/api/v1/qr/${id}/image`,
             QR_UPDATE: (id) => `/api/v1/qr/${id}`,
             QR_DELETE: (id) => `/api/v1/qr/${id}`

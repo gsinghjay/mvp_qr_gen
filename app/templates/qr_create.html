@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}QR Code Generator - Create QR Code{% endblock %}
+{% block description %}Create static and dynamic QR codes with custom settings{% endblock %}
+
+{% block content %}
+<!-- Main Content -->
+<div id="content" class="flex-grow-1">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg bg-white shadow-sm sticky-top">
+        <div class="container-fluid px-4">
+            <button type="button" id="sidebarCollapse" class="btn btn-dark rounded-0 d-lg-none" aria-label="Toggle Sidebar">
+                <i class="bi bi-list"></i>
+            </button>
+            <nav aria-label="breadcrumb" class="d-none d-lg-block ms-3">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Create QR Code</li>
+                </ol>
+            </nav>
+            <div class="ms-auto d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm text-primary me-3 d-none" role="status" id="loading-indicator">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid p-4">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card rounded-0 shadow-sm h-100">
+                    <div class="card-header rounded-0 bg-dark text-white py-3">
+                        <h2 class="card-title h5 mb-0 d-flex align-items-center">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            Create QR Code
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <!-- QR Code Creation Tabs -->
+                        <ul class="nav nav-tabs mb-4" id="qrTypeTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active rounded-0" id="static-tab" data-bs-toggle="tab" data-bs-target="#static-qr" type="button" role="tab" aria-controls="static-qr" aria-selected="true">
+                                    <i class="bi bi-qr-code me-1"></i> Static QR
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-0" id="dynamic-tab" data-bs-toggle="tab" data-bs-target="#dynamic-qr" type="button" role="tab" aria-controls="dynamic-qr" aria-selected="false">
+                                    <i class="bi bi-link me-1"></i> Dynamic QR
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <!-- Tab Content -->
+                        <div class="tab-content" id="qrTypeTabsContent">
+                            <!-- Static QR Tab -->
+                            <div class="tab-pane fade show active" id="static-qr" role="tabpanel" aria-labelledby="static-tab">
+                                <form id="create-static-qr-form" class="needs-validation" novalidate>
+                                    <input type="hidden" name="qr_type" value="static">
+                                    
+                                    <div class="mb-3">
+                                        <label for="content" class="form-label">
+                                            <i class="bi bi-text-paragraph me-1"></i>
+                                            Content
+                                        </label>
+                                        <div class="input-group has-validation">
+                                            <span class="input-group-text rounded-0"><i class="bi bi-card-text"></i></span>
+                                            <input type="text" class="form-control rounded-0" id="content" name="content" required
+                                                placeholder="Text, URL, or info to encode" maxlength="2048">
+                                            <div class="invalid-feedback">Please enter content for your QR code</div>
+                                        </div>
+                                        <div class="form-text">Up to 2048 characters. For URLs, include http:// or https://</div>
+                                    </div>
+                                    
+                                    <!-- Advanced Options Collapse -->
+                                    <div class="mb-3">
+                                        <a class="btn btn-outline-secondary btn-sm rounded-0 d-flex align-items-center" 
+                                           data-bs-toggle="collapse" href="#staticAdvancedOptions" role="button" 
+                                           aria-expanded="false" aria-controls="staticAdvancedOptions">
+                                            <i class="bi bi-gear me-1"></i>
+                                            Advanced Options
+                                            <i class="bi bi-chevron-down ms-1"></i>
+                                        </a>
+                                    </div>
+                                    
+                                    <div class="collapse mb-3" id="staticAdvancedOptions">
+                                        <div class="card card-body rounded-0 border-0 bg-light">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="static-size" class="form-label">
+                                                            <i class="bi bi-arrows-angle-expand me-1"></i>
+                                                            Size
+                                                        </label>
+                                                        <input type="range" class="form-range" id="static-size" name="size" 
+                                                            min="5" max="20" value="10" step="1">
+                                                        <div class="d-flex justify-content-between">
+                                                            <small>Small</small>
+                                                            <small>Large</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="static-border" class="form-label">
+                                                            <i class="bi bi-border-outer me-1"></i>
+                                                            Border Size
+                                                        </label>
+                                                        <input type="range" class="form-range" id="static-border" name="border" 
+                                                            min="0" max="10" value="4" step="1">
+                                                        <div class="d-flex justify-content-between">
+                                                            <small>None</small>
+                                                            <small>Large</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="static-fill-color" class="form-label">
+                                                            <i class="bi bi-palette me-1"></i>
+                                                            QR Color
+                                                        </label>
+                                                        <input type="color" class="form-control form-control-color rounded-0" 
+                                                            id="static-fill-color" name="fill_color" value="#000000">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="static-back-color" class="form-label">
+                                                            <i class="bi bi-palette2 me-1"></i>
+                                                            Background Color
+                                                        </label>
+                                                        <input type="color" class="form-control form-control-color rounded-0" 
+                                                            id="static-back-color" name="back_color" value="#FFFFFF">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-dark rounded-0 d-flex align-items-center">
+                                        <i class="bi bi-plus-circle me-2"></i>
+                                        Create Static QR Code
+                                        <span class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            <!-- Dynamic QR Tab -->
+                            <div class="tab-pane fade" id="dynamic-qr" role="tabpanel" aria-labelledby="dynamic-tab">
+                                <form id="create-dynamic-qr-form" class="needs-validation" novalidate>
+                                    <input type="hidden" name="qr_type" value="dynamic">
+                                    
+                                    <div class="mb-3">
+                                        <label for="redirect_url" class="form-label">
+                                            <i class="bi bi-link me-1"></i>
+                                            Destination URL
+                                        </label>
+                                        <div class="input-group has-validation">
+                                            <span class="input-group-text rounded-0"><i class="bi bi-link-45deg"></i></span>
+                                            <input type="text" class="form-control rounded-0" id="redirect_url" name="redirect_url" required 
+                                                placeholder="https://example.com">
+                                            <div class="invalid-feedback">Please enter a valid URL (must include https://)</div>
+                                        </div>
+                                        <div class="form-text">The URL where your QR code will redirect to when scanned</div>
+                                    </div>
+                                    
+                                    <!-- Advanced Options Collapse -->
+                                    <div class="mb-3">
+                                        <a class="btn btn-outline-secondary btn-sm rounded-0 d-flex align-items-center" 
+                                           data-bs-toggle="collapse" href="#dynamicAdvancedOptions" role="button" 
+                                           aria-expanded="false" aria-controls="dynamicAdvancedOptions">
+                                            <i class="bi bi-gear me-1"></i>
+                                            Advanced Options
+                                            <i class="bi bi-chevron-down ms-1"></i>
+                                        </a>
+                                    </div>
+                                    
+                                    <div class="collapse mb-3" id="dynamicAdvancedOptions">
+                                        <div class="card card-body rounded-0 border-0 bg-light">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="dynamic-size" class="form-label">
+                                                            <i class="bi bi-arrows-angle-expand me-1"></i>
+                                                            Size
+                                                        </label>
+                                                        <input type="range" class="form-range" id="dynamic-size" name="size" 
+                                                            min="5" max="20" value="10" step="1">
+                                                        <div class="d-flex justify-content-between">
+                                                            <small>Small</small>
+                                                            <small>Large</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="dynamic-border" class="form-label">
+                                                            <i class="bi bi-border-outer me-1"></i>
+                                                            Border Size
+                                                        </label>
+                                                        <input type="range" class="form-range" id="dynamic-border" name="border" 
+                                                            min="0" max="10" value="4" step="1">
+                                                        <div class="d-flex justify-content-between">
+                                                            <small>None</small>
+                                                            <small>Large</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="dynamic-fill-color" class="form-label">
+                                                            <i class="bi bi-palette me-1"></i>
+                                                            QR Color
+                                                        </label>
+                                                        <input type="color" class="form-control form-control-color rounded-0" 
+                                                            id="dynamic-fill-color" name="fill_color" value="#000000">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="dynamic-back-color" class="form-label">
+                                                            <i class="bi bi-palette2 me-1"></i>
+                                                            Background Color
+                                                        </label>
+                                                        <input type="color" class="form-control form-control-color rounded-0" 
+                                                            id="dynamic-back-color" name="back_color" value="#FFFFFF">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-dark rounded-0 d-flex align-items-center">
+                                        <i class="bi bi-plus-circle me-2"></i>
+                                        Create Dynamic QR Code
+                                        <span class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mt-4 mt-lg-0">
+                <div class="card rounded-0 shadow-sm">
+                    <div class="card-header rounded-0 bg-dark text-white py-3">
+                        <h2 class="card-title h5 mb-0 d-flex align-items-center">
+                            <i class="bi bi-eye me-2"></i>
+                            QR Preview
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="qr-preview-container" class="text-center p-4">
+                            <div id="qr-preview-placeholder" class="mb-3">
+                                <i class="bi bi-qr-code display-1 text-muted"></i>
+                                <p class="text-muted">Fill out the form to preview your QR code</p>
+                            </div>
+                            <div id="qr-preview" class="d-none">
+                                <img id="qr-preview-image" src="" alt="QR Code Preview" class="img-fluid mb-3">
+                                <div class="btn-group w-100">
+                                    <button id="download-qr-png" class="btn btn-outline-dark rounded-0">
+                                        <i class="bi bi-file-earmark-image me-1"></i> PNG
+                                    </button>
+                                    <button id="download-qr-svg" class="btn btn-outline-dark rounded-0">
+                                        <i class="bi bi-filetype-svg me-1"></i> SVG
+                                    </button>
+                                    <button id="download-qr-pdf" class="btn btn-outline-dark rounded-0">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="qr-preview-loading" class="d-none">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="text-muted mt-2">Generating preview...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- QR Code Information -->
+                <div class="card rounded-0 shadow-sm mt-4">
+                    <div class="card-header rounded-0 bg-dark text-white py-3">
+                        <h2 class="card-title h5 mb-0 d-flex align-items-center">
+                            <i class="bi bi-info-circle me-2"></i>
+                            QR Code Types
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h3 class="h6 fw-bold"><i class="bi bi-qr-code me-1"></i> Static QR Codes</h3>
+                            <p class="small mb-0">Static QR codes contain fixed information that cannot be changed after creation. Use for:</p>
+                            <ul class="small">
+                                <li>Plain text information</li>
+                                <li>Fixed URLs</li>
+                                <li>Contact information</li>
+                                <li>Wi-Fi credentials</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="h6 fw-bold"><i class="bi bi-link me-1"></i> Dynamic QR Codes</h3>
+                            <p class="small mb-0">Dynamic QR codes store a short URL that can be updated later. Benefits include:</p>
+                            <ul class="small">
+                                <li>Redirect URL can be changed anytime</li>
+                                <li>Track scan statistics</li>
+                                <li>No need to reprint when destination changes</li>
+                                <li>Analyze user engagement</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script type="module" src="{{ url_for('static', path='/js/script.js') }}"></script>
+{% endblock %} 

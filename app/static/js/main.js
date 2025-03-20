@@ -1,10 +1,21 @@
 /**
- * Main JavaScript file for the myHudson Portal pages
+ * Main JavaScript file for the QR Generator application
  */
+
+// Import script.js init function if available
+import { init as scriptInit } from './script.js';
 
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('myHudson Portal login page loaded');
+    console.log('QR Generator application loaded');
+    
+    // Initialize script.js functionality if available
+    if (typeof scriptInit === 'function') {
+        console.log('Initializing script.js functions');
+        scriptInit();
+    } else {
+        console.warn('script.js init function not available');
+    }
     
     // Handle login buttons
     setupLoginButtons();

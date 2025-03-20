@@ -13,6 +13,11 @@ let searchTerm = null;
 let currentSortBy = 'created_at'; // Default sort by creation date
 let currentSortDesc = true; // Default sort newest first
 
+// Track the last QR code ID used for preview
+let lastPreviewQrId = null;
+let previewTimer = null;
+let previewInProgress = false;
+
 /**
  * Handles sidebar toggle
  */
@@ -386,19 +391,18 @@ async function handleDelete(event) {
 }
 
 /**
- * Handles searching QR codes
- * @param {Event} event - The input event
+ * Handles search input changes
  */
 function handleSearch(event) {
+    console.log('Search input changed');
     const searchInput = event.target;
     const searchValue = searchInput.value.trim();
-    searchTerm = searchValue || null;
+    const clearButton = document.getElementById('clear-search-btn');
     
-    // Debug output
-    console.log(`Search term: "${searchTerm}"`);
+    // Update search term
+    searchTerm = searchValue;
     
-    // Show/hide clear button based on search input
-    const clearButton = document.querySelector('.clear-search');
+    // Show/hide clear button
     if (clearButton) {
         if (searchValue) {
             clearButton.classList.remove('d-none');
@@ -407,27 +411,31 @@ function handleSearch(event) {
         }
     }
     
-    refreshQRList(1); // Reset to first page when search changes
+    // Reset to first page and refresh
+    refreshQRList(1);
 }
 
 /**
- * Clears the search input
+ * Clears the search input and resets the QR list
  */
 function clearSearch() {
+    console.log('Clearing search');
+    searchTerm = '';
+    
+    // Clear search input if it exists
     const searchInput = document.getElementById('qr-search');
     if (searchInput) {
         searchInput.value = '';
-        searchTerm = null;
-        
-        // Hide clear button
-        const clearButton = document.querySelector('.clear-search');
-        if (clearButton) {
-            clearButton.classList.add('d-none');
-        }
-        
-        refreshQRList(1);
-        searchInput.focus();
     }
+    
+    // Hide clear button
+    const clearButton = document.getElementById('clear-search-btn');
+    if (clearButton) {
+        clearButton.classList.add('d-none');
+    }
+    
+    // Reset to first page and refresh
+    refreshQRList(1);
 }
 
 /**
@@ -556,13 +564,49 @@ function handlePagination(direction) {
 }
 
 /**
- * Handles form submission for creating a new QR code
- * @param {Event} event - The submit event
+ * Marks a form as processing or not processing
+ * @param {HTMLFormElement} form - The form to mark
+ * @param {boolean} isProcessing - Whether the form is processing
+ */
+function markFormProcessing(form, isProcessing) {
+    if (isProcessing) {
+        form.dataset.processing = 'true';
+        form.querySelectorAll('button[type="submit"]').forEach(btn => {
+            btn.disabled = true;
+        });
+    } else {
+        form.dataset.processing = 'false';
+        form.querySelectorAll('button[type="submit"]').forEach(btn => {
+            btn.disabled = false;
+        });
+    }
+}
+
+/**
+ * Handles form submission for QR code creation
+ * @param {Event} event - The form submission event
  */
 async function handleFormSubmit(event) {
     event.preventDefault();
 
     const form = event.target;
+    
+    console.log('Form submission triggered', {
+        formId: form.id,
+        formAction: form.action,
+        formMethod: form.method,
+        formElements: form.elements.length
+    });
+    
+    // Check if form is already processing
+    if (form.dataset.processing === 'true') {
+        console.log('Form submission already in progress');
+        return;
+    }
+    
+    // Mark form as processing
+    markFormProcessing(form, true);
+    
     const formData = new FormData(form);
     const formId = form.id;
     
@@ -570,11 +614,29 @@ async function handleFormSubmit(event) {
     const isStatic = formId === 'create-static-qr-form';
     const isDynamic = formId === 'create-dynamic-qr-form';
     
+    // Create an object to log form field values
+    const formDataObj = {};
+    for (const [key, value] of formData.entries()) {
+        formDataObj[key] = value;
+    }
+    
+    // Debug log form submission
+    console.log('Form submission data:', {
+        isStatic,
+        isDynamic,
+        formId,
+        formData: formDataObj
+    });
+    
     // Common validation
     let isValid = form.checkValidity();
+    console.log('Form validation result:', { isValid });
+    
     if (!isValid) {
+        console.log('Form validation failed, showing validation feedback');
         event.stopPropagation();
         form.classList.add('was-validated');
+        markFormProcessing(form, false);
         return;
     }
     
@@ -583,97 +645,100 @@ async function handleFormSubmit(event) {
         size: parseInt(formData.get('size') || config.DEFAULT_VALUES.SIZE, 10),
         fill_color: formData.get('fill_color') || config.DEFAULT_VALUES.FILL_COLOR,
         back_color: formData.get('back_color') || config.DEFAULT_VALUES.BACK_COLOR,
-        border: parseInt(formData.get('border') || config.DEFAULT_VALUES.BORDER, 10),
-        title: formData.get('title') || '',
-        description: formData.get('description') || ''
+        border: parseInt(formData.get('border') || config.DEFAULT_VALUES.BORDER, 10)
     };
+    
+    // Add title and description if provided
+    const title = formData.get('title')?.trim();
+    if (title) data.title = title;
+    
+    const description = formData.get('description')?.trim();
+    if (description) data.description = description;
     
     // Add type-specific fields
     if (isStatic) {
         const content = formData.get('content')?.trim();
         if (!content) {
+            console.error('Content is required for static QR codes but is missing');
             showError('Please enter content for your QR code');
+            markFormProcessing(form, false);
             return;
         }
         data.content = content;
     } else if (isDynamic) {
         const redirectUrl = formatUrl(formData.get('redirect_url') || '');
         if (!isValidUrl(redirectUrl)) {
+            console.error('Invalid redirect URL for dynamic QR code:', redirectUrl);
             showError('Please enter a valid URL (e.g., https://example.com)');
+            markFormProcessing(form, false);
             return;
         }
         data.redirect_url = redirectUrl;
+    } else {
+        console.error('Unknown form type, neither static nor dynamic:', formId);
+        showError('Unknown form type, please try again');
+        markFormProcessing(form, false);
+        return;
     }
+    
+    console.log('Processed form data ready for API call:', data);
     
     try {
         ui.setFormLoading(form, true);
         
+        // Disable buttons to prevent multiple submissions
+        form.querySelectorAll('button[type="submit"]').forEach(button => {
+            button.disabled = true;
+            // Add spinner to button if it exists
+            const spinner = button.querySelector('.spinner-border');
+            if (spinner) spinner.classList.remove('d-none');
+        });
+        
         // Call the appropriate API based on form type
         let response;
+        
         if (isDynamic) {
+            console.log('Making API request to create dynamic QR code with data:', data);
+            console.log('API endpoint:', config.API.BASE_URL + config.API.ENDPOINTS.QR_DYNAMIC);
             response = await api.createDynamicQR(data);
         } else {
+            console.log('Making API request to create static QR code with data:', data);
+            console.log('API endpoint:', config.API.BASE_URL + config.API.ENDPOINTS.QR_STATIC);
             response = await api.createStaticQR(data);
         }
         
-        showSuccess(`${isStatic ? 'Static' : 'Dynamic'} QR code created successfully!`);
+        console.log('QR code created successfully, API response:', response);
+        
+        // Store success message in localStorage to show after redirect
+        const successMessage = `${isStatic ? 'Static' : 'Dynamic'} QR code created successfully!`;
+        localStorage.setItem('qr_success_message', successMessage);
+        
+        // Reset form state
         ui.resetForm(form);
         form.classList.remove('was-validated');
         
-        // Update QR list and preview
-        refreshQRList(1); // Reset to first page after creation
-        ui.updateQRPreview(response.id);
-        
-        // Switch to view tab - direct approach without Bootstrap Tab API
-        try {
-            // Get the tab element that should be shown
-            const viewTab = document.querySelector('a[href="#qr-list"]');
-            if (viewTab) {
-                // Find parent tab container
-                const tabContainer = viewTab.closest('.nav-tabs, [role="tablist"]');
-                if (tabContainer) {
-                    // Deactivate all tabs first
-                    tabContainer.querySelectorAll('.nav-link').forEach(tab => {
-                        tab.classList.remove('active');
-                        tab.setAttribute('aria-selected', 'false');
-                    });
-                    
-                    // Activate our tab
-                    viewTab.classList.add('active');
-                    viewTab.setAttribute('aria-selected', 'true');
-                    
-                    // Hide all tab panes
-                    const tabContentContainer = document.querySelector('.tab-content');
-                    if (tabContentContainer) {
-                        tabContentContainer.querySelectorAll('.tab-pane').forEach(pane => {
-                            pane.classList.remove('show', 'active');
-                        });
-                        
-                        // Show our pane
-                        const targetPane = document.querySelector(viewTab.getAttribute('href'));
-                        if (targetPane) {
-                            targetPane.classList.add('show', 'active');
-                        }
-                    }
-                    
-                    // Optional: Scroll to the top of the tab content
-                    tabContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            }
-        } catch (tabError) {
-            console.warn("Error switching tabs:", tabError);
-            // Last resort - try direct click
-            try {
-                document.querySelector('a[href="#qr-list"]')?.click();
-            } catch (clickError) {
-                console.error("Failed to switch tabs:", clickError);
-            }
-        }
+        // Force hard navigation to the list page
+        console.log('Redirecting to QR list page...');
+        window.location.replace('/qr-list');
     } catch (error) {
         console.error(`Error creating ${isStatic ? 'static' : 'dynamic'} QR code:`, error);
-        showError(`Failed to create ${isStatic ? 'static' : 'dynamic'} QR code. Please try again.`);
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
+        showError(`Failed to create ${isStatic ? 'static' : 'dynamic'} QR code: ${error.message}`);
+        
+        // Re-enable the submit button
+        form.querySelectorAll('button[type="submit"]').forEach(button => {
+            button.disabled = false;
+            // Hide spinner
+            const spinner = button.querySelector('.spinner-border');
+            if (spinner) spinner.classList.add('d-none');
+        });
     } finally {
         ui.setFormLoading(form, false);
+        markFormProcessing(form, false);
     }
 }
 
@@ -688,57 +753,262 @@ function handleQRTypeFilter(type) {
 }
 
 /**
+ * Hides the preview and shows the placeholder
+ */
+function hidePreviewShowPlaceholder() {
+    const previewPlaceholder = document.getElementById('qr-preview-placeholder');
+    const previewContainer = document.getElementById('qr-preview');
+    const loadingElement = document.getElementById('qr-preview-loading');
+    
+    if (previewPlaceholder) previewPlaceholder.classList.remove('d-none');
+    if (previewContainer) previewContainer.classList.add('d-none');
+    if (loadingElement) loadingElement.classList.add('d-none');
+}
+
+/**
+ * Shows the preview with the given QR ID and hides the placeholder
+ * @param {string} qrId - The QR code ID
+ */
+function showPreviewHidePlaceholder(qrId) {
+    // IMPORTANT: This function is no longer used to prevent duplicate QR codes
+    console.log('Preview functionality is disabled to prevent duplicate QR codes');
+}
+
+/**
+ * Creates or updates live QR code preview from form data
+ * @param {HTMLFormElement} form - The form containing QR code data
+ */
+async function updateLivePreview(form) {
+    if (!form) return;
+    
+    // Skip if form is being submitted
+    if (form.dataset.processing === 'true') {
+        console.log('Skipping preview during form submission');
+        return;
+    }
+    
+    // Skip if preview update is already in progress
+    if (previewInProgress) {
+        console.log('Preview update already in progress, skipping');
+        return;
+    }
+    
+    // Clear existing timer
+    if (previewTimer) {
+        clearTimeout(previewTimer);
+        previewTimer = null;
+    }
+    
+    // IMPORTANT: Live preview functionality is disabled to prevent duplicate QR codes
+    // Show placeholder with message
+    const previewPlaceholder = document.getElementById('qr-preview-placeholder');
+    const previewContainer = document.getElementById('qr-preview');
+    const loadingElement = document.getElementById('qr-preview-loading');
+    
+    if (previewContainer) previewContainer.classList.add('d-none');
+    if (loadingElement) loadingElement.classList.add('d-none');
+    
+    if (previewPlaceholder) {
+        previewPlaceholder.classList.remove('d-none');
+        const placeholderText = previewPlaceholder.querySelector('.placeholder-text');
+        if (placeholderText) {
+            placeholderText.textContent = 'Preview disabled - QR code will be generated upon submission';
+        }
+    }
+    
+    // Disable the download buttons since there's no QR to download yet
+    const downloadButtons = [
+        document.getElementById('download-qr-png'),
+        document.getElementById('download-qr-svg'),
+        document.getElementById('download-qr-pdf')
+    ];
+    
+    downloadButtons.forEach(button => {
+        if (button) {
+            button.disabled = true;
+            button.title = 'Submit the form to create and download a QR code';
+        }
+    });
+}
+
+/**
+ * Generates a preview URL for a QR code based on form data without creating a database entry
+ * @param {Object} data - The QR code data
+ * @param {boolean} isStatic - Whether this is a static QR code
+ * @returns {string} - The preview URL
+ */
+function generatePreviewUrl(data, isStatic) {
+    // IMPORTANT: This function is no longer used to prevent duplicate QR codes
+    console.log('Preview functionality is disabled to prevent duplicate QR codes');
+    return '';
+}
+
+/**
+ * Shows the preview with the given image URL
+ * @param {string} imageUrl - The image URL for the preview
+ */
+function showPreviewWithUrl(imageUrl) {
+    // IMPORTANT: This function is no longer used to prevent duplicate QR codes
+    console.log('Preview functionality is disabled to prevent duplicate QR codes');
+}
+
+/**
+ * Sets up download buttons for QR preview without having a real QR ID
+ * @param {Object} data - The QR code data
+ * @param {boolean} isStatic - Whether this is a static QR code
+ */
+function setupPreviewDownloadButtonsForLivePreview(data, isStatic) {
+    // IMPORTANT: This function is no longer used to prevent duplicate QR codes
+    console.log('Preview functionality is disabled to prevent duplicate QR codes');
+}
+
+/**
  * Initializes the application
  */
 function init() {
-    // Initialize table sorting - set initial sort state
-    const initialSortHeader = document.querySelector(`th[data-sort="${currentSortBy}"]`);
-    if (initialSortHeader) {
-        initialSortHeader.classList.add(currentSortDesc ? 'sort-desc' : 'sort-asc');
+    // Prevent multiple initialization
+    if (window.isScriptInitialized) {
+        console.log('Script already initialized, skipping duplicate initialization');
+        return;
+    }
+    window.isScriptInitialized = true;
+    
+    // Check for stored success/error messages and display them
+    const successMessage = localStorage.getItem('qr_success_message');
+    if (successMessage) {
+        showSuccess(successMessage);
+        localStorage.removeItem('qr_success_message');
     }
     
-    // Initialize QR list
-    refreshQRList();
-    
-    // Add event listeners for QR code actions with better delegation
-    const qrList = document.querySelector(config.SELECTORS.QR_LIST);
-    if (qrList) {
-        qrList.addEventListener('click', event => {
-            // Find all possible buttons the click might be targeting
-            const viewButton = event.target.closest('.view-btn');
-            const updateButton = event.target.closest('.update-btn');
-            const deleteButton = event.target.closest('.delete-btn');
-            
-            // Call appropriate handler based on which button was clicked
-            if (viewButton) {
-                event.preventDefault(); // Prevent default modal behavior
-                handleViewImage(event);
-            } else if (updateButton) {
-                handleUpdate(event);
-            } else if (deleteButton) {
-                handleDelete(event);
-            }
-        });
-        
-        // Add event listeners for table header sorting
-        const tableHeaders = qrList.querySelectorAll('th[data-sort]');
-        tableHeaders.forEach(header => {
-            header.addEventListener('click', handleSort);
-        });
+    const errorMessage = localStorage.getItem('qr_error_message');
+    if (errorMessage) {
+        showError(errorMessage);
+        localStorage.removeItem('qr_error_message');
     }
     
-    // Add event listeners for form submissions
-    const staticForm = document.querySelector(config.SELECTORS.STATIC_FORM);
-    const dynamicForm = document.querySelector(config.SELECTORS.DYNAMIC_FORM);
+    // Initialize event listeners
+    
+    // Set up QR form actions - check for forms directly regardless of page
+    const staticForm = document.getElementById('create-static-qr-form');
+    const dynamicForm = document.getElementById('create-dynamic-qr-form');
     
     if (staticForm) {
+        console.log('Static QR form found, attaching submit handler');
         staticForm.addEventListener('submit', handleFormSubmit);
         initFormValidation(staticForm);
     }
     
     if (dynamicForm) {
+        console.log('Dynamic QR form found, attaching submit handler');
         dynamicForm.addEventListener('submit', handleFormSubmit);
         initFormValidation(dynamicForm);
+    }
+    
+    // Set up QR type tab switching if tabs exist
+    const qrTypeTabs = document.querySelectorAll('[data-bs-toggle="tab"]');
+    qrTypeTabs.forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function (event) {
+            // Update the active form based on the tab
+            const targetId = event.target.getAttribute('data-bs-target');
+            const isStatic = targetId === '#static-qr' || targetId === '#static-qr-tab-pane';
+            
+            // Toggle form display if both forms exist
+            if (staticForm && dynamicForm) {
+                staticForm.style.display = isStatic ? 'block' : 'none';
+                dynamicForm.style.display = isStatic ? 'none' : 'block';
+            }
+        });
+    });
+    
+    // Check if we're on the dashboard page
+    const dashboardSection = document.getElementById('dashboard-section');
+    if (dashboardSection) {
+        console.log('Dashboard section found, initializing dashboard-specific features');
+        // Dashboard-specific initialization can go here
+    }
+    
+    // Check if we're on the QR list page
+    const qrListSection = document.getElementById('qr-list');
+    if (qrListSection) {
+        // Load initial QR codes
+        refreshQRList();
+        
+        // Set up search functionality
+        const searchInput = document.getElementById('qr-search');
+        if (searchInput) {
+            // Debounce search to avoid too many requests while typing
+            searchInput.addEventListener('input', debounce(handleSearch, 500));
+            
+            // Clear search button
+            const clearSearchBtn = document.getElementById('clear-search-btn');
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', clearSearch);
+            }
+        }
+        
+        // Set up refresh button
+        const refreshButton = document.getElementById('refresh-list');
+        if (refreshButton) {
+            refreshButton.addEventListener('click', () => refreshQRList(currentPage));
+        }
+        
+        // Set up pagination
+        const prevButton = document.getElementById('pagination-prev');
+        const nextButton = document.getElementById('pagination-next');
+        
+        if (prevButton) {
+            prevButton.addEventListener('click', () => handlePagination('prev'));
+        }
+        
+        if (nextButton) {
+            nextButton.addEventListener('click', () => handlePagination('next'));
+        }
+        
+        // Set up sorting
+        const sortableHeaders = document.querySelectorAll('[data-sort]');
+        sortableHeaders.forEach(header => {
+            header.addEventListener('click', handleSort);
+        });
+        
+        // Set up QR type filter buttons
+        const filterButtons = document.querySelectorAll('[data-qr-filter]');
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Remove active class from all buttons
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                // Set filter and refresh list
+                const filterType = this.getAttribute('data-qr-filter');
+                handleQRTypeFilter(filterType);
+            });
+        });
+        
+        // Handle table actions (delegate to table)
+        const qrTable = document.getElementById('qr-code-list');
+        if (qrTable) {
+            qrTable.addEventListener('click', function(event) {
+                // Note: View buttons are now direct links to detail page
+                
+                const updateButton = event.target.closest('.update-btn');
+                if (updateButton) {
+                    handleUpdate(event);
+                }
+                
+                const deleteButton = event.target.closest('.delete-btn');
+                if (deleteButton) {
+                    handleDelete(event);
+                }
+            });
+        }
+    }
+    
+    // Initialize table sorting - set initial sort state
+    const initialSortHeader = document.querySelector(`th[data-sort="${currentSortBy}"]`);
+    if (initialSortHeader) {
+        initialSortHeader.classList.add(currentSortDesc ? 'sort-desc' : 'sort-asc');
     }
     
     // Add event listener for URL edit save button
@@ -759,50 +1029,40 @@ function init() {
         initFormValidation(editUrlForm);
     }
     
-    // Add event listener for refresh button
-    const refreshButton = document.getElementById('refresh-list');
-    if (refreshButton) {
-        refreshButton.addEventListener('click', () => refreshQRList(currentPage));
-    }
-    
-    // Add event listeners for search box
-    const searchBox = document.getElementById('qr-search');
-    if (searchBox) {
-        searchBox.addEventListener('input', debounce(handleSearch, 500));
-        searchBox.addEventListener('keydown', event => {
-            if (event.key === 'Escape') {
-                searchBox.value = '';
-                clearSearch();
+    // Check if we're on the create QR page
+    const qrCreatePage = document.getElementById('qr-preview-container');
+    if (qrCreatePage) {
+        console.log('QR preview container found, setting up live preview');
+        // Create a debounced version of updateLivePreview
+        const debouncedUpdatePreview = debounce(updateLivePreview, 500);
+        
+        if (staticForm) {
+            // Add event listeners ONLY to critical fields that should trigger a preview
+            // Essential field for static QR codes
+            const contentField = staticForm.querySelector('#content');
+            if (contentField) {
+                contentField.addEventListener('input', () => debouncedUpdatePreview(staticForm));
             }
-        });
-    }
-    
-    // Add event listeners for pagination
-    const prevButton = document.querySelector(config.SELECTORS.PAGINATION_PREV);
-    const nextButton = document.querySelector(config.SELECTORS.PAGINATION_NEXT);
-    
-    if (prevButton) {
-        prevButton.addEventListener('click', () => handlePagination('prev'));
-    }
-    
-    if (nextButton) {
-        nextButton.addEventListener('click', () => handlePagination('next'));
-    }
-    
-    // Add event listeners for QR type filter buttons
-    const filterButtons = document.querySelectorAll('button[data-qr-filter]');
-    if (filterButtons.length > 0) {
-        filterButtons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                // Update active state visual indication
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                
-                // Get filter value from the clicked button
-                const filterType = button.dataset.qrFilter;
-                handleQRTypeFilter(filterType);
+            
+            // Advanced options that affect appearance
+            staticForm.querySelectorAll('#staticAdvancedOptions input[type="range"], #staticAdvancedOptions input[type="color"]').forEach(input => {
+                input.addEventListener('input', () => debouncedUpdatePreview(staticForm));
             });
-        });
+        }
+        
+        if (dynamicForm) {
+            // Add event listeners ONLY to critical fields that should trigger a preview
+            // Essential field for dynamic QR codes
+            const redirectUrlField = dynamicForm.querySelector('#redirect_url');
+            if (redirectUrlField) {
+                redirectUrlField.addEventListener('input', () => debouncedUpdatePreview(dynamicForm));
+            }
+            
+            // Advanced options that affect appearance
+            dynamicForm.querySelectorAll('#dynamicAdvancedOptions input[type="range"], #dynamicAdvancedOptions input[type="color"]').forEach(input => {
+                input.addEventListener('input', () => debouncedUpdatePreview(dynamicForm));
+            });
+        }
     }
 }
 
@@ -817,16 +1077,34 @@ function initFormValidation(form) {
     // Add validation styles on input/change rather than submit only
     const inputs = form.querySelectorAll('input, textarea, select');
     inputs.forEach(input => {
-        input.addEventListener('input', () => {
-            if (input.checkValidity()) {
+        // For URL fields, validate only when the user leaves the field to avoid disrupting typing
+        if (input.name === 'redirect_url') {
+            input.addEventListener('blur', () => {
+                validateInput(input);
+            });
+            
+            // Clear error styling when user is typing to allow input
+            input.addEventListener('input', () => {
                 input.classList.remove('is-invalid');
-                input.classList.add('is-valid');
-            } else {
-                input.classList.remove('is-valid');
-                input.classList.add('is-invalid');
-            }
-        });
+            });
+        } else {
+            // For other fields, validate on input as before
+            input.addEventListener('input', () => {
+                validateInput(input);
+            });
+        }
     });
+    
+    // Helper function to validate an input
+    function validateInput(input) {
+        if (input.checkValidity()) {
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+        } else {
+            input.classList.remove('is-valid');
+            input.classList.add('is-invalid');
+        }
+    }
 }
 
 /**
@@ -925,8 +1203,20 @@ async function handleConfirmDelete() {
 
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if already initialized
+    if (window.isScriptInitialized) {
+        console.log('Script already initialized via DOMContentLoaded, skipping');
+        return;
+    }
+    
     // Add a small delay to ensure all components are fully loaded
     setTimeout(function() {
+        // Check if already initialized (in case init was called during the timeout)
+        if (window.isScriptInitialized) {
+            console.log('Script already initialized during timeout, skipping');
+            return;
+        }
+        
         // Check that Bootstrap is loaded
         if (typeof bootstrap === 'undefined') {
             console.error('Bootstrap is not loaded. Check your script includes.');
@@ -949,4 +1239,10 @@ document.addEventListener('DOMContentLoaded', function() {
             init();
         }
     }, 300); // Small delay to ensure everything is loaded
-}); 
+});
+
+// Call init function when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', init);
+
+// Export init function so it can be used by other modules
+export { init }; 
