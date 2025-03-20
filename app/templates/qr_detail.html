@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}QR Code Details{% endblock %}
+{% block description %}Detailed information about your QR code including statistics and management options{% endblock %}
+
+{% block content %}
+<!-- Main Content -->
+<div id="content" class="flex-grow-1">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg bg-white shadow-sm sticky-top">
+        <div class="container-fluid px-4">
+            <button type="button" id="sidebarCollapse" class="btn btn-dark rounded-0 d-lg-none" aria-label="Toggle Sidebar">
+                <i class="bi bi-list"></i>
+            </button>
+            <nav aria-label="breadcrumb" class="d-none d-lg-block ms-3">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+                    <li class="breadcrumb-item"><a href="/qr-list" class="text-decoration-none">QR Codes</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">QR Details</li>
+                </ol>
+            </nav>
+            <div class="ms-auto d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm text-primary me-3 d-none" role="status" id="loading-indicator">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid p-4">
+        <!-- Header with buttons -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex">
+                <a href="/qr-list" class="btn btn-outline-secondary rounded-0 me-2">
+                    <i class="bi bi-arrow-left"></i> Back to List
+                </a>
+                <a href="/qr-create" class="btn btn-dark rounded-0 d-flex align-items-center">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Create New QR
+                </a>
+            </div>
+            <div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-dark rounded-0 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-download me-1"></i> Download
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end rounded-0">
+                        <li><a class="dropdown-item" href="#" data-format="png" id="download-png"><i class="bi bi-file-image me-2"></i>PNG</a></li>
+                        <li><a class="dropdown-item" href="#" data-format="svg" id="download-svg"><i class="bi bi-filetype-svg me-2"></i>SVG</a></li>
+                        <li><a class="dropdown-item" href="#" data-format="pdf" id="download-pdf"><i class="bi bi-filetype-pdf me-2"></i>PDF</a></li>
+                        <li><a class="dropdown-item" href="#" data-format="jpeg" id="download-jpeg"><i class="bi bi-file-earmark-image me-2"></i>JPEG</a></li>
+                        <li><a class="dropdown-item" href="#" data-format="webp" id="download-webp"><i class="bi bi-file-earmark me-2"></i>WebP</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Details Main Content -->
+        <div class="row">
+            <!-- QR Code Preview Column -->
+            <div class="col-lg-4 mb-4">
+                <!-- QR Preview Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header py-3 bg-white">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-qr-code me-2"></i>
+                            <span class="h5 mb-0">QR Preview</span>
+                        </div>
+                    </div>
+                    <div class="card-body text-center p-4">
+                        <div class="qr-preview mb-4">
+                            <img id="qr-image" src="" alt="QR Code" class="img-fluid border rounded-0">
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div class="quick-actions">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <button class="btn btn-outline-primary rounded-0 w-100" id="print-qr-btn">
+                                        <i class="bi bi-printer me-2"></i>Print
+                                    </button>
+                                </div>
+                                <div class="col-6">
+                                    <button class="btn btn-outline-secondary rounded-0 w-100" id="share-qr-btn">
+                                        <i class="bi bi-share me-2"></i>Share
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- QR Actions Card (For Dynamic QRs) -->
+                <div class="card shadow-sm mb-4" id="dynamic-qr-actions-card">
+                    <div class="card-header py-3 bg-white">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-gear me-2"></i>
+                            <span class="h5 mb-0">Actions</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3" id="dynamic-actions">
+                            <button class="btn btn-primary rounded-0 w-100 mb-2" id="edit-redirect-btn">
+                                <i class="bi bi-pencil me-2"></i>Edit Redirect URL
+                            </button>
+                            <button class="btn btn-outline-danger rounded-0 w-100" id="delete-qr-btn">
+                                <i class="bi bi-trash me-2"></i>Delete QR Code
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- QR Details Column -->
+            <div class="col-lg-8">
+                <!-- Basic Information Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header py-3 bg-white">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <span class="h5 mb-0">QR Code Information</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">QR Code ID</label>
+                                    <div class="input-group">
+                                        <input type="text" id="qr-id" class="form-control rounded-0 bg-light" readonly>
+                                        <button class="btn btn-outline-secondary rounded-0" type="button" id="copy-id-btn">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">QR Type</label>
+                                    <div id="qr-type" class="form-control rounded-0 bg-light">Static</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Created Date</label>
+                                    <div id="qr-created-date" class="form-control rounded-0 bg-light"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="static-content-container">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">QR Content</label>
+                                <div class="input-group">
+                                    <input type="text" id="qr-content" class="form-control rounded-0 bg-light" readonly>
+                                    <button class="btn btn-outline-secondary rounded-0" type="button" id="copy-content-btn">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="dynamic-content-container">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Redirect URL</label>
+                                <div class="input-group">
+                                    <input type="text" id="qr-redirect-url" class="form-control rounded-0 bg-light" readonly>
+                                    <button class="btn btn-outline-secondary rounded-0" type="button" id="copy-url-btn">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                    <a href="#" target="_blank" class="btn btn-outline-primary rounded-0" id="visit-url-btn">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Short URL</label>
+                                <div class="input-group">
+                                    <input type="text" id="qr-short-url" class="form-control rounded-0 bg-light" readonly>
+                                    <button class="btn btn-outline-secondary rounded-0" type="button" id="copy-short-url-btn">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                    <a href="#" target="_blank" class="btn btn-outline-primary rounded-0" id="visit-short-url-btn">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Simplified Statistics Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header py-3 bg-white">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-graph-up me-2"></i>
+                            <span class="h5 mb-0">Scan Statistics</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Summary Statistics - Simplified to only show what's available in the API -->
+                        <div class="row mb-4">
+                            <div class="col-md-6 col-6 text-center mb-3 mb-md-0">
+                                <div class="border rounded-0 p-3">
+                                    <h3 class="h2 fw-bold mb-0" id="total-scans">0</h3>
+                                    <div class="text-muted small">Total Scans</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-6 text-center">
+                                <div class="border rounded-0 p-3">
+                                    <h3 class="h2 fw-bold mb-0" id="last-scan">-</h3>
+                                    <div class="text-muted small">Last Scan</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Edit Redirect URL Modal -->
+<div class="modal fade" id="editUrlModal" tabindex="-1" aria-labelledby="editUrlModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-0">
+            <div class="modal-header bg-dark text-white rounded-0">
+                <h5 class="modal-title" id="editUrlModalLabel">Update Redirect URL</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="update-url-form" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label for="edit_redirect_url" class="form-label">New Redirect URL</label>
+                        <div class="input-group has-validation">
+                            <span class="input-group-text rounded-0"><i class="bi bi-link-45deg"></i></span>
+                            <input type="url" class="form-control rounded-0" id="edit_redirect_url" name="redirect_url" required
+                                placeholder="https://example.com">
+                            <div class="invalid-feedback">Please enter a valid URL</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary rounded-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary rounded-0" id="save-url-btn">
+                    <i class="bi bi-check2 me-1"></i> Save Changes
+                    <span class="spinner-border spinner-border-sm ms-1 d-none" role="status" aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content rounded-0">
+            <div class="modal-header bg-danger text-white rounded-0">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this QR code? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary rounded-0" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger rounded-0" id="confirm-delete-btn">
+                    <i class="bi bi-trash me-1"></i> Delete
+                    <span class="spinner-border spinner-border-sm ms-1 d-none" role="status" aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Share QR Code Modal -->
+<div class="modal fade" id="shareQrModal" tabindex="-1" aria-labelledby="shareQrModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-0">
+            <div class="modal-header bg-dark text-white rounded-0">
+                <h5 class="modal-title" id="shareQrModalLabel">Share QR Code</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Share Link</label>
+                    <div class="input-group">
+                        <input type="text" id="share-link" class="form-control rounded-0" readonly>
+                        <button class="btn btn-outline-secondary rounded-0" type="button" id="copy-share-link-btn">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Share via</label>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary rounded-0" id="share-email-btn">
+                            <i class="bi bi-envelope me-1"></i> Email
+                        </button>
+                        <button class="btn btn-outline-primary rounded-0" id="share-twitter-btn">
+                            <i class="bi bi-twitter-x me-1"></i> Twitter
+                        </button>
+                        <button class="btn btn-outline-primary rounded-0" id="share-linkedin-btn">
+                            <i class="bi bi-linkedin me-1"></i> LinkedIn
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary rounded-0" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- QR Detail Page Script -->
+<script type="module" src="{{ url_for('static', path='/js/qr-detail.js') }}"></script>
+{% endblock %} 
