@@ -60,24 +60,24 @@ export const ui = {
                         <small class="text-muted">${qrCode.id.substring(0, 8)}...</small>
                     </td>
                     <td>
-                        <div class="d-flex align-items-center">
-                            <span class="badge rounded-0 me-2 ${qrCode.qr_type === 'dynamic' ? 'bg-primary' : 'bg-secondary'}">
-                                ${qrCode.qr_type}
-                            </span>
-                            <span class="text-truncate">${qrCode.qr_type === 'dynamic' ? qrCode.redirect_url : qrCode.content}</span>
-                        </div>
+                        <span class="text-truncate">${qrCode.qr_type === 'dynamic' ? qrCode.redirect_url : qrCode.content}</span>
                     </td>
                     <td class="text-nowrap">
                         <small>${new Date(qrCode.created_at).toLocaleString()}</small>
                     </td>
                     <td>
+                        <span class="badge rounded-0 ${qrCode.qr_type === 'dynamic' ? 'bg-primary' : 'bg-secondary'}">
+                            ${qrCode.qr_type}
+                        </span>
+                    </td>
+                    <td>
                         <span class="badge bg-dark rounded-0">${qrCode.scan_count}</span>
                     </td>
-                    <td class="text-end">
+                    <td class="text-center">
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-secondary rounded-0 view-btn" data-id="${qrCode.id}" data-bs-toggle="modal" data-bs-target="#qrDetailsModal">
+                            <a href="/qr-detail/${qrCode.id}" class="btn btn-outline-secondary rounded-0 view-btn" data-id="${qrCode.id}">
                                 <i class="bi bi-eye"></i>
-                            </button>
+                            </a>
                             ${qrCode.qr_type === 'dynamic' ? `
                             <button class="btn btn-outline-primary rounded-0 update-btn" data-qr-id="${qrCode.id}">
                                 <i class="bi bi-pencil"></i>

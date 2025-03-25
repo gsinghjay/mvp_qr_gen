@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}QR Code Generator - Admin Dashboard{% endblock %}
+{% block description %}QR Code Generator Admin Dashboard - Create and manage dynamic QR codes{% endblock %}
+
+{% block content %}
+<!-- Main Content -->
+<div id="content" class="flex-grow-1">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg bg-white shadow-sm sticky-top">
+        <div class="container-fluid px-4">
+            <button type="button" id="sidebarCollapse" class="btn btn-dark rounded-0 d-lg-none" aria-label="Toggle Sidebar">
+                <i class="bi bi-list"></i>
+            </button>
+            <nav aria-label="breadcrumb" class="d-none d-lg-block ms-3">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="#" class="text-decoration-none">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+                </ol>
+            </nav>
+            <div class="ms-auto d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm text-primary me-3 d-none" role="status" id="loading-indicator">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container-fluid p-4">
+        <!-- Page Header with Action Button -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">Dashboard</h1>
+            <a href="/qr-create" class="btn btn-dark rounded-0 d-flex align-items-center">
+                <i class="bi bi-plus-circle me-2"></i>
+                Create New QR Code
+            </a>
+        </div>
+        
+        <div id="dashboard" class="mb-5">
+            <!-- Stats Cards Row -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="card rounded-0 border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 bg-primary text-white rounded-circle p-3 me-3">
+                                    <i class="bi bi-qr-code"></i>
+                                            </div>
+                                <div>
+                                    <h2 class="fs-5 fw-bold mb-0">{{ total_qr_codes }}</h2>
+                                    <p class="text-muted small mb-0">Total QR Codes</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                <div class="col-md-3">
+                    <div class="card rounded-0 border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 bg-success text-white rounded-circle p-3 me-3">
+                                    <i class="bi bi-eye"></i>
+                                </div>
+                                <div>
+                                    <h2 class="fs-5 fw-bold mb-0">243</h2>
+                                    <p class="text-muted small mb-0">Total Scans</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                <div class="col-md-3">
+                    <div class="card rounded-0 border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 bg-info text-white rounded-circle p-3 me-3">
+                                    <i class="bi bi-graph-up"></i>
+                                </div>
+                                <div>
+                                    <h2 class="fs-5 fw-bold mb-0">27%</h2>
+                                    <p class="text-muted small mb-0">Scan Rate</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card rounded-0 border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 bg-warning text-white rounded-circle p-3 me-3">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <div>
+                                    <h2 class="fs-5 fw-bold mb-0">3m ago</h2>
+                                    <p class="text-muted small mb-0">Last Scan</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="card rounded-0 shadow-sm h-100">
+                        <div class="card-header rounded-0 bg-dark text-white py-3">
+                            <h2 class="card-title h5 mb-0 d-flex align-items-center">
+                                <i class="bi bi-clock-history me-2"></i>
+                                Recent QR Codes
+                            </h2>
+                        </div>
+                        <div class="card-body p-0">
+                <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                            <th scope="col">Title</th>
+                                            <th scope="col">Type</th>
+                                            <th scope="col">Created</th>
+                                            <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                        {% for qr in recent_qr_codes %}
+                                        <tr>
+                                            <td>{{ qr.title or "Untitled QR Code" }}</td>
+                                            <td>
+                                                {% if qr.is_dynamic %}
+                                                <span class="badge bg-primary rounded-0">Dynamic</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary rounded-0">Static</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ qr.created_at.strftime('%Y-%m-%d') }}</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="button" class="btn btn-outline-dark rounded-0">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-dark rounded-0">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-danger rounded-0">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                </td>
+                            </tr>
+                                        {% else %}
+                            <tr>
+                                            <td colspan="4" class="text-center py-4">
+                                                <p class="text-muted mb-0">No QR codes created yet.</p>
+                                                <a href="/qr-create" class="btn btn-dark btn-sm rounded-0 mt-2">
+                                                    <i class="bi bi-plus-circle me-1"></i>
+                                                    Create Your First QR Code
+                                                </a>
+                                </td>
+                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                    </table>
+                </div>
+                        </div>
+                        <div class="card-footer bg-light border-top-0 text-end">
+                            <a href="/qr-list" class="text-decoration-none">
+                                <i class="bi bi-arrow-right me-1"></i>
+                                View All QR Codes
+                            </a>
+                        </div>
+                            </div>
+                        </div>
+                        
+                <div class="col-md-6">
+                    <div class="card rounded-0 shadow-sm h-100">
+                        <div class="card-header rounded-0 bg-dark text-white py-3">
+                            <h2 class="card-title h5 mb-0 d-flex align-items-center">
+                                <i class="bi bi-bar-chart me-2"></i>
+                                Scan Statistics
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="scanChart" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- "Create QR Code" section removed since it is now on a separate page -->
+            
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Scan statistics chart
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('scanChart').getContext('2d');
+        const scanChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'QR Scans',
+                    data: [12, 19, 3, 5, 2, 3, 9],
+                    backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            borderDash: [2, 4],
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    });
+</script>
+<script type="module" src="{{ url_for('static', path='/js/script.js') }}"></script>
+{% endblock %} 
