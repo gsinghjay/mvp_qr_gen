@@ -1,6 +1,37 @@
 # CHANGELOG
 
 
+## v0.14.0 (2025-03-25)
+
+### Features
+
+- **js**: Update JavaScript modules to support new templates
+  ([`29e8099`](https://github.com/gsinghjay/mvp_qr_gen/commit/29e809965d5af2cec60daca59647ad8f2c6c8e3d))
+
+- **routes**: Implement server-side routes for template pages
+  ([`0961578`](https://github.com/gsinghjay/mvp_qr_gen/commit/09615781f085be7633e6d3ea4e0e0df32deb7ff7))
+
+- **ui**: Add QR code detail view with statistics and actions
+  ([`9c0f60c`](https://github.com/gsinghjay/mvp_qr_gen/commit/9c0f60c1621a8f8847c55729c7472b660d3929f5))
+
+- **ui**: Add QR code listing page with sorting and filtering
+  ([`5be7451`](https://github.com/gsinghjay/mvp_qr_gen/commit/5be74515c52bf1aac5c494484b154b89e0223ece))
+
+- **ui**: Create dashboard template extending base layout
+  ([`17c29a7`](https://github.com/gsinghjay/mvp_qr_gen/commit/17c29a7f25f3ef8e8d0cae9cf1076383d665beef))
+
+- **ui**: Implement base template with common elements
+  ([`1071cd0`](https://github.com/gsinghjay/mvp_qr_gen/commit/1071cd09d883a25ea0cdf9ee69f7181ae504ddfb))
+
+- **ui**: Implement QR code creation page with tabs and preview
+  ([`4a1a9d1`](https://github.com/gsinghjay/mvp_qr_gen/commit/4a1a9d1894cf06f3f1bf4ea688129c94e396c4fa))
+
+### Refactoring
+
+- **ui**: Remove redundant user info and notification elements from navbar
+  ([`9b05246`](https://github.com/gsinghjay/mvp_qr_gen/commit/9b05246a85eb2e07bd16aac18f03bc2a2e8f4e6d))
+
+
 ## v0.13.0 (2025-03-18)
 
 ### Bug Fixes
