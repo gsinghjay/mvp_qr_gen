@@ -16,9 +16,9 @@ services:
       - SESSION_SECRET_KEY=${SESSION_SECRET_KEY}
       - REDIRECT_URI=${REDIRECT_URI:-http://localhost/auth/callback}
     volumes:
-      - ./data:/app/data
-      - ./logs:/logs
-      - ./app:/app/app  # Mount app directory for hot reloading
+      - qr_data:/app/data
+      - qr_logs:/logs
+      - ./app:/app/app  # Mount app directory for hot reloading (keep as bind mount for development)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
       interval: 30s
@@ -78,11 +78,21 @@ services:
       - "8082:8082"  # Metrics endpoint
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./certificates:/certificates  # Mount certificates directory
-      - ./logs/traefik:/logs/traefik  # Mount logs directory
+      - traefik_certs:/certificates
+      - traefik_logs:/logs/traefik
     restart: unless-stopped
 
 networks:
   default:
     name: qr_generator_network
-    driver: bridge 
+    driver: bridge
+
+volumes:
+  qr_data:
+    driver: local
+  qr_logs:
+    driver: local
+  traefik_certs:
+    driver: local
+  traefik_logs:
+    driver: local 
