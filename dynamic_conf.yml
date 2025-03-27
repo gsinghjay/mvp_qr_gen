@@ -2,19 +2,33 @@
 http:
   routers:
     api-router:
-      rule: "PathPrefix(`/`)"
+      rule: "PathPrefix(`/`) && !PathPrefix(`/kc`)"
       service: api-service
       entryPoints:
         - web
       middlewares:
         - redirect-to-https
+      priority: 10
 
     api-secure-router:
-      rule: "PathPrefix(`/`)"
+      rule: "PathPrefix(`/`) && !PathPrefix(`/kc`)"
       service: api-service
       entryPoints:
         - websecure
       tls: {}
+      priority: 10
+      
+    keycloak-router:
+      rule: "PathPrefix(`/kc`)"
+      service: keycloak-service
+      entryPoints:
+        - web
+        - websecure
+      middlewares:
+        - redirect-to-https
+        - keycloak-headers
+      tls: {}
+      priority: 100
 
     dashboard:
       rule: "Host(`traefik.localhost`)"
@@ -27,9 +41,24 @@ http:
       redirectScheme:
         scheme: https
         permanent: true
+        
+    keycloak-headers:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        forceSTSHeader: true
+        contentSecurityPolicy: "frame-ancestors 'self'; frame-src 'self'; object-src 'none';"
+        customFrameOptionsValue: "SAMEORIGIN"
 
   services:
     api-service:
       loadBalancer:
         servers:
-          - url: "http://qr_generator_api:8000" 
+          - url: "http://qr_generator_api:8000"
+          
+    keycloak-service:
+      loadBalancer:
+        servers:
+          - url: "http://keycloak:8080" 

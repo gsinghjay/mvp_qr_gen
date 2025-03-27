@@ -27,10 +27,11 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.api.rule=PathPrefix(`/`) && !PathPrefix(`/kc`)"
       - "traefik.http.services.api.loadbalancer.server.port=8000"
       - "traefik.http.routers.api.entrypoints=web,websecure"
       - "traefik.http.routers.api.tls=true"
+      - "traefik.http.routers.api.priority=10"
       # Force HTTPS redirect
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
       - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
@@ -82,6 +83,71 @@ services:
       - traefik_logs:/logs/traefik
     restart: unless-stopped
 
+  # PostgreSQL for Keycloak
+  postgres:
+    image: postgres:15-alpine
+    container_name: keycloak_postgres
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=${KEYCLOAK_DB_USER:-keycloak}
+      - POSTGRES_PASSWORD=${KEYCLOAK_DB_PASSWORD:-password}
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER:-keycloak}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  
+  # Keycloak service
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0.1
+    container_name: keycloak
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+      - KC_DB_USERNAME=${KEYCLOAK_DB_USER:-keycloak}
+      - KC_DB_PASSWORD=${KEYCLOAK_DB_PASSWORD:-password}
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      - KC_PROXY=edge
+      - KC_HOSTNAME_STRICT=false
+      - KC_HOSTNAME_STRICT_HTTPS=false
+      - KC_HTTP_ENABLED=true
+      - KC_HTTP_RELATIVE_PATH=/kc
+      - KC_HOSTNAME_URL=${KEYCLOAK_URL:-https://localhost/kc}
+    command:
+      - start-dev
+      - --hostname-strict=false
+    volumes:
+      - ./certs:/opt/keycloak/conf:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/opt/keycloak/bin/kc.sh", "show-config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - keycloak.docker.local
+    labels:
+      - "traefik.enable=true"
+      # Use an explicit router name with service name
+      - "traefik.http.routers.keycloak-rtr.rule=PathPrefix(`/kc`)"
+      - "traefik.http.services.keycloak-svc.loadbalancer.server.port=8080"
+      - "traefik.http.routers.keycloak-rtr.entrypoints=web,websecure"
+      - "traefik.http.routers.keycloak-rtr.tls=true"
+      - "traefik.http.routers.keycloak-rtr.priority=200"
+      - "traefik.http.middlewares.keycloak-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.keycloak-rtr.middlewares=redirect-to-https@docker,keycloak-headers@docker"
+      # Explicitly set the service for the router
+      - "traefik.http.routers.keycloak-rtr.service=keycloak-svc"
+
 networks:
   default:
     name: qr_generator_network
@@ -95,4 +161,6 @@ volumes:
   traefik_certs:
     driver: local
   traefik_logs:
+    driver: local
+  keycloak_postgres_data:
     driver: local 
