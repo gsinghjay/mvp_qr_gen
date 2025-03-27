@@ -63,10 +63,10 @@ certificates/
 Thumbs.db
 
 # Cursor and Development Tools
-.cursor/
 .cursorrules
 .repomix-output.txt
 .repomixignore
+*.key.pem
 
 # Private Research and Documentation
 kb/

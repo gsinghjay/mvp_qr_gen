@@ -4,8 +4,16 @@ set -e
 # Function to initialize database
 initialize_database() {
     echo "Initializing database..."
-    # Ensure any existing database is completely removed
-    rm -f "/app/data/qr_codes.db"
+    # Make a backup of existing database if it exists instead of deleting it
+    if [ -f "/app/data/qr_codes.db" ]; then
+        local timestamp=$(date +%Y%m%d_%H%M%S)
+        local backup_file="/app/data/backups/qr_codes_${timestamp}_before_init.db"
+        mkdir -p "/app/data/backups"
+        echo "Creating emergency backup at ${backup_file} before initialization"
+        cp "/app/data/qr_codes.db" "${backup_file}"
+    fi
+    
+    # Initialize the database without removing the file
     /app/scripts/manage_db.py --init || exit 1
     echo "Running initial migrations..."
     /app/scripts/manage_db.py --migrate || exit 1

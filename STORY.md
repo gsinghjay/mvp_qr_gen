@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This is the story of our application - a modern web service built with FastAPI that provides both API endpoints and web interfaces, with special capabilities for QR code generation and management, secured by Microsoft Azure AD authentication. Let's explore how all the pieces work together.
+This is the story of our application - a modern web service built with FastAPI that provides both API endpoints and web interfaces, with special capabilities for QR code generation and management. Originally secured by Microsoft Azure AD authentication, we are now migrating to Keycloak as our identity management solution for enhanced flexibility and control.
 
 ## System Architecture Overview
 
@@ -39,9 +39,11 @@ graph TD
     QR --> DynamicQR[Dynamic QR]
     QR --> RedirectQR[QR Redirects]
     
-    Auth --> OAuth2[Azure AD OAuth2]
-    Auth --> JWTHandling[JWT Token Handling]
+    Auth --> Keycloak[Keycloak Identity Provider]
+    Keycloak --> OAuth2[Azure AD OAuth2]
     Auth --> UserContext[User Context]
+    
+    Keycloak --> KC_DB[(PostgreSQL DB)]
 ```
 
 ## The Database Evolution
@@ -62,9 +64,12 @@ gitGraph
     checkout main
     merge feature/user-auth
     commit id: "Current Schema"
+    branch feature/keycloak
+    checkout feature/keycloak
+    commit id: "Migrate to Keycloak authentication"
 ```
 
-The initial migration established our base schema, the timezone-aware migration updated our timestamp fields to properly handle different time zones, and the user-auth migration added fields to associate QR codes with authenticated users - critical for our global user base.
+The initial migration established our base schema, the timezone-aware migration updated our timestamp fields to properly handle different time zones, and the user-auth migration added fields to associate QR codes with authenticated users. Our latest evolution involves migrating from direct Azure AD authentication to a Keycloak-first approach, enhancing our authentication flexibility while maintaining backward compatibility.
 
 ## Request Flow Through The System
 
@@ -79,15 +84,22 @@ sequenceDiagram
     participant Router
     participant Service
     participant Database
+    participant Keycloak
     participant AzureAD
     
     User->>LoadBalancer: HTTP Request
     LoadBalancer->>SecurityMiddleware: Forward Request
     SecurityMiddleware->>AuthMiddleware: Validate & Forward
     
-    alt Authentication Request
+    alt Authentication Request (Current)
         AuthMiddleware->>AzureAD: Redirect to Microsoft Login
         AzureAD->>AuthMiddleware: OAuth Response
+        AuthMiddleware->>User: Set Auth Cookie & Redirect
+    else Authentication Request (Keycloak Migration)
+        AuthMiddleware->>Keycloak: Redirect to Keycloak Login
+        Keycloak->>AzureAD: Delegate to Microsoft (Optional)
+        AzureAD->>Keycloak: OAuth Response (If delegated)
+        Keycloak->>AuthMiddleware: Authentication Response
         AuthMiddleware->>User: Set Auth Cookie & Redirect
     else Authenticated Request
         AuthMiddleware->>LoggingMiddleware: Validate Token & Forward
@@ -116,7 +128,7 @@ sequenceDiagram
 
 ### Configuration Management
 
-The core configuration system (`app/core/config.py`) provides environment-specific settings that control the behavior of all other components. It loads variables from environment or .env files and makes them available throughout the application, including authentication settings like Azure AD credentials and JWT token configuration.
+The core configuration system (`app/core/config.py`) provides environment-specific settings that control the behavior of all other components. It loads variables from environment or .env files and makes them available throughout the application, including authentication settings for both Azure AD and Keycloak during our migration phase.
 
 ### Middleware Stack
 
@@ -128,7 +140,7 @@ flowchart TD
     
     SecurityRow["First Layer: Perimeter Security"]
     Security["🔒 Security Middleware<br>• CORS Configuration<br>• Security Headers<br>• XSS & CSRF Protection<br>• Request Sanitization<br>• Content Security Policy"]
-    Auth["🔑 Authentication Middleware<br>• JWT Token Validation<br>• Azure AD SSO Integration<br>• User Context Creation<br>• Route Protection<br>• Token Renewal & Refresh"]
+    Auth["🔑 Authentication Middleware<br>• Token Validation<br>• Keycloak Integration<br>• User Context Creation<br>• Route Protection<br>• Authentication Delegation"]
     
     MonitoringRow["Second Layer: Monitoring"]
     Logging["📊 Logging Middleware<br>• Structured JSON Logging<br>• Correlation ID Tracking<br>• Error Context Capture<br>• PII Data Redaction<br>• Audit Trail Recording"]
@@ -212,7 +224,7 @@ Acts as the outermost boundary and first point of contact for incoming traffic:
 - **Primary Security**: Provides first line of defense against attacks
 - **Load Balancing**: Distributes traffic across multiple application instances
 - **Traffic Control**: Implements rate limiting and IP filtering
-- **Request Routing**: Routes requests to appropriate services based on path
+- **Path-based Routing**: Routes requests to appropriate services (API, Keycloak) based on path
 
 #### 2. FastAPI Application Stack
 Organized in layered middleware groups that process requests in sequence:
@@ -220,7 +232,7 @@ Organized in layered middleware groups that process requests in sequence:
 ##### First Layer: Perimeter Security
 The initial application-level defense mechanisms:
 - **Security Middleware**: Manages CORS, security headers, and protection against XSS/CSRF attacks
-- **Authentication Middleware**: Validates JWT tokens, integrates with Azure AD, and manages user identity
+- **Authentication Middleware**: Validates tokens, integrates with Keycloak, and manages user identity
 
 ##### Second Layer: Monitoring
 Captures operational data for visibility and troubleshooting:
@@ -257,7 +269,7 @@ Each layer builds upon the processing done by previous layers, ensuring that by 
 
 ### Authentication System
 
-The authentication system leverages Microsoft Azure AD for secure Single Sign-On:
+The authentication system is migrating from direct Azure AD integration to Keycloak as our identity provider:
 
 ```mermaid
 classDiagram
@@ -268,32 +280,37 @@ classDiagram
         +get_current_user()
     }
     
-    class MicrosoftSSO {
-        +get_authorization_url()
-        +verify_and_process()
+    class KeycloakAuth {
+        +get_login_url()
+        +exchange_code_for_token()
+        +get_logout_url()
+        +get_user_info()
     }
     
-    class JWTHandler {
-        +create_access_token()
-        +validate_token()
-        +get_token_data()
+    class AzureADProvider {
+        +authenticate_user()
+        +get_user_info()
     }
     
     class UserContext {
         +user_id: str
         +email: str
         +display_name: str
+        +roles: List[str]
     }
     
-    AuthService --> MicrosoftSSO
-    AuthService --> JWTHandler
+    AuthService --> KeycloakAuth
+    KeycloakAuth --> AzureADProvider
     AuthService --> UserContext
 ```
 
-- **Microsoft Azure AD Integration**: Secure OAuth2 authentication flow
-- **JWT Token Management**: Creation and validation of secure tokens
-- **User Context**: Maintains user information throughout the request lifecycle
+Our authentication architecture is evolving to enhance flexibility and control:
+
+- **Keycloak as Primary Identity Provider**: Centralized authentication and authorization
+- **Azure AD Integration**: Maintained through Keycloak as an identity provider
+- **Role-Based Access Control**: Enhanced with Keycloak's fine-grained permissions
 - **Protected Routes**: Dependency injection for securing endpoints
+- **Backward Compatibility**: Maintaining existing authentication flows during migration
 
 ### QR Code Generation System
 
@@ -355,22 +372,27 @@ graph TD
     AuthRoot --> Callback["/callback"]
     AuthRoot --> Logout["/logout"]
     AuthRoot --> Me["/me"]
+    
+    KeycloakRoot["/kc"] --> KeycloakAuth[Keycloak Authentication]
+    KeycloakAuth --> KeycloakAdmin[Admin Console]
+    KeycloakAuth --> KeycloakRealm["qr_code_realm"]
 ```
 
 ### Authentication Flow
 
-The authentication system leverages industry-standard OAuth 2.0 with Azure AD:
+Our authentication system is migrating from direct Azure AD integration to a Keycloak-first approach:
 
 ```mermaid
 sequenceDiagram
     participant User
     participant App
+    participant Keycloak
     participant AzureAD
     
     User->>App: Access Protected Resource
     App->>App: Check for Auth Token
     
-    alt No Valid Token
+    alt No Valid Token (Current)
         App->>User: Redirect to /auth/login
         User->>App: GET /auth/login
         App->>AzureAD: Redirect to Microsoft Login
@@ -380,8 +402,24 @@ sequenceDiagram
         AzureAD->>App: Access Token & User Info
         App->>App: Generate JWT Token
         App->>User: Set Auth Cookie & Redirect
+    else No Valid Token (Keycloak Migration)
+        App->>User: Redirect to /auth/login
+        User->>App: GET /auth/login
+        App->>Keycloak: Redirect to Keycloak Login
+        alt Direct Keycloak Login
+            User->>Keycloak: Enter Credentials
+            Keycloak->>App: Authentication Response (to /auth/callback)
+        else Azure AD Federation
+            Keycloak->>AzureAD: Redirect to Microsoft Login
+            User->>AzureAD: Enter Credentials
+            AzureAD->>Keycloak: OAuth Response
+            Keycloak->>App: Authentication Response (to /auth/callback)
+        end
+        App->>Keycloak: Exchange Code for Token
+        Keycloak->>App: Access Token & User Info
+        App->>User: Set Auth Cookie & Redirect
     else Valid Token
-        App->>App: Validate JWT Token
+        App->>App: Validate Token
         App->>App: Extract User Context
         App->>User: Serve Protected Resource
     end
@@ -419,17 +457,17 @@ flowchart TD
     end
 ```
 
-The `manage_db.py` script provides convenient commands for database operations, while `init.sh` helps with initial setup.
+The `manage_db.py` script provides convenient commands for database operations, while `init.sh` helps with initial setup and ensures database persistence through backups.
 
 ## Conclusion
 
 Our application architecture demonstrates a well-structured, modern web service with clear separation of concerns:
 
 1. **Core Configuration**: Central settings management
-2. **Authentication System**: Secure Azure AD-based Single Sign-On
+2. **Authentication System**: Migration from direct Azure AD integration to Keycloak identity provider
 3. **Middleware Layer**: Cross-cutting concerns like security, authentication, and logging
-4. **Routers**: Request routing for different types of endpoints (API, QR, Web, Auth)
+4. **Routers**: Request routing for different types of endpoints (API, QR, Web, Auth, Keycloak)
 5. **Database Migrations**: Versioned database schema management
 6. **CI/CD Pipeline**: Automated testing and deployment
 
-This architecture allows us to maintain a robust, scalable system that can evolve over time while maintaining backward compatibility and high performance, all while ensuring secure access through enterprise-grade authentication. 
+This architecture allows us to maintain a robust, scalable system that can evolve over time while maintaining backward compatibility and high performance. Our ongoing migration to Keycloak enhances our authentication flexibility while maintaining secure access through enterprise-grade authentication. 
