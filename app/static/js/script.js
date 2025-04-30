@@ -130,11 +130,11 @@ function populateQRModal(qrData) {
         return;
     }
     
-    // Set QR image
+    // Set QR image (including logo if it exists)
     const modalImage = document.getElementById('modal-qr-image');
     if (modalImage) {
         const img = new Image();
-        img.src = api.getQRImageUrl(qrData.id);
+        img.src = api.getQRImageUrl(qrData.id, { include_logo: true });
         
         // Handle successful load
         img.onload = function() {

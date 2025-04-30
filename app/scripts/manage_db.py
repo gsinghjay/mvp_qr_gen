@@ -188,6 +188,29 @@ class DatabaseManager:
                 )
             )
 
+            # Copy to external backups directory if it exists
+            external_backup_dir = Path("/app/backups")
+            if external_backup_dir.exists() and external_backup_dir.is_dir():
+                external_backup_path = external_backup_dir / backup_path.name
+                try:
+                    shutil.copy2(backup_path, external_backup_path)
+                    loggers["backups"].info(
+                        _(
+                            "Backup copied to external directory",
+                            source=str(backup_path),
+                            destination=str(external_backup_path),
+                        )
+                    )
+                except Exception as e:
+                    loggers["errors"].warning(
+                        _(
+                            "Failed to copy backup to external directory",
+                            error=str(e),
+                            source=str(backup_path),
+                            destination=str(external_backup_path),
+                        )
+                    )
+
             yield backup_path
 
             # Cleanup old backups (keep last 5)

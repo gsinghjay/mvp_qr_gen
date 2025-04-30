@@ -4,8 +4,22 @@ set -e
 # Function to initialize database
 initialize_database() {
     echo "Initializing database..."
-    # Ensure any existing database is completely removed
-    rm -f "/app/data/qr_codes.db"
+    # Make a backup of existing database if it exists instead of deleting it
+    if [ -f "/app/data/qr_codes.db" ]; then
+        local timestamp=$(date +%Y%m%d_%H%M%S)
+        local backup_file="/app/data/backups/qr_codes_${timestamp}_before_init.db"
+        mkdir -p "/app/data/backups"
+        echo "Creating emergency backup at ${backup_file} before initialization"
+        cp "/app/data/qr_codes.db" "${backup_file}"
+        
+        # Copy the backup to the external backups directory if it exists
+        if [ -d "/app/backups" ]; then
+            echo "Copying backup to external directory"
+            cp "${backup_file}" "/app/backups/"
+        fi
+    fi
+    
+    # Initialize the database without removing the file
     /app/scripts/manage_db.py --init || exit 1
     echo "Running initial migrations..."
     /app/scripts/manage_db.py --migrate || exit 1
@@ -19,6 +33,12 @@ backup_database() {
     if [ -f "/app/data/qr_codes.db" ]; then
         echo "Creating backup at ${backup_file}"
         cp "/app/data/qr_codes.db" "${backup_file}"
+        
+        # Copy the backup to the external backups directory if it exists
+        if [ -d "/app/backups" ]; then
+            echo "Copying backup to external directory"
+            cp "${backup_file}" "/app/backups/"
+        fi
     fi
 }
 
@@ -26,6 +46,13 @@ backup_database() {
 echo "Setting up data directory..."
 mkdir -p "/app/data"
 chmod -R 777 "/app/data"
+
+# Create external backups directory if it doesn't exist
+if [ -d "/app/backups" ]; then
+    echo "External backups directory exists"
+else
+    echo "External backups directory doesn't exist"
+fi
 
 # Initialize or validate database before starting the application
 echo "Checking database status..."
@@ -49,6 +76,16 @@ else
 fi
 
 echo "Database setup complete."
+
+# Create a test backup to verify external backup directory is working
+if [ -f "/app/data/qr_codes.db" ] && [ -d "/app/backups" ]; then
+    echo "Creating test backup to verify external backup directory..."
+    timestamp=$(date +%Y%m%d_%H%M%S)
+    test_backup_file="/app/data/backups/qr_codes_${timestamp}_test.db"
+    cp "/app/data/qr_codes.db" "${test_backup_file}"
+    cp "${test_backup_file}" "/app/backups/"
+    echo "Test backup created and copied to external directory."
+fi
 
 # Start the FastAPI application based on environment
 if [ "${ENVIRONMENT}" = "development" ]; then

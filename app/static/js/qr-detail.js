@@ -4,6 +4,7 @@
  */
 import { api } from './api.js';
 import { showSuccess, showError } from './utils.js';
+import { config } from './config.js';
 
 // Get QR ID from URL path
 const pathParts = window.location.pathname.split('/');
@@ -98,10 +99,10 @@ function extractShortIdFromContent(content) {
 function populateQRData(qrData) {
     if (!qrData) return;
 
-    // Set QR image
+    // Set QR image with logo
     const qrImage = document.getElementById('qr-image');
     if (qrImage) {
-        qrImage.src = api.getQRImageUrl(qrData.id);
+        qrImage.src = api.getQRImageUrl(qrData.id, { include_logo: true });
         qrImage.alt = `QR Code: ${qrData.id}`;
     }
 
@@ -152,7 +153,7 @@ function populateQRData(qrData) {
         
         // Set short URL
         if (qrShortUrl) {
-            const shortUrl = `${window.location.origin}/r/${shortId}`;
+            const shortUrl = `${config.API.PUBLIC_URL}/r/${shortId}`;
             qrShortUrl.value = shortUrl;
 
             // Set visit short URL button
@@ -192,6 +193,17 @@ function updateBasicScanStats(qrData) {
  * @param {Object} qrData - The QR code data
  */
 function setupEventListeners(qrData) {
+    // Logo toggle switch
+    const logoToggle = document.getElementById('logo-toggle');
+    const qrImage = document.getElementById('qr-image');
+    
+    if (logoToggle && qrImage) {
+        logoToggle.addEventListener('change', function() {
+            // Update the QR image based on logo toggle state
+            qrImage.src = api.getQRImageUrl(qrData.id, { include_logo: this.checked });
+        });
+    }
+    
     // Copy buttons
     const copyButtons = [
         { buttonId: 'copy-id-btn', inputId: 'qr-id' },
@@ -234,11 +246,11 @@ function setupEventListeners(qrData) {
                 if (qrData.qr_type === 'dynamic') {
                     // For dynamic QR codes, use the short URL
                     const shortId = extractShortIdFromContent(qrData.content);
-                    const shortUrl = `${window.location.origin}/r/${shortId}`;
+                    const shortUrl = `${config.API.PUBLIC_URL}/r/${shortId}`;
                     shareLink.value = shortUrl;
                 } else {
                     // For static QR codes, use the detail page URL
-                    shareLink.value = `${window.location.origin}/qr-detail/${qrData.id}`;
+                    shareLink.value = `${config.API.PUBLIC_URL}/qr-detail/${qrData.id}`;
                 }
             }
             
@@ -389,10 +401,10 @@ function setupSocialShareButtons(qrData) {
     if (qrData.qr_type === 'dynamic') {
         // For dynamic QR codes, use the short URL
         const shortId = extractShortIdFromContent(qrData.content);
-        shareUrl = `${window.location.origin}/r/${shortId}`;
+        shareUrl = `${config.API.PUBLIC_URL}/r/${shortId}`;
     } else {
         // For static QR codes, use the detail page URL
-        shareUrl = `${window.location.origin}/qr-detail/${qrData.id}`;
+        shareUrl = `${config.API.PUBLIC_URL}/qr-detail/${qrData.id}`;
     }
     
     const shareTitle = `Check out this QR code: ${qrData.title || 'QR Code'}`;
@@ -428,46 +440,58 @@ function setupSocialShareButtons(qrData) {
 }
 
 /**
- * Set up download buttons for different formats
+ * Set up download buttons
  * @param {string} qrId - The QR code ID
  */
 function setupDownloadButtons(qrId) {
-    const formats = ['png', 'svg', 'pdf', 'jpeg', 'webp'];
+    // Handle download buttons
+    const downloadButtons = document.querySelectorAll('[data-format]');
     
-    formats.forEach(format => {
-        const button = document.getElementById(`download-${format}`);
-        if (button) {
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                downloadQRCode(qrId, format);
-            });
-        }
+    downloadButtons.forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.preventDefault();
+            const format = this.dataset.format;
+            
+            // Show a helpful message about logo inclusion
+            const logoToggle = document.getElementById('logo-toggle');
+            const message = logoToggle && logoToggle.checked ? 
+                `Downloading QR code with logo as ${format.toUpperCase()}...` : 
+                `Downloading QR code as ${format.toUpperCase()}...`;
+            
+            showSuccess(message);
+            downloadQRCode(qrId, format);
+        });
     });
 }
 
 /**
- * Download a QR code in the specified format
+ * Download a QR code in different formats
  * @param {string} qrId - The QR code ID
- * @param {string} format - The format (png, svg, pdf, jpeg, webp)
+ * @param {string} format - The format to download (png, svg, pdf)
  */
 async function downloadQRCode(qrId, format) {
     try {
-        // Get the download URL
-        const url = api.getQRImageUrl(qrId, { format });
+        // Check if logo toggle is enabled
+        const logoToggle = document.getElementById('logo-toggle');
+        const includeLogo = logoToggle ? logoToggle.checked : false;
         
-        // Create a hidden link and click it
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `qrcode-${qrId}.${format}`;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // Generate URL with format and logo setting
+        const imageUrl = api.getQRImageUrl(qrId, { 
+            format: format,
+            include_logo: includeLogo
+        });
         
-        showSuccess(`QR code downloaded as ${format.toUpperCase()}`);
+        // Create a link and trigger download
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.download = `qr-code-${qrId}.${format}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
     } catch (error) {
-        console.error(`Error downloading QR code as ${format}:`, error);
-        showError(`Failed to download QR code as ${format}`);
+        console.error('Error downloading QR code:', error);
+        showError('Failed to download QR code');
     }
 }
 

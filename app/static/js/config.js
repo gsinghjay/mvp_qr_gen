@@ -6,6 +6,8 @@ export const config = {
     API: {
         // Force HTTPS for all API calls when using Traefik with TLS
         BASE_URL: window.location.origin.replace('http://', 'https://'),
+        // Public-facing URL that will be shown in QR codes
+        PUBLIC_URL: 'https://web.hccc.edu',
         ENDPOINTS: {
             QR_LIST: '/api/v1/qr',
             QR_STATIC: '/api/v1/qr/static',

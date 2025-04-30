@@ -331,14 +331,15 @@ export const api = {
     },
 
     /**
-     * Gets the QR code image URL
+     * Gets the URL for a QR code image
      * @param {string} id - QR code ID
-     * @param {Object} [options] - Options for the QR code image
-     * @param {string} [options.format] - Image format (png, svg, etc.)
-     * @param {number} [options.quality] - Image quality (1-100, for jpeg/webp)
-     * @returns {string} - QR code image URL
+     * @param {Object} options - Image options
+     * @param {string} [options.format='png'] - Image format (png, svg, jpeg, webp)
+     * @param {number} [options.quality=null] - Image quality (1-100, for lossy formats)
+     * @param {boolean} [options.include_logo=false] - Whether to include the logo
+     * @returns {string} - QR image URL
      */
-    getQRImageUrl(id, { format = 'png', quality = null } = {}) {
+    getQRImageUrl(id, { format = 'png', quality = null, include_logo = false } = {}) {
         if (!id) {
             console.warn('Missing QR ID for getQRImageUrl');
             return '';
@@ -346,6 +347,7 @@ export const api = {
         
         const params = new URLSearchParams({ image_format: format });
         if (quality !== null) params.append('image_quality', quality.toString());
+        if (include_logo) params.append('include_logo', 'true');
         
         return `${config.API.BASE_URL}/api/v1/qr/${id}/image?${params}`;
     },

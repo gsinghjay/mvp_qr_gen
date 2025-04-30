@@ -15,11 +15,12 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 logger = logging.getLogger(__name__)
 
-# Get database URL from environment variables
+# Get database URL and environment from environment variables
 SQLITE_URL = os.getenv("DATABASE_URL")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
 if not SQLITE_URL:
     # If DATABASE_URL is not set, use in-memory for tests, file for development
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
     SQLITE_URL = "sqlite:///:memory:" if ENVIRONMENT == "test" else "sqlite:///./data/qr_codes.db"
 
 # Ensure data directory exists for SQLite file
@@ -48,7 +49,7 @@ def configure_sqlite_connection(dbapi_connection, connection_record):
         cursor.execute("PRAGMA cache_size=-6000")  # Use 6MB page cache (negative = kilobytes)
 
         # Production-specific settings
-        if os.getenv("ENVIRONMENT", "development") == "production":
+        if ENVIRONMENT == "production":
             cursor.execute("PRAGMA busy_timeout=30000")  # Wait up to 30 seconds for locks
             cursor.execute("PRAGMA wal_autocheckpoint=1000")  # Checkpoint WAL after 1000 pages
         else:

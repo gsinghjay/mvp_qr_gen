@@ -163,6 +163,7 @@ async def get_qr_image(
         back_color=params.back_color or qr.back_color,
         image_format=params.image_format.value,
         image_quality=params.image_quality,
+        include_logo=params.include_logo
     )
 
 
