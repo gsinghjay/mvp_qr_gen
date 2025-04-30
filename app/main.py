@@ -35,6 +35,9 @@ from .core.exceptions import (
 )
 from .middleware.logging import LoggingMiddleware
 from .middleware.metrics import MetricsMiddleware
+from .database import get_db_with_logging
+from .repositories.qr_repository import QRCodeRepository
+from .services.qr_service import QRCodeService
 
 # Configure logging
 logging.basicConfig(
@@ -65,6 +68,40 @@ async def lifespan(app: FastAPI):
     static_dir = Path(STATIC_DIR)
     qr_codes_dir = static_dir / "assets" / "images" / "qr_codes"
     qr_codes_dir.mkdir(parents=True, exist_ok=True)
+    
+    # NEW: Pre-initialize key dependencies
+    logger.info("Pre-initializing key dependencies...")
+    try:
+        # Create DB session
+        db = next(get_db_with_logging())
+        
+        # Initialize QR repository
+        qr_repo = QRCodeRepository(db)
+        
+        # Initialize QR service
+        qr_service = QRCodeService(qr_repo)
+        
+        # Test basic operations to trigger code path initialization
+        try:
+            # Perform minimal operations to initialize code paths
+            total = qr_repo.count()
+            logger.info(f"Database contains {total} QR codes")
+            
+            # Initialize QR listing to load more code paths
+            recent_qrs, _ = qr_repo.list_qr_codes(skip=0, limit=1)
+            if recent_qrs:
+                # Touch a QR object to initialize ORM paths
+                _ = recent_qrs[0].id
+                logger.info("Retrieved most recent QR code")
+        except Exception as e:
+            logger.warning(f"Pre-initialization operation failed: {e}")
+    except Exception as e:
+        logger.warning(f"Pre-initialization failed: {e}")
+    finally:
+        # Don't forget to close the DB session if it was created
+        if 'db' in locals():
+            db.close()
+            logger.info("Pre-initialization complete, closed DB session")
 
     yield  # Application runs here
 
