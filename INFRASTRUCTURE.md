@@ -1,160 +1,198 @@
-# Docker Infrastructure Flow Diagram
+# QR Code Generator Infrastructure
+
+## Architecture Overview
+
+The QR Code Generator is deployed as a container-based application with the following components:
+
+```mermaid
+graph TD
+    User["User (Browser)"] --> |HTTPS| Traefik["Traefik (Edge Gateway)"]
+    
+    subgraph "Docker Infrastructure"
+        Traefik --> |Forward requests| FastAPI["FastAPI Application"]
+        
+        FastAPI --> |Read/Write| SQLiteVolume["SQLite Volume (qr_data)"]
+    end
+    
+    Traefik --> |Enforces| Security["Security Controls:<br>- IP Allowlisting<br>- Path-Based Rules<br>- Rate Limiting<br>- TLS"]
+```
+
+## Infrastructure Components
+
+### Containers and Services
+
+| Service              | Image/Build                   | Main Purpose                               | Ports      | Volumes               |
+|----------------------|-------------------------------|--------------------------------------------|-----------|-----------------------|
+| `traefik`            | traefik:v2.10                 | Edge gateway, routing, TLS termination     | 80, 443   | traefik-certificates  |
+| `qr-app`             | Built from Dockerfile         | QR code generation and management API      | None (internal) | qr_data          |
+
+### Networks
+
+| Network Name   | Purpose                                      | Connected Services           |
+|----------------|----------------------------------------------|-----------------------------|
+| `traefik_net`  | Communication between Traefik and services   | traefik, qr-app             |
+
+### Volumes
+
+| Volume Name           | Purpose                                         | Used By            |
+|-----------------------|-------------------------------------------------|--------------------|
+| `qr_data`             | Persistent storage for SQLite DB and QR images  | qr-app             |
+| `traefik-certificates`| Storage for Let's Encrypt certificates          | traefik            |
+
+## Security Model
+
+The application uses a network-level security model:
+
+1. **Edge Security at Traefik**:
+   - IP allowlisting restricts access to administrative endpoints
+   - Path-based rules control which endpoints are publicly accessible
+   - TLS termination ensures encrypted traffic
+   - Rate limiting protects against abuse
+   - Security headers protect against common web vulnerabilities
+
+2. **Application Access Control**:
+   - Administrative endpoints are restricted to trusted network IPs
+   - Public QR redirect endpoints (`/r/{short_id}`) are accessible to all
+   - No user-level authentication is required
+
+3. **Network Isolation**:
+   - Container services communicate on internal networks only
+   - Only Traefik is exposed to the host network
+
+## Traefik Configuration
+
+Traefik is configured using two files:
+
+1. **`traefik.yml`** (static configuration):
+   - Global settings, entrypoints, providers
+   - TLS configuration and certificate storage
+   - Logging and metrics
+
+2. **`dynamic_conf.yml`** (dynamic configuration):
+   - Router definitions for each service
+   - Middleware chains
+   - Service backends
+
+### Middleware Stack
+
+```mermaid
+graph TD
+    Request["HTTP Request"] --> TLS["TLS Termination"]
+    TLS --> IPFilter["IP Allowlist<br>(for admin routes)"]
+    IPFilter --> Headers["Security Headers"]
+    Headers --> RateLimit["Rate Limiting<br>(per-client IP)"]
+    RateLimit --> Compress["Compression"]
+    Compress --> Service["QR App Service"]
+```
+
+## Database Management
+
+The application uses SQLite for data persistence:
+
+- Database file stored on `qr_data` volume
+- WAL mode enabled for better concurrency
+- Automated backups via scheduled tasks
+- Migrations managed by Alembic
+
+### Backup Strategy
+
+- Hourly backups stored inside container
+- Daily backups copied to the host via volume mapping to `./backups`
+- Standard SQLite `.backup` command used
+- Retention policy: 24 hourly backups, 7 daily backups
+
+## Deployment Process
 
 ```mermaid
 flowchart TD
-    %% External Users/Systems
-    USER((External User)) --> ENTRY
-    
-    subgraph traefik["Traefik Routing"]
-        direction LR
-        ENTRY["EntryPoints: web(:80), websecure(:443), traefik(:8080), metrics(:8082)"]
-        ROUTERS["Routers: api-rtr, keycloak-rtr (HTTP/HTTPS)"]
-        SERVICES["Services: api-svc(:8000), keycloak-svc(:8080)"]
-        ENTRY --> ROUTERS --> |"TLS"| SERVICES
-    end
-    
-    traefik --> dockerfile
-    traefik --> keycloak
-
-    subgraph keycloak["Authentication System"]
-        direction LR
-        KC["Keycloak Service"] --> KC_DB[("PostgreSQL DB")]
-        KC_DB --> KC_VOL["Volume: keycloak_postgres_data"]
-        KC --> KC_REALM["Realm: qr_code_realm"]
-        KC_REALM --> KC_CLIENTS["Client: qr_code_app"]
-        KC_REALM --> KC_IDP["Identity Provider: Azure AD"]
-    end
-
-    subgraph dockerfile["Docker Build"]
-        direction LR
-        subgraph builder["Builder Stage"]
-            B["python:3.12-slim + gcc, python3-dev + venv + requirements.txt"]
-        end
-        
-        subgraph runtime["Runtime Stage"]
-            R["python:3.12-slim + curl, sqlite3 + application code + scripts"]
-            ENV["ENV: PORT=8000, WORKERS=4, PYTHONPATH=/app"]
-            HEALTH["Healthcheck: /health endpoint (30s interval)"]
-        end
-        
-        builder --> runtime
-    end
-    
-    dockerfile --> compose
-    
-    subgraph compose["Docker Compose"]
-        direction LR
-        subgraph services["Services"]
-            API["API Service"] 
-            PROXY["Traefik Proxy"]
-            AUTH["Keycloak Auth Service"]
-            POSTGRES["PostgreSQL Database"]
-        end
-        
-        subgraph env["Environment"]
-            direction LR
-            subgraph DEV["Development (default)"]
-                DEV_FEATURES["Features: Hot reload, Debug, App mounting, Detailed logs"]
-                TEST_MODE["Testing: In-memory SQLite, Coverage reporting"]
-            end
-            
-            PROD["Production: No hot reload, Optimized perf, Enhanced security"]
-        end
-        
-        subgraph storage["Storage & Network"]
-            direction LR
-            DB[("SQLite DB")] --- VOLUMES["Volumes: data, logs, keycloak_postgres_data"]
-            NET["Network: qr_generator_network (bridge)"]
-        end
-        
-        services --> env --> storage
-    end
-    
-    SERVICES --> API
-    SERVICES --> KC
-    
-    %% Logging Flow
-    subgraph logs["Logging"]
-        direction LR
-        LOG_VOL["./logs → /logs"]
-        LOG_DIRS["Subdirectories: api, database, traefik, keycloak"]
-        API & DB & PROXY & KC -- "Logs" --> LOG_VOL --> LOG_DIRS
-    end
+    A[Code Changes] --> B[Build Image]
+    B --> C[Test Image]
+    C --> D[Push to Registry]
+    D --> E[Deploy with Docker Compose]
+    E --> F[Initialize Database if Needed]
+    F --> G[Run Migrations]
+    G --> H[Verify Health Endpoints]
 ```
 
-# Environment Configuration Notes
+### Initial Deployment
 
-## Development Mode (Default)
-- Features:
-  - Hot reloading and debug features enabled
-  - App directory mounted for live changes
-  - Detailed logging for development
-  - Testing with in-memory SQLite (run with `docker compose exec api pytest --cov -v`)
+```bash
+# Clone the repository
+git clone https://github.com/your-org/qr-code-generator.git
+cd qr-code-generator
 
-## Production Mode
-- Enable by changing `ENVIRONMENT=production` in docker-compose.yml
-- Features:
-  - Hot reloading disabled
-  - Optimized performance settings
-  - Enhanced security features
-  - Production-level logging
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your environment-specific values
 
-## Directory Structure
-- `data/`: Contains SQLite database and backups
-  - `backups/`: Database backup files
-  - `logs/`: Application data logs
-- `logs/`: Container logs
-  - `api/`: API service logs
-  - `database/`: Database operation logs
-  - `traefik/`: Traefik proxy logs
-  - `keycloak/`: Keycloak authentication logs
-- `certificates/`: TLS certificates for secure connections
-- `certs/`: Keycloak-specific certificates
+# Start the services
+docker-compose up -d
 
-# Traefik Routing Configuration
+# Verify deployment
+curl http://localhost/health
+```
 
-## Naming Conventions
-- **Router Naming**: Use `-rtr` suffix (e.g., `api-rtr`, `keycloak-rtr`)
-- **Service Naming**: Use `-svc` suffix (e.g., `api-svc`, `keycloak-svc`) 
-- **Explicit Binding**: Always bind routers to services explicitly:
-  ```yaml
-  traefik.http.routers.service-name-rtr.service=service-name-svc
-  ```
+### Updates
 
-## Priority Management
-- Base services (API): Priority 10-50
-- Specialized services (Auth): Priority 100-200
-- Always set explicit priority to prevent routing conflicts
+```bash
+# Pull the latest changes
+git pull
 
-## Path-Based Routing
-- API service: `PathPrefix(/) && !PathPrefix(/kc)`
-- Keycloak service: `PathPrefix(/kc)`
-- Use higher priority for more specific routes
+# Rebuild and restart the services
+docker-compose down
+docker-compose build
+docker-compose up -d
 
-## Required Headers
-- Authentication services need specific headers:
-  ```yaml
-  traefik.http.middlewares.keycloak-headers.headers.customrequestheaders.X-Forwarded-Proto=https
-  ```
+# Run migrations if needed
+docker-compose exec qr-app python -m app.scripts.manage_db migrate
+```
 
-# Authentication Architecture
+## Monitoring and Maintenance
 
-## Keycloak as Identity Provider
-- Keycloak acts as the central authentication service
-- Handles all aspects of authentication and authorization
-- Integrates with external identity providers (Azure AD)
-- Provides token-based authentication
+### Health Checks
 
-## Authentication Flow
-1. User accesses application through Traefik
-2. Authentication requests routed to Keycloak via `/kc` path
-3. Keycloak authenticates user (direct or via Azure AD)
-4. Authentication tokens returned to application
-5. Application verifies tokens with Keycloak
+- `/health` endpoint provides basic service health and database connectivity
+- `/metrics` exposes Prometheus metrics
 
-## Security Notes
-- TLS is enabled for secure connections
-- Self-signed certificates are used for local development
-- Production should use proper certificates from Let's Encrypt
-- Non-root user (appuser) is used in the container for enhanced security
-- Keycloak uses PostgreSQL for persistent user data and session management
+### Logging
+
+- Structured JSON logging to stdout/stderr
+- Log level configurable via environment variables
+- Request logging includes request ID, path, method, status, duration
+
+### Performance Considerations
+
+- SQLite WAL mode improves concurrency
+- QR code generation is CPU-intensive but quick
+- Image caching reduces regeneration overhead
+- Rate limiting prevents abuse
+
+## Disaster Recovery
+
+1. **Database Corruption**:
+   - Restore from the latest backup in `./backups`
+   - Run migrations to ensure schema is up-to-date
+
+2. **Container Failure**:
+   - Services will restart automatically (restart policy)
+   - Data persists on named volumes
+
+3. **Complete System Recovery**:
+   - Reinstall Docker and Docker Compose
+   - Clone repository and restore environment files
+   - Restore database backup to the appropriate location
+   - Restart services
+
+## Future Improvements
+
+1. **Monitoring Enhancement**:
+   - Add Prometheus/Grafana integration
+   - Set up alerting for critical metrics
+
+2. **Security Hardening**:
+   - Regular security scanning of Docker images
+   - Implementation of more granular access controls
+
+3. **Scalability**:
+   - Consider database sharding for high-volume deployments
+   - Implement caching layer for frequently accessed QR codes
