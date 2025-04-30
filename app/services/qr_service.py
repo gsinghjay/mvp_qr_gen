@@ -7,9 +7,8 @@ import uuid
 from datetime import UTC, datetime
 from io import BytesIO
 from zoneinfo import ZoneInfo
+from typing import Optional, Union
 
-import qrcode
-import qrcode.image.svg
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
@@ -34,6 +33,7 @@ from ..schemas.qr.parameters import (
     QRUpdateParameters,
     StaticQRCreateParameters,
 )
+from ..utils.qr_imaging import generate_qr_image as qr_imaging_util, generate_qr_response
 
 # Configure UTC timezone
 UTC = ZoneInfo("UTC")
@@ -415,6 +415,7 @@ class QRCodeService:
         box_size: int = 10,
         border: int = 4,
         image_format: str = "PNG",
+        logo_path: Optional[Union[str, bool]] = None,
     ) -> BytesIO:
         """
         Generate a QR code image.
@@ -426,6 +427,10 @@ class QRCodeService:
             box_size: The size of each box/module in the QR code
             border: The size of the border around the QR code
             image_format: The format of the image (PNG, JPEG, etc.)
+            logo_path: Optional path to a logo image to embed in the QR code
+                - If None, no logo is added
+                - If True, the default logo is used
+                - If a string, it's used as the path to the logo
 
         Returns:
             A BytesIO object containing the image data
@@ -434,23 +439,25 @@ class QRCodeService:
             Exception: If there is an error generating the QR code image
         """
         try:
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=box_size,
+            # Calculate the approximate size based on box_size
+            size = box_size * 25  # Rough estimate based on typical QR code size
+            
+            # Generate the QR code using the utility function
+            img_bytes = qr_imaging_util(
+                content=content,
+                image_format=image_format.lower(),
+                size=size,
+                fill_color=fill_color,
+                back_color=back_color,
                 border=border,
+                logo_path=logo_path
             )
-            qr.add_data(content)
-            qr.make(fit=True)
-
-            img = qr.make_image(fill_color=fill_color, back_color=back_color)
-
-            img_buffer = BytesIO()
-            img.save(img_buffer, format=image_format)
+            
+            # Create a BytesIO object from the bytes
+            img_buffer = BytesIO(img_bytes)
             img_buffer.seek(0)
-
+            
             return img_buffer
-
         except Exception as e:
             logger.error(f"Error generating QR code image: {e}")
             raise
@@ -462,22 +469,24 @@ class QRCodeService:
         border: int = 4,
         fill_color: str = "black",
         back_color: str = "white",
-        error_correction: int = qrcode.constants.ERROR_CORRECT_H,
+        error_correction: int = None,  # Remove qrcode.constants.ERROR_CORRECT_H
         image_format: str = "png",
         image_quality: int | None = None,
+        include_logo: bool = False,  # Add include_logo parameter
     ) -> StreamingResponse:
         """
         Generate a QR code with the given parameters.
 
         Args:
             data: Content to encode in the QR code
-            size: Size of each box in the QR code
+            size: Size of the QR code image in pixels (approximate)
             border: Border size around the QR code
             fill_color: Color of the QR code pattern
             back_color: Background color
-            error_correction: Error correction level
+            error_correction: Error correction level (not used with segno)
             image_format: Output image format (png, jpeg, svg, webp)
             image_quality: Quality for lossy formats (1-100)
+            include_logo: Whether to include the default logo
 
         Returns:
             StreamingResponse: FastAPI response containing the QR code image
@@ -485,69 +494,20 @@ class QRCodeService:
         Raises:
             HTTPException: If the image format is not supported or conversion fails
         """
-        # Validate image format
-        image_format = image_format.lower()
-        if image_format not in IMAGE_FORMATS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported image format. Supported formats: {', '.join(IMAGE_FORMATS.keys())}",
-            )
-
-        try:
-            # Handle SVG format separately as it requires different processing
-            if image_format == "svg":
-                # Use the proper SVG factory that supports styling
-                factory = qrcode.image.svg.SvgPathImage
-                qr = qrcode.QRCode(
-                    version=1,
-                    error_correction=error_correction,
-                    box_size=size,
-                    border=border,
-                    image_factory=factory,
-                )
-                qr.add_data(data)
-                qr.make(fit=True)
-                # Generate SVG with proper styling
-                img = qr.make_image(
-                    fill_color=fill_color,
-                    back_color=back_color,
-                    attrib={"style": f"background-color:{back_color}"},
-                )
-                # Update the SVG path fill color
-                img._img.find("path").set("fill", fill_color)
-            else:
-                qr = qrcode.QRCode(
-                    version=1,
-                    error_correction=error_correction,
-                    box_size=size,
-                    border=border,
-                )
-                qr.add_data(data)
-                qr.make(fit=True)
-                # Generate image with specified colors
-                img = qr.make_image(fill_color=fill_color, back_color=back_color)
-
-            # Convert to final format
-            buf = BytesIO()
-            save_kwargs = {}
-            if image_format in ["jpeg", "jpg", "webp"] and image_quality is not None:
-                save_kwargs["quality"] = max(1, min(100, image_quality))
-            if image_format == "webp":
-                save_kwargs["lossless"] = image_quality is None
-
-            if image_format != "svg":
-                img.save(buf, format=image_format.upper(), **save_kwargs)
-            else:
-                img.save(buf)
-            buf.seek(0)
-
-            return StreamingResponse(
-                buf,
-                media_type=IMAGE_FORMATS[image_format],
-                headers={"Content-Disposition": f'inline; filename="qr.{image_format}"'},
-            )
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error generating QR code: {str(e)}")
+        # Calculate the approximate size based on size parameter
+        # For segno, we use the total image size rather than box_size
+        pixel_size = size * 25  # Rough estimate based on typical QR code size
+        
+        return generate_qr_response(
+            content=data,
+            image_format=image_format,
+            size=pixel_size,
+            fill_color=fill_color,
+            back_color=back_color,
+            border=border,
+            image_quality=image_quality,
+            logo_path=True if include_logo else None  # Pass logo_path based on include_logo
+        )
 
     def list_qr_codes(
         self,

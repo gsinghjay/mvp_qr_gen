@@ -53,6 +53,10 @@ class QRImageParameters(BaseModel):
         pattern=r"^#[0-9A-Fa-f]{6}$",
         description="QR code background color in hex format (#RRGGBB)",
     )
+    include_logo: bool = Field(
+        default=False,
+        description="Whether to include the default logo in the QR code"
+    )
 
 
 class QRCreateParameters(BaseModel):
