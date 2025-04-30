@@ -21,435 +21,451 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.base import RequestResponseEndpoint
-from starlette.responses import Response
 
-from .core.config import settings, get_settings
+from .api import api_router, redirect_router_no_prefix, web_router_no_prefix, health_router_no_prefix
+from .core.config import settings
 from .core.exceptions import (
-    AppBaseException,
     DatabaseError,
     InvalidQRTypeError,
     QRCodeNotFoundError,
     QRCodeValidationError,
-    RateLimitExceededError,
     RedirectURLError,
     ResourceConflictError,
-    ServiceUnavailableError,
 )
-from .database import engine, init_db
 from .middleware.logging import LoggingMiddleware
 from .middleware.metrics import MetricsMiddleware
-from .middleware.security import create_security_headers_middleware
-from .routers import routers
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=settings.LOG_LEVEL,
+    format="%(asctime)s - %(levelname)s - [%(name)s] - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
-# Configure static files - ensure correct directory in Docker context
-STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/static")
-
-# Create settings instance
-settings = get_settings()
-logger.info(f"Initializing app with environment: {settings.ENVIRONMENT}")
+logger = logging.getLogger("app.main")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Lifespan event handler for FastAPI application.
+    Context manager for FastAPI application lifespan.
 
-    This uses the recommended asynccontextmanager approach for handling application
-    lifecycle events in FastAPI.
+    This context manager handles startup and shutdown events for the FastAPI application.
+    It's used to initialize resources at startup and clean them up at shutdown.
+
+    Args:
+        app: The FastAPI application instance.
     """
-    # Startup
-    try:
-        # Initialize database tables and connections
-        init_db()
-        logger.info("Database initialized")
-    except Exception as e:
-        logger.error(f"Error during startup: {e}", exc_info=e)
-        # Re-raise to prevent app from starting with uninitialized resources
-        raise
+    # Start up
+    logger.info("Application starting up...")
 
-    yield
+    # Creating directories if they don't exist
+    os.makedirs("app/static/assets/images/qr_codes", exist_ok=True)
+
+    yield  # Application runs here
 
     # Shutdown
+    logger.info("Application shutting down...")
+
+    # Cleanup logic here
     try:
-        # Dispose of database engine connections
-        engine.dispose()
-        logger.info("Database connections disposed")
+        logger.info("Cleaning up temp files...")
+        # Add specific cleanup tasks here
     except Exception as e:
-        logger.error(f"Error during shutdown: {e}", exc_info=e)
-        # No need to re-raise during shutdown
+        logger.exception(f"Error during cleanup: {e}")
 
 
-# Request ID middleware
-async def add_request_id(request: Request, call_next: RequestResponseEndpoint) -> Response:
-    """Add a unique request ID to each request or use existing one if provided."""
-    # Reuse existing request ID if present, otherwise generate new one
-    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-    request.state.request_id = request_id
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request_id
-    return response
+app = FastAPI(
+    title="QR Code Generator API",
+    description="API for generating and managing QR codes",
+    version="1.0.0",
+    openapi_url="/api/v1/openapi.json",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
+    lifespan=lifespan,
+)
 
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-def register_middleware(app: FastAPI) -> None:
-    """
-    Register all middleware in the correct order.
-    
-    The order is important - middleware is executed in reverse order of registration
-    (last registered is executed first in the request path).
-    """
-    # Logging should be last in chain (first to execute) to capture accurate timing
-    if settings.ENABLE_LOGGING:
-        app.add_middleware(LoggingMiddleware)
-        logger.info("Initialized LoggingMiddleware")
+# Add Trusted Host middleware
+app.add_middleware(
+    TrustedHostMiddleware, allowed_hosts=settings.TRUSTED_HOSTS
+)
 
-    # Metrics collection
-    if settings.ENABLE_METRICS:
-        app.add_middleware(MetricsMiddleware)
-        logger.info("Initialized MetricsMiddleware")
+# Add GZip compression middleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-    # Security headers
-    create_security_headers_middleware(app)
-    logger.info("Initialized security headers middleware")
-
-    # CORS - Note: In production, Traefik handles CORS, this is for development
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=settings.CORS_HEADERS,
-    )
-    logger.info("Initialized CORS middleware")
-
-    # Trusted hosts - Note: In production, Traefik handles host validation
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=settings.TRUSTED_HOSTS,
-    )
-    logger.info("Initialized TrustedHost middleware")
-
-    # GZip compression should be first in chain (last to execute)
-    if settings.ENABLE_GZIP:
-        app.add_middleware(
-            GZipMiddleware,
-            minimum_size=settings.GZIP_MIN_SIZE,
-        )
-        logger.info("Initialized GZip middleware")
-
-    # Add request ID middleware
-    app.middleware("http")(add_request_id)
-    logger.info("Initialized request ID middleware")
-
-
-def create_app() -> FastAPI:
-    """
-    Create and configure the FastAPI application.
-
-    Returns:
-        FastAPI: The configured FastAPI application
-    """
-    # Create FastAPI app with lifespan manager
-    app = FastAPI(
-        title="QR Code Generator API",
-        description="API for generating and managing QR codes",
-        version="1.0.0",
-        # Make docs always available - they'll be protected by IP whitelist
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
-        root_path="",  # Ensure root path is empty for Traefik
-        lifespan=lifespan,
-    )
-
-    # Store settings in app state
-    app.state.settings = settings
-    logger.info(f"Attached settings to app.state with environment: {settings.ENVIRONMENT}")
-
-    # Register all middleware
-    register_middleware(app)
-
-    # Include all routers
-    for router in routers:
-        app.include_router(router)
-
-    return app
-
-
-# Create the application
-app = create_app()
-
+# Add custom middleware
+app.add_middleware(MetricsMiddleware)
+app.add_middleware(LoggingMiddleware)
 
 # Mount static files
-app.mount("/static", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
-# Helper function for creating standardized error responses
-def create_error_response(
-    request: Request, 
-    status_code: int, 
-    detail: Union[str, Dict[str, Any]], 
-    headers: Dict[str, str] = None
+# Custom request ID middleware
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to add a unique request ID to each request.
+
+    This middleware adds a unique ID to each request and includes it in the response headers.
+    This helps with tracing requests through logs and metrics.
+    """
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ):
+        """
+        Process a request and add a request ID to it.
+
+        Args:
+            request: The incoming request.
+            call_next: The next middleware or route handler to call.
+
+        Returns:
+            The response from the next middleware or route handler.
+        """
+        request_id = str(uuid.uuid4())
+        # Add request id to request state
+        request.state.request_id = request_id
+        # Add timestamp to request state
+        request.state.start_time = datetime.now(UTC)
+        # Process the request
+        response = await call_next(request)
+        # Add request id to response headers
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+
+app.add_middleware(RequestIDMiddleware)
+
+
+# Exception Handlers
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(
+    request: Request, exc: StarletteHTTPException
 ) -> JSONResponse:
     """
-    Create a standardized error response.
-    
+    Handle HTTP exceptions and return a consistent JSON response.
+
     Args:
-        request: The request that caused the error
-        status_code: HTTP status code
-        detail: Error details (string or dict)
-        headers: Optional response headers
-        
+        request: The incoming request.
+        exc: The HTTP exception that was raised.
+
     Returns:
-        JSONResponse with standardized error format
+        A JSON response with error details.
     """
-    request_id = getattr(request.state, "request_id", None)
-    
+    # Log the exception
+    logger.error(f"HTTP error: {exc.detail}")
+
     return JSONResponse(
-        status_code=status_code,
-        headers=headers,
-        content=jsonable_encoder({
-            "detail": detail,
-            "status_code": status_code,
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "status_code": exc.status_code,
             "path": request.url.path,
             "method": request.method,
             "timestamp": datetime.now(UTC).isoformat(),
-            "request_id": request_id,
-        }),
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
     )
-
-
-# Exception handlers
-@app.exception_handler(StarletteHTTPException)
-async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Handle HTTP exceptions with detailed error messages."""
-    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """Handle validation errors with detailed error information."""
-    # Check if this is a JSON decode error
-    if len(exc.errors()) == 1 and exc.errors()[0]["type"] == "json_invalid":
-        return create_error_response(
-            request, 
-            status.HTTP_400_BAD_REQUEST,
-            "Invalid JSON format"
-        )
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """
+    Handle validation errors and return a consistent JSON response.
 
-    # For other validation errors, return 422 with detailed error information
-    return create_error_response(
-        request,
-        status.HTTP_422_UNPROCESSABLE_ENTITY,
-        exc.errors()
+    Args:
+        request: The incoming request.
+        exc: The validation error that was raised.
+
+    Returns:
+        A JSON response with error details.
+    """
+    # Log the exception
+    logger.error(f"Validation error: {exc.errors()}")
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": jsonable_encoder(exc.errors()),
+            "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "path": request.url.path,
+            "method": request.method,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
     )
 
 
-@app.exception_handler(ValueError)
-async def value_error_handler(request: Request, exc: ValueError):
-    """Handle ValueError with proper error details."""
-    return create_error_response(
-        request,
-        status.HTTP_422_UNPROCESSABLE_ENTITY,
-        [{"loc": ["body"], "msg": str(exc), "type": "value_error"}]
+@app.exception_handler(QRCodeNotFoundError)
+async def qr_not_found_exception_handler(
+    request: Request, exc: QRCodeNotFoundError
+) -> JSONResponse:
+    """
+    Handle QR code not found errors and return a consistent JSON response.
+
+    Args:
+        request: The incoming request.
+        exc: The QR code not found error that was raised.
+
+    Returns:
+        A JSON response with error details.
+    """
+    # Log the exception
+    logger.error(f"QR code not found: {str(exc)}")
+
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "detail": str(exc),
+            "status_code": status.HTTP_404_NOT_FOUND,
+            "path": request.url.path,
+            "method": request.method,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
+    )
+
+
+@app.exception_handler(InvalidQRTypeError)
+async def invalid_qr_type_exception_handler(
+    request: Request, exc: InvalidQRTypeError
+) -> JSONResponse:
+    """
+    Handle invalid QR type errors and return a consistent JSON response.
+
+    Args:
+        request: The incoming request.
+        exc: The invalid QR type error that was raised.
+
+    Returns:
+        A JSON response with error details.
+    """
+    # Log the exception
+    logger.error(f"Invalid QR type: {str(exc)}")
+
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "detail": str(exc),
+            "status_code": status.HTTP_400_BAD_REQUEST,
+            "path": request.url.path,
+            "method": request.method,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
+    )
+
+
+@app.exception_handler(QRCodeValidationError)
+async def qr_validation_exception_handler(
+    request: Request, exc: QRCodeValidationError
+) -> JSONResponse:
+    """
+    Handle QR code validation errors and return a consistent JSON response.
+
+    Args:
+        request: The incoming request.
+        exc: The QR code validation error that was raised.
+
+    Returns:
+        A JSON response with error details.
+    """
+    # Log the exception
+    logger.error(f"QR code validation error: {str(exc)}")
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": str(exc),
+            "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "path": request.url.path,
+            "method": request.method,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
+    )
+
+
+@app.exception_handler(RedirectURLError)
+async def redirect_url_exception_handler(
+    request: Request, exc: RedirectURLError
+) -> JSONResponse:
+    """
+    Handle redirect URL errors and return a consistent JSON response.
+
+    Args:
+        request: The incoming request.
+        exc: The redirect URL error that was raised.
+
+    Returns:
+        A JSON response with error details.
+    """
+    # Log the exception
+    logger.error(f"Redirect URL error: {str(exc)}")
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": str(exc),
+            "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "path": request.url.path,
+            "method": request.method,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
+    )
+
+
+@app.exception_handler(ResourceConflictError)
+async def resource_conflict_exception_handler(
+    request: Request, exc: ResourceConflictError
+) -> JSONResponse:
+    """
+    Handle resource conflict errors and return a consistent JSON response.
+
+    Args:
+        request: The incoming request.
+        exc: The resource conflict error that was raised.
+
+    Returns:
+        A JSON response with error details.
+    """
+    # Log the exception
+    logger.error(f"Resource conflict error: {str(exc)}")
+
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "detail": str(exc),
+            "status_code": status.HTTP_409_CONFLICT,
+            "path": request.url.path,
+            "method": request.method,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
+    )
+
+
+@app.exception_handler(DatabaseError)
+async def database_exception_handler(
+    request: Request, exc: DatabaseError
+) -> JSONResponse:
+    """
+    Handle database errors and return a consistent JSON response.
+
+    Args:
+        request: The incoming request.
+        exc: The database error that was raised.
+
+    Returns:
+        A JSON response with error details.
+    """
+    # Log the exception
+    logger.error(f"Database error: {str(exc)}")
+
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": str(exc),
+            "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "path": request.url.path,
+            "method": request.method,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
     )
 
 
 @app.exception_handler(SQLAlchemyError)
-async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
-    """Handle database errors safely without exposing internal details."""
-    logger.error(f"Database error: {str(exc)}", exc_info=exc)
-    return create_error_response(
-        request,
-        status.HTTP_500_INTERNAL_SERVER_ERROR,
-        "Database error occurred"
+async def sqlalchemy_exception_handler(
+    request: Request, exc: SQLAlchemyError
+) -> JSONResponse:
+    """
+    Handle SQLAlchemy errors and return a consistent JSON response.
+
+    Args:
+        request: The incoming request.
+        exc: The SQLAlchemy error that was raised.
+
+    Returns:
+        A JSON response with error details.
+    """
+    # Log the exception
+    logger.exception(f"SQLAlchemy error: {str(exc)}")
+
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": "Database error occurred",
+            "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "path": request.url.path,
+            "method": request.method,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
     )
 
 
 @app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected errors with proper logging."""
-    logger.error("Unexpected error occurred", exc_info=exc)
-    return create_error_response(
-        request,
-        status.HTTP_500_INTERNAL_SERVER_ERROR,
-        "Internal server error"
+async def general_exception_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    """
+    Handle general exceptions and return a consistent JSON response.
+
+    Args:
+        request: The incoming request.
+        exc: The exception that was raised.
+
+    Returns:
+        A JSON response with error details.
+    """
+    # Log the exception
+    logger.exception(f"Unhandled exception: {str(exc)}")
+
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": "Internal server error",
+            "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "path": request.url.path,
+            "method": request.method,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "request_id": getattr(request.state, "request_id", "unknown"),
+        },
     )
 
 
-@app.exception_handler(AppBaseException)
-async def app_exception_handler(request: Request, exc: AppBaseException):
+# Include routers
+app.include_router(api_router)  # /api prefix
+app.include_router(redirect_router_no_prefix)  # /r prefix
+app.include_router(web_router_no_prefix)  # No prefix (for web pages)
+app.include_router(health_router_no_prefix)  # No prefix (for health check)
+
+# Root endpoint
+@app.get("/")
+async def root():
     """
-    Handle all application-specific exceptions with a consistent response format.
-
-    This handler processes all exceptions that inherit from AppBaseException,
-    providing a consistent response format with status code, detail message,
-    request path, timestamp, and request ID.
-
-    Args:
-        request: The request that caused the exception
-        exc: The exception instance
+    Root endpoint that returns basic API information.
 
     Returns:
-        JSONResponse with error details
+        A dictionary with basic API information.
     """
-    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
-
-
-@app.exception_handler(QRCodeNotFoundError)
-async def qr_code_not_found_exception_handler(request: Request, exc: QRCodeNotFoundError):
-    """
-    Handle QRCodeNotFoundError with a 404 response.
-
-    Args:
-        request: The request that caused the exception
-        exc: The exception instance
-
-    Returns:
-        JSONResponse with error details
-    """
-    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
-
-
-@app.exception_handler(QRCodeValidationError)
-async def qr_code_validation_exception_handler(request: Request, exc: QRCodeValidationError):
-    """
-    Handle QRCodeValidationError with a 422 response.
-
-    Args:
-        request: The request that caused the exception
-        exc: The exception instance
-
-    Returns:
-        JSONResponse with error details
-    """
-    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
-
-
-@app.exception_handler(DatabaseError)
-async def database_exception_handler(request: Request, exc: DatabaseError):
-    """
-    Handle DatabaseError with a 500 response.
-
-    Args:
-        request: The request that caused the exception
-        exc: The exception instance
-
-    Returns:
-        JSONResponse with error details
-    """
-    logger.error(f"Database error: {str(exc.detail)}", exc_info=True)
-    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
-
-
-@app.exception_handler(InvalidQRTypeError)
-async def invalid_qr_type_exception_handler(request: Request, exc: InvalidQRTypeError):
-    """
-    Handle InvalidQRTypeError with a 400 response.
-
-    Args:
-        request: The request that caused the exception
-        exc: The exception instance
-
-    Returns:
-        JSONResponse with error details
-    """
-    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
-
-
-@app.exception_handler(RedirectURLError)
-async def redirect_url_exception_handler(request: Request, exc: RedirectURLError):
-    """
-    Handle RedirectURLError with a 422 response.
-
-    Args:
-        request: The request that caused the exception
-        exc: The exception instance
-
-    Returns:
-        JSONResponse with error details
-    """
-    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
-
-
-@app.exception_handler(ResourceConflictError)
-async def resource_conflict_exception_handler(request: Request, exc: ResourceConflictError):
-    """
-    Handle ResourceConflictError with a 409 response.
-
-    Args:
-        request: The request that caused the exception
-        exc: The exception instance
-
-    Returns:
-        JSONResponse with error details
-    """
-    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
-
-
-@app.exception_handler(RateLimitExceededError)
-async def rate_limit_exception_handler(request: Request, exc: RateLimitExceededError):
-    """
-    Handle RateLimitExceededError with a 429 response.
-
-    Args:
-        request: The request that caused the exception
-        exc: The exception instance
-
-    Returns:
-        JSONResponse with error details
-    """
-    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
-
-
-@app.exception_handler(ServiceUnavailableError)
-async def service_unavailable_exception_handler(request: Request, exc: ServiceUnavailableError):
-    """
-    Handle ServiceUnavailableError with a 503 response.
-
-    Args:
-        request: The request that caused the exception
-        exc: The exception instance
-
-    Returns:
-        JSONResponse with error details
-    """
-    logger.error(f"Service unavailable: {str(exc.detail)}", exc_info=True)
-    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
-
-
-"""
-@app.get("/", response_class=HTMLResponse)
-async def home(
-    request: Request,
-    db: Session = Depends(get_db_with_logging)
-):
-    # This endpoint has been moved to routers/web/pages.py
-    try:
-        # Get total QR code count for the dashboard
-        total_qr_codes = db.query(QRCode).count()
-        recent_qr_codes = db.query(QRCode).order_by(QRCode.created_at.desc()).limit(5).all()
-        
-        return templates.TemplateResponse(
-            name="index.html",
-            context={
-                "request": request,  # Required by Jinja2Templates
-                "total_qr_codes": total_qr_codes,
-                "recent_qr_codes": recent_qr_codes,
-            }
-        )
-    except SQLAlchemyError as e:
-        logger.error("Database error in home page", extra={"error": str(e)})
-        return templates.TemplateResponse(
-            name="index.html",
-            context={
-                "request": request,  # Required by Jinja2Templates
-                "total_qr_codes": 0,
-                "recent_qr_codes": [],
-                "error": "Unable to load QR code data"
-            },
-            status_code=500
-        )
-"""
+    return {
+        "name": "QR Code Generator API",
+        "version": "1.0.0",
+        "description": "API for generating and managing QR codes",
+        "docs": "/api/v1/docs",
+    }

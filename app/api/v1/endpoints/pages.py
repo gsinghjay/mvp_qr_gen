@@ -12,11 +12,12 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from ...database import get_db_with_logging
-from ...models import QRCode
-from ..qr.common import logger
+from app.database import get_db_with_logging
+from app.models import QRCode
 
-# Remove auth imports
+# Configure logger
+import logging
+logger = logging.getLogger("app.web.pages")
 
 # Configure templates with context processors
 def get_base_template_context(request: Request) -> dict:
@@ -24,7 +25,7 @@ def get_base_template_context(request: Request) -> dict:
     Get base context for all templates.
     Includes common data like app version, environment info, etc.
     """
-    from ...core.config import settings
+    from app.core.config import settings
 
     # Force HTTPS for all URLs
     request.scope["scheme"] = "https"
@@ -40,7 +41,7 @@ def get_base_template_context(request: Request) -> dict:
 
 # Configure templates directory
 TEMPLATES_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "templates"
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "templates"
 )
 templates = Jinja2Templates(
     directory=TEMPLATES_DIR,
@@ -190,7 +191,7 @@ async def qr_detail(
         qr_data = qr_code.to_dict()
         
         # Add the base URL for the short URL display
-        from ...core.config import settings
+        from app.core.config import settings
         base_url = f"{settings.BASE_URL}/r/"
         
         return templates.TemplateResponse(
@@ -203,19 +204,7 @@ async def qr_detail(
             },
         )
     except SQLAlchemyError as e:
-        logger.error(f"Database error in QR detail page for QR ID: {qr_id}", extra={"error": str(e)})
-        return templates.TemplateResponse(
-            name="qr_detail.html",
-            context={
-                "request": request,
-                "is_authenticated": True,  # Network-level authentication is now used
-                "error": "Unable to load QR code data",
-                "qr_id": qr_id,
-            },
-            status_code=500,
-        )
-    except Exception as e:
-        logger.error(f"Error in QR detail page for QR ID: {qr_id}", extra={"error": str(e)})
+        logger.error(f"Database error in QR detail page for {qr_id}", extra={"error": str(e)})
         return templates.TemplateResponse(
             name="qr_detail.html",
             context={
@@ -231,13 +220,16 @@ async def qr_detail(
 @router.get("/login", response_class=HTMLResponse)
 async def login(request: Request):
     """
-    Render login page.
+    Render the login page.
+    
+    Note: This is a legacy endpoint maintained for compatibility.
+    Authentication is now handled at the network level with IP whitelisting.
     """
     return templates.TemplateResponse(
-        name="portal-login.html",
+        name="login.html",
         context={
             "request": request,
-            "is_authenticated": True,  # Network-level authentication is now used
+            "legacy_notice": "Authentication is now handled at the network level.",
         },
     )
 
@@ -245,12 +237,15 @@ async def login(request: Request):
 @router.get("/portal-login", response_class=HTMLResponse)
 async def portal_login(request: Request):
     """
-    Render portal login page.
+    Render the portal login page.
+    
+    Note: This is a legacy endpoint maintained for compatibility.
+    Authentication is now handled at the network level with IP whitelisting.
     """
     return templates.TemplateResponse(
-        name="portal-login.html",
+        name="portal_login.html",
         context={
             "request": request,
-            "is_authenticated": True,  # Network-level authentication is now used
+            "legacy_notice": "Authentication is now handled at the network level.",
         },
-    )
+    ) 

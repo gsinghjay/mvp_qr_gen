@@ -11,12 +11,15 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select, or_
 from sqlalchemy.exc import SQLAlchemyError
 
-from ...database import get_db
-from ...dependencies import get_qr_service
-from ...models.qr import QRCode
-from ...services.qr_service import QRCodeService
-from ...core.config import settings
-from .common import logger
+from app.database import get_db
+from app.dependencies import get_qr_service
+from app.models.qr import QRCode
+from app.services.qr_service import QRCodeService
+from app.core.config import settings
+
+# Configure logger
+import logging
+logger = logging.getLogger("app.qr.redirect")
 
 router = APIRouter(
     prefix="/r",
