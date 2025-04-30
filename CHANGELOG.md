@@ -1,6 +1,47 @@
 # CHANGELOG
 
 
+## v0.16.0 (2025-04-30)
+
+### Features
+
+- Add type aliases for common dependencies
+  ([`5dce8fd`](https://github.com/gsinghjay/mvp_qr_gen/commit/5dce8fd2906164120c1f66e0f607ec91f78063fd))
+
+- Create DbSessionDep, QRRepositoryDep, and QRServiceDep - Use Annotated syntax for modern FastAPI
+  type annotations - Prepare for future adoption in router endpoints
+
+- Implement BaseRepository with generic CRUD operations
+  ([`103e5f1`](https://github.com/gsinghjay/mvp_qr_gen/commit/103e5f1fe2530792b70e774e51f1976b4cdb9cbd))
+
+- Create generic BaseRepository with type-safe operations - Implement get_by_id, get_all, create,
+  update, delete methods - Add proper error handling and logging - Use with_retry decorator for
+  operations prone to locking
+
+- Implement QRCodeRepository for QR code database operations
+  ([`f82bd0c`](https://github.com/gsinghjay/mvp_qr_gen/commit/f82bd0cacfce1e0e4ad83a9926b8ec6367ac4af2))
+
+- Create QRCodeRepository extending BaseRepository - Implement QR-specific methods like
+  get_by_content - Add custom update_qr method for attribute-based updates - Implement scan tracking
+  methods with proper error handling - Move list_qr_codes functionality to repository layer
+
+### Refactoring
+
+- Update dependency injection to use repository pattern
+  ([`0321c46`](https://github.com/gsinghjay/mvp_qr_gen/commit/0321c46a5f578ab4a326b5839d65c60a67c5ec33))
+
+- Update get_qr_service to accept repository dependency - Create new get_qr_repository dependency -
+  Use Annotated syntax for modern FastAPI dependency injection - Add get_db shorthand dependency for
+  consistency
+
+- Update QRCodeService to use repository pattern
+  ([`31f9870`](https://github.com/gsinghjay/mvp_qr_gen/commit/31f98709a482addae461846cfb6857a9b9ede08f))
+
+- Replace direct database access with repository calls - Remove duplicate error handling now in
+  repository layer - Use repository.update_qr for dynamic QR updates - Delegate scan statistics
+  tracking to repository - Keep business logic validation in service layer
+
+
 ## v0.15.0 (2025-04-30)
 
 ### Bug Fixes
