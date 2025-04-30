@@ -7,6 +7,7 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from typing import Any, Dict, Union
 
 from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -18,8 +19,11 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import Response
 
-from .core.config import settings
+from .core.config import settings, get_settings
 from .core.exceptions import (
     AppBaseException,
     DatabaseError,
@@ -42,6 +46,10 @@ logger = logging.getLogger(__name__)
 
 # Configure static files - ensure correct directory in Docker context
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app/static")
+
+# Create settings instance
+settings = get_settings()
+logger.info(f"Initializing app with environment: {settings.ENVIRONMENT}")
 
 
 @asynccontextmanager
@@ -74,27 +82,24 @@ async def lifespan(app: FastAPI):
         # No need to re-raise during shutdown
 
 
-def create_app() -> FastAPI:
+# Request ID middleware
+async def add_request_id(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    """Add a unique request ID to each request or use existing one if provided."""
+    # Reuse existing request ID if present, otherwise generate new one
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+def register_middleware(app: FastAPI) -> None:
     """
-    Create and configure the FastAPI application.
-
-    Returns:
-        FastAPI: The configured FastAPI application
+    Register all middleware in the correct order.
+    
+    The order is important - middleware is executed in reverse order of registration
+    (last registered is executed first in the request path).
     """
-    # Create FastAPI app with lifespan manager
-    app = FastAPI(
-        title="QR Code Generator API",
-        description="API for generating and managing QR codes",
-        version="1.0.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
-        root_path="",  # Ensure root path is empty for Traefik
-        lifespan=lifespan,
-    )
-
-    # Apply middleware directly - order is important (last added = first executed)
-
     # Logging should be last in chain (first to execute) to capture accurate timing
     if settings.ENABLE_LOGGING:
         app.add_middleware(LoggingMiddleware)
@@ -134,6 +139,38 @@ def create_app() -> FastAPI:
         )
         logger.info("Initialized GZip middleware")
 
+    # Add request ID middleware
+    app.middleware("http")(add_request_id)
+    logger.info("Initialized request ID middleware")
+
+
+def create_app() -> FastAPI:
+    """
+    Create and configure the FastAPI application.
+
+    Returns:
+        FastAPI: The configured FastAPI application
+    """
+    # Create FastAPI app with lifespan manager
+    app = FastAPI(
+        title="QR Code Generator API",
+        description="API for generating and managing QR codes",
+        version="1.0.0",
+        # Make docs always available - they'll be protected by IP whitelist
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+        root_path="",  # Ensure root path is empty for Traefik
+        lifespan=lifespan,
+    )
+
+    # Store settings in app state
+    app.state.settings = settings
+    logger.info(f"Attached settings to app.state with environment: {settings.ENVIRONMENT}")
+
+    # Register all middleware
+    register_middleware(app)
+
     # Include all routers
     for router in routers:
         app.include_router(router)
@@ -145,37 +182,50 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-# Add middleware to force HTTPS for static files
-@app.middleware("http")
-async def force_https_static(request: Request, call_next):
-    """Force HTTPS for static file URLs."""
-    response = await call_next(request)
-    if request.url.path.startswith("/static/"):
-        response.headers["Content-Security-Policy"] = "upgrade-insecure-requests"
-    return response
-
-
-# Mount static files with HTTPS configuration
+# Mount static files
 app.mount("/static", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
-# Load environment variables
-TRUSTED_HOSTS = os.getenv("TRUSTED_HOSTS", "localhost").split(",")
+
+# Helper function for creating standardized error responses
+def create_error_response(
+    request: Request, 
+    status_code: int, 
+    detail: Union[str, Dict[str, Any]], 
+    headers: Dict[str, str] = None
+) -> JSONResponse:
+    """
+    Create a standardized error response.
+    
+    Args:
+        request: The request that caused the error
+        status_code: HTTP status code
+        detail: Error details (string or dict)
+        headers: Optional response headers
+        
+    Returns:
+        JSONResponse with standardized error format
+    """
+    request_id = getattr(request.state, "request_id", None)
+    
+    return JSONResponse(
+        status_code=status_code,
+        headers=headers,
+        content=jsonable_encoder({
+            "detail": detail,
+            "status_code": status_code,
+            "path": request.url.path,
+            "method": request.method,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "request_id": request_id,
+        }),
+    )
 
 
 # Exception handlers
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Handle HTTP exceptions with detailed error messages."""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=jsonable_encoder(
-            {
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-                "path": request.url.path,
-            }
-        ),
-    )
+    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
 
 
 @app.exception_handler(RequestValidationError)
@@ -183,43 +233,27 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """Handle validation errors with detailed error information."""
     # Check if this is a JSON decode error
     if len(exc.errors()) == 1 and exc.errors()[0]["type"] == "json_invalid":
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content=jsonable_encoder(
-                {
-                    "detail": "Invalid JSON format",
-                    "path": request.url.path,
-                    "method": request.method,
-                }
-            ),
+        return create_error_response(
+            request, 
+            status.HTTP_400_BAD_REQUEST,
+            "Invalid JSON format"
         )
 
     # For other validation errors, return 422 with detailed error information
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder(
-            {
-                "detail": exc.errors(),
-                "body": exc.body,
-                "path": request.url.path,
-                "method": request.method,
-            }
-        ),
+    return create_error_response(
+        request,
+        status.HTTP_422_UNPROCESSABLE_ENTITY,
+        exc.errors()
     )
 
 
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError):
     """Handle ValueError with proper error details."""
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder(
-            {
-                "detail": [{"loc": ["body"], "msg": str(exc), "type": "value_error"}],
-                "path": request.url.path,
-                "method": request.method,
-            }
-        ),
+    return create_error_response(
+        request,
+        status.HTTP_422_UNPROCESSABLE_ENTITY,
+        [{"loc": ["body"], "msg": str(exc), "type": "value_error"}]
     )
 
 
@@ -227,15 +261,10 @@ async def value_error_handler(request: Request, exc: ValueError):
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
     """Handle database errors safely without exposing internal details."""
     logger.error(f"Database error: {str(exc)}", exc_info=exc)
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=jsonable_encoder(
-            {
-                "detail": "Database error occurred",
-                "path": request.url.path,
-                "method": request.method,
-            }
-        ),
+    return create_error_response(
+        request,
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+        "Database error occurred"
     )
 
 
@@ -243,26 +272,11 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle unexpected errors with proper logging."""
     logger.error("Unexpected error occurred", exc_info=exc)
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=jsonable_encoder(
-            {
-                "detail": "Internal server error",
-                "path": request.url.path,
-                "method": request.method,
-            }
-        ),
+    return create_error_response(
+        request,
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+        "Internal server error"
     )
-
-
-@app.middleware("http")
-async def add_request_id(request: Request, call_next):
-    """Add a unique request ID to each request."""
-    request_id = str(uuid.uuid4())
-    request.state.request_id = request_id
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request_id
-    return response
 
 
 @app.exception_handler(AppBaseException)
@@ -281,22 +295,7 @@ async def app_exception_handler(request: Request, exc: AppBaseException):
     Returns:
         JSONResponse with error details
     """
-    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        headers=exc.headers,
-        content=jsonable_encoder(
-            {
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-                "path": request.url.path,
-                "method": request.method,
-                "timestamp": datetime.now(UTC).isoformat(),
-                "request_id": request_id,
-            }
-        ),
-    )
+    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
 
 
 @app.exception_handler(QRCodeNotFoundError)
@@ -311,22 +310,7 @@ async def qr_code_not_found_exception_handler(request: Request, exc: QRCodeNotFo
     Returns:
         JSONResponse with error details
     """
-    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        headers=exc.headers,
-        content=jsonable_encoder(
-            {
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-                "path": request.url.path,
-                "method": request.method,
-                "timestamp": datetime.now(UTC).isoformat(),
-                "request_id": request_id,
-            }
-        ),
-    )
+    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
 
 
 @app.exception_handler(QRCodeValidationError)
@@ -341,22 +325,7 @@ async def qr_code_validation_exception_handler(request: Request, exc: QRCodeVali
     Returns:
         JSONResponse with error details
     """
-    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        headers=exc.headers,
-        content=jsonable_encoder(
-            {
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-                "path": request.url.path,
-                "method": request.method,
-                "timestamp": datetime.now(UTC).isoformat(),
-                "request_id": request_id,
-            }
-        ),
-    )
+    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
 
 
 @app.exception_handler(DatabaseError)
@@ -371,23 +340,8 @@ async def database_exception_handler(request: Request, exc: DatabaseError):
     Returns:
         JSONResponse with error details
     """
-    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
     logger.error(f"Database error: {str(exc.detail)}", exc_info=True)
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        headers=exc.headers,
-        content=jsonable_encoder(
-            {
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-                "path": request.url.path,
-                "method": request.method,
-                "timestamp": datetime.now(UTC).isoformat(),
-                "request_id": request_id,
-            }
-        ),
-    )
+    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
 
 
 @app.exception_handler(InvalidQRTypeError)
@@ -402,22 +356,7 @@ async def invalid_qr_type_exception_handler(request: Request, exc: InvalidQRType
     Returns:
         JSONResponse with error details
     """
-    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        headers=exc.headers,
-        content=jsonable_encoder(
-            {
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-                "path": request.url.path,
-                "method": request.method,
-                "timestamp": datetime.now(UTC).isoformat(),
-                "request_id": request_id,
-            }
-        ),
-    )
+    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
 
 
 @app.exception_handler(RedirectURLError)
@@ -432,22 +371,7 @@ async def redirect_url_exception_handler(request: Request, exc: RedirectURLError
     Returns:
         JSONResponse with error details
     """
-    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        headers=exc.headers,
-        content=jsonable_encoder(
-            {
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-                "path": request.url.path,
-                "method": request.method,
-                "timestamp": datetime.now(UTC).isoformat(),
-                "request_id": request_id,
-            }
-        ),
-    )
+    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
 
 
 @app.exception_handler(ResourceConflictError)
@@ -462,22 +386,7 @@ async def resource_conflict_exception_handler(request: Request, exc: ResourceCon
     Returns:
         JSONResponse with error details
     """
-    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        headers=exc.headers,
-        content=jsonable_encoder(
-            {
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-                "path": request.url.path,
-                "method": request.method,
-                "timestamp": datetime.now(UTC).isoformat(),
-                "request_id": request_id,
-            }
-        ),
-    )
+    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
 
 
 @app.exception_handler(RateLimitExceededError)
@@ -492,22 +401,7 @@ async def rate_limit_exception_handler(request: Request, exc: RateLimitExceededE
     Returns:
         JSONResponse with error details
     """
-    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        headers=exc.headers,
-        content=jsonable_encoder(
-            {
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-                "path": request.url.path,
-                "method": request.method,
-                "timestamp": datetime.now(UTC).isoformat(),
-                "request_id": request_id,
-            }
-        ),
-    )
+    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
 
 
 @app.exception_handler(ServiceUnavailableError)
@@ -522,23 +416,8 @@ async def service_unavailable_exception_handler(request: Request, exc: ServiceUn
     Returns:
         JSONResponse with error details
     """
-    request_id = request.state.request_id if hasattr(request.state, "request_id") else None
     logger.error(f"Service unavailable: {str(exc.detail)}", exc_info=True)
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        headers=exc.headers,
-        content=jsonable_encoder(
-            {
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-                "path": request.url.path,
-                "method": request.method,
-                "timestamp": datetime.now(UTC).isoformat(),
-                "request_id": request_id,
-            }
-        ),
-    )
+    return create_error_response(request, exc.status_code, exc.detail, exc.headers)
 
 
 """
