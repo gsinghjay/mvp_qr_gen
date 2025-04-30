@@ -7,6 +7,7 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Dict, Union
 
 from fastapi import FastAPI, Request, status
@@ -60,7 +61,10 @@ async def lifespan(app: FastAPI):
     logger.info("Application starting up...")
 
     # Creating directories if they don't exist
-    os.makedirs("app/static/assets/images/qr_codes", exist_ok=True)
+    # Check for Docker container path first
+    static_dir = Path(STATIC_DIR)
+    qr_codes_dir = static_dir / "assets" / "images" / "qr_codes"
+    qr_codes_dir.mkdir(parents=True, exist_ok=True)
 
     yield  # Application runs here
 
@@ -107,7 +111,13 @@ app.add_middleware(MetricsMiddleware)
 app.add_middleware(LoggingMiddleware)
 
 # Mount static files
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Check for Docker container path first
+STATIC_DIR = "/app/app/static"
+if not os.path.exists(STATIC_DIR):
+    # Fall back to relative path for development
+    STATIC_DIR = Path(__file__).parent / "static"
+
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 # Custom request ID middleware

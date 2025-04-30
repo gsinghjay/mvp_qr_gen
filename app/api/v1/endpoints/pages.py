@@ -4,7 +4,8 @@ Router for web page endpoints.
 
 import os
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Annotated
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -12,7 +13,8 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.database import get_db_with_logging
+from app.types import DbSessionDep, QRServiceDep
+from app.core.exceptions import DatabaseError
 from app.models import QRCode
 
 # Configure logger
@@ -38,13 +40,15 @@ def get_base_template_context(request: Request) -> dict:
         "api_base_url": "/api/v1",
     }
 
-
 # Configure templates directory
-TEMPLATES_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "templates"
-)
+# First try using Docker container path (templates are in /app/app/templates in the container)
+TEMPLATES_DIR = "/app/app/templates"
+if not os.path.exists(TEMPLATES_DIR):
+    # Fall back to relative path for development
+    TEMPLATES_DIR = Path(__file__).parents[4] / "templates"
+
 templates = Jinja2Templates(
-    directory=TEMPLATES_DIR,
+    directory=str(TEMPLATES_DIR),
     context_processors=[get_base_template_context],
 )
 
@@ -55,24 +59,23 @@ router = APIRouter(
 
 
 @router.get("/", response_class=HTMLResponse)
-async def home(request: Request, db: Session = Depends(get_db_with_logging)):
+async def home(request: Request, qr_service: QRServiceDep):
     """
     Render the home page template with dynamic data.
     """
     try:
-        # Get total QR code count for the dashboard
-        total_qr_codes = db.query(QRCode).count()
-        recent_qr_codes = db.query(QRCode).order_by(QRCode.created_at.desc()).limit(5).all()
-
+        # Get dashboard data using the service
+        dashboard_data = qr_service.get_dashboard_data()
+        
         return templates.TemplateResponse(
             name="dashboard.html",
             context={
                 "request": request,  # Required by Jinja2Templates
-                "total_qr_codes": total_qr_codes,
-                "recent_qr_codes": recent_qr_codes,
+                "total_qr_codes": dashboard_data["total_qr_codes"],
+                "recent_qr_codes": dashboard_data["recent_qr_codes"],
             },
         )
-    except SQLAlchemyError as e:
+    except DatabaseError as e:
         logger.error("Database error in home page", extra={"error": str(e)})
         return templates.TemplateResponse(
             name="dashboard.html",
@@ -87,22 +90,22 @@ async def home(request: Request, db: Session = Depends(get_db_with_logging)):
 
 
 @router.get("/qr-list", response_class=HTMLResponse)
-async def qr_list(request: Request, db: Session = Depends(get_db_with_logging)):
+async def qr_list(request: Request, qr_service: QRServiceDep):
     """
     Render the QR code list page with filtering and sorting options.
     """
     try:
-        # Get total QR code count
-        total_qr_codes = db.query(QRCode).count()
+        # Get dashboard data using the service to get the total count
+        dashboard_data = qr_service.get_dashboard_data()
         
         return templates.TemplateResponse(
             name="qr_list.html",
             context={
                 "request": request,
-                "total_qr_codes": total_qr_codes,
+                "total_qr_codes": dashboard_data["total_qr_codes"],
             },
         )
-    except SQLAlchemyError as e:
+    except DatabaseError as e:
         logger.error("Database error in QR list page", extra={"error": str(e)})
         return templates.TemplateResponse(
             name="qr_list.html",
@@ -154,7 +157,7 @@ async def qr_create(request: Request):
 async def qr_detail(
     request: Request, 
     qr_id: str, 
-    db: Session = Depends(get_db_with_logging)
+    qr_service: QRServiceDep
 ):
     """
     Render the QR code detail page.
@@ -165,27 +168,14 @@ async def qr_detail(
     Args:
         request: The FastAPI request object.
         qr_id: The ID of the QR code to display.
-        db: The database session.
+        qr_service: The QR code service.
         
     Returns:
         HTMLResponse: The rendered QR code detail page.
     """
     try:
-        # Get the QR code from the database
-        qr_code = db.query(QRCode).filter(QRCode.id == qr_id).first()
-        
-        if not qr_code:
-            logger.warning(f"QR code not found: {qr_id}")
-            return templates.TemplateResponse(
-                name="qr_detail.html",
-                context={
-                    "request": request,
-                    "is_authenticated": True,  # Network-level authentication is now used
-                    "error": "QR code not found",
-                    "qr_id": qr_id,
-                },
-                status_code=404,
-            )
+        # Get the QR code using the service
+        qr_code = qr_service.get_qr_by_id(qr_id)
         
         # Convert the QR code model to a dictionary for the template
         qr_data = qr_code.to_dict()
@@ -203,7 +193,7 @@ async def qr_detail(
                 "base_url": base_url,
             },
         )
-    except SQLAlchemyError as e:
+    except DatabaseError as e:
         logger.error(f"Database error in QR detail page for {qr_id}", extra={"error": str(e)})
         return templates.TemplateResponse(
             name="qr_detail.html",
@@ -214,6 +204,18 @@ async def qr_detail(
                 "qr_id": qr_id,
             },
             status_code=500,
+        )
+    except Exception as e:
+        logger.error(f"Error in QR detail page for {qr_id}", extra={"error": str(e)})
+        return templates.TemplateResponse(
+            name="qr_detail.html",
+            context={
+                "request": request,
+                "is_authenticated": True,  # Network-level authentication is now used
+                "error": "QR code not found",
+                "qr_id": qr_id,
+            },
+            status_code=404,
         )
 
 

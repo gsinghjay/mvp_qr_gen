@@ -35,7 +35,7 @@ router = APIRouter(
         503: {"model": HTTPError, "description": "Service unavailable"},
     },
 )
-def health_check(db: DbSessionDep = None) -> HealthResponse:
+def health_check(db: DbSessionDep) -> HealthResponse:
     """
     Perform a comprehensive health check of the API service.
 

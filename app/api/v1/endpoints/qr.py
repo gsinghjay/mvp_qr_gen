@@ -53,8 +53,8 @@ router = APIRouter(
     },
 )
 async def list_qr_codes(
+    qr_service: QRServiceDep,
     params: QRListParameters = Depends(),
-    qr_service: QRServiceDep = None,
 ):
     """
     List QR codes with pagination and optional filtering.
@@ -109,7 +109,7 @@ async def list_qr_codes(
         500: {"description": "Database error"},
     },
 )
-async def get_qr(qr_id: str, qr_service: QRServiceDep = None):
+async def get_qr(qr_id: str, qr_service: QRServiceDep):
     """
     Get QR code data by ID.
 
@@ -146,8 +146,8 @@ async def get_qr(qr_id: str, qr_service: QRServiceDep = None):
 )
 async def get_qr_image(
     qr_id: str,
+    qr_service: QRServiceDep,
     params: QRImageParameters = Depends(),
-    qr_service: QRServiceDep = None,
 ):
     """
     Get QR code image by ID.
@@ -194,7 +194,7 @@ async def get_qr_image(
 )
 async def create_static_qr(
     data: StaticQRCreateParameters, 
-    qr_service: QRServiceDep = None
+    qr_service: QRServiceDep
 ):
     """
     Create a new static QR code.
@@ -230,7 +230,7 @@ async def create_static_qr(
 )
 async def create_dynamic_qr(
     data: DynamicQRCreateParameters, 
-    qr_service: QRServiceDep = None
+    qr_service: QRServiceDep
 ):
     """
     Create a new dynamic QR code.
@@ -267,7 +267,7 @@ async def create_dynamic_qr(
 async def update_qr(
     qr_id: str,
     qr_update: QRUpdateParameters,
-    qr_service: QRServiceDep = None,
+    qr_service: QRServiceDep,
 ):
     """
     Update QR code data by ID.
@@ -305,7 +305,7 @@ async def update_qr(
 )
 async def delete_qr(
     qr_id: str,
-    qr_service: QRServiceDep = None,
+    qr_service: QRServiceDep,
 ):
     """
     Delete QR code by ID.
