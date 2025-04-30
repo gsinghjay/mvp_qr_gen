@@ -10,9 +10,12 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Set BASE_URL to match the application's setting
-BASE_URL="https://localhost"
-echo -e "${YELLOW}Using BASE_URL: ${BASE_URL}${NC}"
+# Set BASE_URL for QR code content (what users will scan)
+BASE_URL="https://web.hccc.edu"
+# Set API_URL for making API calls in the script
+API_URL="https://10.1.6.12"
+echo -e "${YELLOW}Using BASE_URL for QR codes: ${BASE_URL}${NC}"
+echo -e "${YELLOW}Using API_URL for API calls: ${API_URL}${NC}"
 
 # Function to print status
 print_status() {
@@ -42,8 +45,8 @@ check_docker_containers() {
 # Function to test health endpoint
 test_health_endpoint() {
     echo -e "\n${YELLOW}Testing Health Endpoint...${NC}"
-    local response=$(curl -k -s https://localhost/health)
-    local status_code=$(curl -k -s -o /dev/null -w "%{http_code}" https://localhost/health)
+    local response=$(curl -k -s $API_URL/health)
+    local status_code=$(curl -k -s -o /dev/null -w "%{http_code}" $API_URL/health)
     
     echo "$response" | jq . > /dev/null
     print_status $? "Health endpoint returns valid JSON"
@@ -59,7 +62,7 @@ test_health_endpoint() {
 # Function to test QR code listing
 test_qr_code_listing() {
     echo -e "\n${YELLOW}Testing QR Code Listing...${NC}"
-    local response=$(curl -k -s https://localhost/api/v1/qr)
+    local response=$(curl -k -s $API_URL/api/v1/qr)
     echo "$response" | jq . > /dev/null
     print_status $? "QR code listing endpoint returns valid JSON"
 }
@@ -67,7 +70,7 @@ test_qr_code_listing() {
 # Function to create static QR code
 test_create_static_qr() {
     echo -e "\n${YELLOW}Testing Create Static QR Code...${NC}"
-    local response=$(curl -k -s -X POST https://localhost/api/v1/qr/static \
+    local response=$(curl -k -s -X POST $API_URL/api/v1/qr/static \
         -H "Content-Type: application/json" \
         -d '{"content": "https://test.example.com", "qr_type": "static"}')
     
@@ -84,9 +87,9 @@ test_create_static_qr() {
 # Function to create dynamic QR code
 test_create_dynamic_qr() {
     echo -e "\n${YELLOW}Testing Create Dynamic QR Code...${NC}"
-    local response=$(curl -k -s -X POST https://localhost/api/v1/qr/dynamic \
+    local response=$(curl -k -s -X POST $API_URL/api/v1/qr/dynamic \
         -H "Content-Type: application/json" \
-        -d '{"content": "test-dynamic", "redirect_url": "https://test-dynamic.example.com"}')
+        -d '{"content": "test-dynamic", "redirect_url": "https://technological-alchemist.vercel.app"}')
     
     DYNAMIC_QR_ID=$(echo "$response" | jq -r '.id')
     echo "$response" | jq . > /dev/null
@@ -101,8 +104,8 @@ test_create_dynamic_qr() {
 # Function to get QR code by ID
 test_get_qr_by_id() {
     echo -e "\n${YELLOW}Testing Get QR Code by ID...${NC}"
-    local static_response=$(curl -k -s https://localhost/api/v1/qr/$STATIC_QR_ID)
-    local dynamic_response=$(curl -k -s https://localhost/api/v1/qr/$DYNAMIC_QR_ID)
+    local static_response=$(curl -k -s $API_URL/api/v1/qr/$STATIC_QR_ID)
+    local dynamic_response=$(curl -k -s $API_URL/api/v1/qr/$DYNAMIC_QR_ID)
     
     echo "$static_response" | jq . > /dev/null
     print_status $? "Get static QR code by ID successful"
@@ -114,7 +117,7 @@ test_get_qr_by_id() {
 # Function to update dynamic QR code
 test_update_dynamic_qr() {
     echo -e "\n${YELLOW}Testing Update Dynamic QR Code...${NC}"
-    local response=$(curl -k -X PUT https://localhost/api/v1/qr/$DYNAMIC_QR_ID -H "Content-Type: application/json" -d '{"redirect_url": "https://updated-example.com"}' | jq)
+    local response=$(curl -k -X PUT $API_URL/api/v1/qr/$DYNAMIC_QR_ID -H "Content-Type: application/json" -d '{"redirect_url": "https://updated-example.com"}' | jq)
     
     # Check if jq parsing was successful
     if [ $? -ne 0 ]; then
@@ -149,7 +152,7 @@ test_qr_redirection() {
     echo -e "\n${YELLOW}Testing QR Code Redirection...${NC}"
     
     # Get the full content of the dynamic QR code
-    local CONTENT=$(curl -k -s https://localhost/api/v1/qr/$DYNAMIC_QR_ID | jq -r '.content')
+    local CONTENT=$(curl -k -s $API_URL/api/v1/qr/$DYNAMIC_QR_ID | jq -r '.content')
     echo -e "${YELLOW}QR code content:${NC} $CONTENT"
     
     # Extract short ID from the dynamic QR code's content
@@ -166,7 +169,7 @@ test_qr_redirection() {
     fi
     
     # Check redirection
-    local redirect_response=$(curl -k -s -L -o /dev/null -w "%{http_code}" https://localhost/r/$SHORT_ID)
+    local redirect_response=$(curl -k -s -L -o /dev/null -w "%{http_code}" $API_URL/r/$SHORT_ID)
     
     if [ "$redirect_response" == "302" ]; then
         echo -e "${GREEN}✓ PASS:${NC} QR code redirection successful (302 status)"
@@ -181,7 +184,7 @@ test_service_dependency_injection() {
     echo -e "\n${YELLOW}Testing Service-Based Dependency Injection (Task 1)...${NC}"
     
     # Test 1: Create a QR code with specific parameters to test service layer
-    local response=$(curl -k -s -X POST https://localhost/api/v1/qr/static \
+    local response=$(curl -k -s -X POST $API_URL/api/v1/qr/static \
         -H "Content-Type: application/json" \
         -d '{"content": "https://service-test.example.com", "qr_type": "static", "fill_color": "#333333", "back_color": "#FFFFFF"}')
     
@@ -216,7 +219,7 @@ test_background_tasks_scan_statistics() {
     echo -e "\n${YELLOW}Testing Background Tasks for Scan Statistics (Task 2)...${NC}"
     
     # Create a new dynamic QR code for testing
-    local response=$(curl -k -s -X POST https://localhost/api/v1/qr/dynamic \
+    local response=$(curl -k -s -X POST $API_URL/api/v1/qr/dynamic \
         -H "Content-Type: application/json" \
         -d '{"content": "background-task-test", "redirect_url": "https://background-task.example.com"}')
     
@@ -242,14 +245,14 @@ test_background_tasks_scan_statistics() {
     fi
     
     # Get initial scan count
-    local initial_response=$(curl -k -s https://localhost/api/v1/qr/$bg_qr_id)
+    local initial_response=$(curl -k -s $API_URL/api/v1/qr/$bg_qr_id)
     local initial_scan_count=$(echo "$initial_response" | jq -r '.scan_count')
     echo -e "${YELLOW}Initial scan count:${NC} $initial_scan_count"
     
     # Test 1: Measure response time for redirection (should be fast if using background tasks)
     echo -e "${YELLOW}Testing redirection response time...${NC}"
     local start_time=$(date +%s.%N)
-    local redirect_status=$(curl -k -s -o /dev/null -w "%{http_code}" https://localhost/r/$SHORT_ID)
+    local redirect_status=$(curl -k -s -o /dev/null -w "%{http_code}" $API_URL/r/$SHORT_ID)
     local end_time=$(date +%s.%N)
     local response_time=$(echo "$end_time - $start_time" | bc)
     
@@ -272,7 +275,7 @@ test_background_tasks_scan_statistics() {
     sleep 3
     
     # Test 3: Verify scan count was updated
-    local updated_response=$(curl -k -s https://localhost/api/v1/qr/$bg_qr_id)
+    local updated_response=$(curl -k -s $API_URL/api/v1/qr/$bg_qr_id)
     local updated_scan_count=$(echo "$updated_response" | jq -r '.scan_count')
     echo -e "${YELLOW}Updated scan count:${NC} $updated_scan_count"
     
@@ -308,6 +311,71 @@ test_background_tasks_scan_statistics() {
     echo -e "${GREEN}✓ PASS:${NC} last_scanned_at timestamp was updated by background task"
 }
 
+# Function to test QR code generation with logo
+test_qr_with_logo() {
+    print_section "TESTING QR CODE GENERATION WITH LOGO"
+    
+    # Test static QR with logo
+    echo -e "\n${YELLOW}Testing Static QR Code with Logo...${NC}"
+    local static_response=$(curl -k -s -X POST $API_URL/api/v1/qr/static \
+        -H "Content-Type: application/json" \
+        -d '{
+            "content": "https://www.github.com/gsinghjay",
+            "qr_type": "static",
+            "include_logo": true
+        }')
+    
+    local static_id=$(echo "$static_response" | jq -r '.id')
+    echo "$static_response" | jq . > /dev/null
+    print_status $? "Static QR code with logo creation successful"
+    
+    # Get the static QR image with logo
+    local static_image_response=$(curl -k -s -o static_qr_with_logo.png \
+        "$API_URL/api/v1/qr/$static_id/image?include_logo=true")
+    if [ -f "static_qr_with_logo.png" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Static QR image with logo downloaded successfully"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Failed to download static QR image with logo"
+        exit 1
+    fi
+    
+    # Test dynamic QR with logo
+    echo -e "\n${YELLOW}Testing Dynamic QR Code with Logo...${NC}"
+    local dynamic_response=$(curl -k -s -X POST $API_URL/api/v1/qr/dynamic \
+        -H "Content-Type: application/json" \
+        -d '{
+            "content": "dynamic-with-logo",
+            "redirect_url": "https://technological-alchemist.vercel.app/",
+            "include_logo": true
+        }')
+    
+    local dynamic_id=$(echo "$dynamic_response" | jq -r '.id')
+    echo "$dynamic_response" | jq . > /dev/null
+    print_status $? "Dynamic QR code with logo creation successful"
+    
+    # Get the dynamic QR image with logo
+    local dynamic_image_response=$(curl -k -s -o dynamic_qr_with_logo.png \
+        "$API_URL/api/v1/qr/$dynamic_id/image?include_logo=true")
+    if [ -f "dynamic_qr_with_logo.png" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Dynamic QR image with logo downloaded successfully"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Failed to download dynamic QR image with logo"
+        exit 1
+    fi
+    
+    # Test redirection for dynamic QR with logo
+    local CONTENT=$(echo "$dynamic_response" | jq -r '.content')
+    local SHORT_ID=$(echo "$CONTENT" | sed 's/.*\/r\///')
+    local redirect_response=$(curl -k -s -L -o /dev/null -w "%{http_code}" $API_URL/r/$SHORT_ID)
+    
+    if [ "$redirect_response" == "302" ] || [ "$redirect_response" == "200" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Dynamic QR code with logo redirects successfully (status: $redirect_response)"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Dynamic QR code with logo redirection failed (status: $redirect_response)"
+        exit 1
+    fi
+}
+
 # Function to run optimization task verification tests
 test_optimization_tasks() {
     print_section "TESTING FASTAPI OPTIMIZATION TASKS"
@@ -331,6 +399,7 @@ run_tests() {
     test_get_qr_by_id
     test_update_dynamic_qr
     test_qr_redirection
+    test_qr_with_logo
     
     # Run optimization task verification tests
     test_optimization_tasks
