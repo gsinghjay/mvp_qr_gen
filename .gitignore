@@ -72,3 +72,9 @@ Thumbs.db
 kb/
 local-research/
 docs/
+certs/
+dynamic_qr_with_logo.png
+static_qr_with_logo.png
+repomix-output.xml
+.cursorignore
+memory-bank/
