@@ -20,6 +20,7 @@ from app.schemas.health.models import (
     ServiceStatus,
     SystemMetrics,
 )
+from app.core.config import settings
 
 START_TIME = time.time()
 
@@ -191,6 +192,7 @@ class HealthService:
         return HealthResponse(
             status=status,
             version=os.getenv("APP_VERSION", "1.0.0"),
+            environment=settings.ENVIRONMENT,
             uptime_seconds=time.time() - START_TIME,
             system_metrics=metrics,
             checks={
