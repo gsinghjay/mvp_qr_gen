@@ -521,8 +521,6 @@ class QRCodeService:
             DatabaseError: If a database error occurs
         """
         try:
-            from ..core.config import settings
-            
             # The short path that would be in old QR codes
             relative_path = f"/r/{short_id}"
             
