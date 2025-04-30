@@ -4,6 +4,7 @@ Router for web page endpoints.
 
 import os
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -14,9 +15,8 @@ from sqlalchemy.orm import Session
 from ...database import get_db_with_logging
 from ...models import QRCode
 from ..qr.common import logger
-from ...auth.sso import get_optional_user, User
-from typing import Optional
 
+# Remove auth imports
 
 # Configure templates with context processors
 def get_base_template_context(request: Request) -> dict:
@@ -115,7 +115,7 @@ async def qr_list(request: Request, db: Session = Depends(get_db_with_logging)):
 
 
 @router.get("/qr-create", response_class=HTMLResponse)
-async def qr_create(request: Request, current_user: Optional[User] = Depends(get_optional_user)):
+async def qr_create(request: Request):
     """
     Render the QR code creation page.
     
@@ -124,7 +124,6 @@ async def qr_create(request: Request, current_user: Optional[User] = Depends(get
     
     Args:
         request: The FastAPI request object.
-        current_user: The current authenticated user (if any).
         
     Returns:
         HTMLResponse: The rendered QR code creation page.
@@ -134,8 +133,7 @@ async def qr_create(request: Request, current_user: Optional[User] = Depends(get
             name="qr_create.html",
             context={
                 "request": request,
-                "current_user": current_user,
-                "is_authenticated": current_user is not None,
+                "is_authenticated": True,  # Network-level authentication is now used
             },
         )
     except Exception as e:
@@ -144,8 +142,7 @@ async def qr_create(request: Request, current_user: Optional[User] = Depends(get
             name="qr_create.html",
             context={
                 "request": request,
-                "current_user": current_user,
-                "is_authenticated": current_user is not None,
+                "is_authenticated": True,  # Network-level authentication is now used
                 "error": "An error occurred while loading the QR creation page",
             },
             status_code=500,
@@ -156,8 +153,7 @@ async def qr_create(request: Request, current_user: Optional[User] = Depends(get
 async def qr_detail(
     request: Request, 
     qr_id: str, 
-    db: Session = Depends(get_db_with_logging),
-    current_user: Optional[User] = Depends(get_optional_user)
+    db: Session = Depends(get_db_with_logging)
 ):
     """
     Render the QR code detail page.
@@ -169,7 +165,6 @@ async def qr_detail(
         request: The FastAPI request object.
         qr_id: The ID of the QR code to display.
         db: The database session.
-        current_user: The current authenticated user (if any).
         
     Returns:
         HTMLResponse: The rendered QR code detail page.
@@ -184,8 +179,7 @@ async def qr_detail(
                 name="qr_detail.html",
                 context={
                     "request": request,
-                    "current_user": current_user,
-                    "is_authenticated": current_user is not None,
+                    "is_authenticated": True,  # Network-level authentication is now used
                     "error": "QR code not found",
                     "qr_id": qr_id,
                 },
@@ -203,8 +197,7 @@ async def qr_detail(
             name="qr_detail.html",
             context={
                 "request": request,
-                "current_user": current_user,
-                "is_authenticated": current_user is not None,
+                "is_authenticated": True,  # Network-level authentication is now used
                 "qr": qr_data,
                 "base_url": base_url,
             },
@@ -215,8 +208,7 @@ async def qr_detail(
             name="qr_detail.html",
             context={
                 "request": request,
-                "current_user": current_user,
-                "is_authenticated": current_user is not None,
+                "is_authenticated": True,  # Network-level authentication is now used
                 "error": "Unable to load QR code data",
                 "qr_id": qr_id,
             },
@@ -228,8 +220,7 @@ async def qr_detail(
             name="qr_detail.html",
             context={
                 "request": request,
-                "current_user": current_user,
-                "is_authenticated": current_user is not None,
+                "is_authenticated": True,  # Network-level authentication is now used
                 "error": "An error occurred while loading the QR code details",
                 "qr_id": qr_id,
             },
@@ -238,7 +229,7 @@ async def qr_detail(
 
 
 @router.get("/login", response_class=HTMLResponse)
-async def login(request: Request, user: Optional[User] = Depends(get_optional_user)):
+async def login(request: Request):
     """
     Render login page.
     """
@@ -246,46 +237,20 @@ async def login(request: Request, user: Optional[User] = Depends(get_optional_us
         name="portal-login.html",
         context={
             "request": request,
-            "is_authenticated": user is not None,
-            "current_user": user,
+            "is_authenticated": True,  # Network-level authentication is now used
         },
     )
 
 
 @router.get("/portal-login", response_class=HTMLResponse)
-async def portal_login(
-    request: Request, 
-    current_user: Optional[User] = Depends(get_optional_user)
-):
+async def portal_login(request: Request):
     """
-    Render the portal login page.
-    
-    This endpoint displays login options for students and faculty.
-    If the user is already authenticated, their information will be included in the context.
-    
-    Args:
-        request: The FastAPI request object.
-        current_user: The current authenticated user (if any).
-        
-    Returns:
-        HTMLResponse: The rendered portal login page.
+    Render portal login page.
     """
-    try:
-        return templates.TemplateResponse(
-            name="portal-login.html",
-            context={
-                "request": request,  # Required by Jinja2Templates
-                "current_user": current_user,
-                "is_authenticated": current_user is not None,
-            },
-        )
-    except Exception as e:
-        logger.error("Error in portal login page", extra={"error": str(e)})
-        return templates.TemplateResponse(
-            name="portal-login.html",
-            context={
-                "request": request,  # Required by Jinja2Templates
-                "error": "An error occurred while loading the login page",
-            },
-            status_code=500,
-        )
+    return templates.TemplateResponse(
+        name="portal-login.html",
+        context={
+            "request": request,
+            "is_authenticated": True,  # Network-level authentication is now used
+        },
+    )

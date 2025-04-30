@@ -9,7 +9,6 @@ from fastapi import APIRouter
 
 # Import individual routers
 from .api.v1 import router as api_v1_router
-from .auth import router as auth_router
 from .health import router as health_router
 from .qr.dynamic import router as dynamic_qr_router
 from .qr.redirect import router as redirect_router
@@ -34,7 +33,6 @@ api_router.include_router(qr_router)
 routers = [
     # Top-level routers
     api_router,
-    auth_router,  # Authentication router
     redirect_router,  # /r prefix (handled in the router itself)
     pages_router,  # Web pages
     health_router,  # Health check
