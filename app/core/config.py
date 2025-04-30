@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "sqlite:///./data/qr_codes.db"
     ENVIRONMENT: str = "development"
-    DEBUG: bool = False
+    DEBUG: bool = True
     
     # Base URL for QR codes (full domain with protocol)
     # Override with BASE_URL environment variable in production
@@ -33,16 +33,19 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     
-    # SSO Configuration
-    AZURE_CLIENT_ID: str = ""
-    AZURE_CLIENT_SECRET: str = ""
-    AZURE_TENANT_ID: str = "common"
-    REDIRECT_URI: str = "http://localhost/auth/callback"
-    SESSION_SECRET_KEY: str = "your-secret-key-change-in-production"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    ALLOW_INSECURE_HTTP: bool = True  # Only for development
+    # Cookie settings - used only for non-auth related functionality like CSRF
+    COOKIE_DOMAIN: str = "10.1.6.12"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 
 settings = Settings()
+
+# Function to get settings for dependency injection
+def get_settings():
+    """
+    Return the settings instance for dependency injection.
+    
+    This allows overriding settings in tests by patching this function.
+    """
+    return settings
