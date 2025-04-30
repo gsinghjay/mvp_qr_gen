@@ -1,64 +1,250 @@
 # Dynamic configuration (dynamic_conf.yml)
 http:
   routers:
-    api-router:
-      rule: "PathPrefix(`/`) && !PathPrefix(`/kc`)"
+    # QR Redirect router (high priority, public access)
+    qr-redirect-router:
+      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`)) && PathPrefix(`/r/`)"
       service: api-service
       entryPoints:
         - web
       middlewares:
-        - redirect-to-https
+        - redirect-to-https@file
+        - rate-limit@file
+        - public-endpoints@file
+      priority: 500
+
+    qr-redirect-secure-router:
+      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`)) && PathPrefix(`/r/`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}  # Use default certificate store
+      middlewares:
+        - rate-limit@file
+        - public-endpoints@file
+      priority: 500
+
+    # Internal QR redirect router (optimized for internal network)
+    internal-qr-redirect-router:
+      rule: "Host(`10.1.6.12`) && PathPrefix(`/r/`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file  # Use public-endpoints instead of ip-whitelist for faster processing
+      priority: 650  # Higher than internal-router but lower than specialized routers
+
+    internal-qr-redirect-secure-router:
+      rule: "Host(`10.1.6.12`) && PathPrefix(`/r/`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}  # Use default certificate store
+      middlewares:
+        - public-endpoints@file  # Use public-endpoints instead of ip-whitelist for faster processing
+      priority: 650  # Higher than internal-router but lower than specialized routers
+
+    # Public access-restricted page (static file path)
+    public-access-restricted-router:
+      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`)) && PathPrefix(`/static/access-restricted.html`)"
+      service: api-service
+      entryPoints:
+        - web
+        - websecure
+      middlewares:
+        - public-endpoints@file
+        - security-headers@file
+      tls: {}  # Use default certificate store
+      priority: 700
+
+    # Block all other paths on public IP
+    public-ip-block-router:
+      rule: "Host(`130.156.44.52`) && !PathPrefix(`/r/`) && !PathPrefix(`/static/access-restricted.html`) && !PathPrefix(`/static/assets/`)"
+      service: api-service
+      entryPoints:
+        - web
+        - websecure
+      middlewares:
+        - access-restricted-redirect@file
+      priority: 600
+      
+    # Block all other paths on web.hccc.edu domain
+    domain-block-router:
+      rule: "Host(`web.hccc.edu`) && !PathPrefix(`/r/`) && !PathPrefix(`/static/access-restricted.html`) && !PathPrefix(`/static/assets/`)"
+      service: api-service
+      entryPoints:
+        - web
+        - websecure
+      middlewares:
+        - access-restricted-redirect@file
+      priority: 600
+
+    # Allow static assets for the access-restricted page
+    public-static-assets-router:
+      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`)) && PathPrefix(`/static/assets/`)"
+      service: api-service
+      entryPoints:
+        - web
+        - websecure
+      middlewares:
+        - public-endpoints@file
+        - security-headers@file
+      tls: {}  # Use default certificate store
+      priority: 650
+      
+    # Internal access for all routes (10.1.6.12)
+    internal-router:
+      rule: "Host(`10.1.6.12`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file
+        - security-headers@file
+      priority: 600
+
+    internal-secure-router:
+      rule: "Host(`10.1.6.12`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}  # Use default certificate store
+      middlewares:
+        - ip-whitelist@file
+        - security-headers@file
+      priority: 600
+      
+    # API routers (lower priority, restricted access)
+    api-router:
+      rule: "PathPrefix(`/`) && !PathPrefix(`/r/`) && !PathPrefix(`/health`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file
+        - security-headers@file
       priority: 10
 
     api-secure-router:
-      rule: "PathPrefix(`/`) && !PathPrefix(`/kc`)"
+      rule: "PathPrefix(`/`) && !PathPrefix(`/r/`) && !PathPrefix(`/health`)"
       service: api-service
       entryPoints:
         - websecure
-      tls: {}
+      tls: {}  # Use default certificate store
+      middlewares:
+        - ip-whitelist@file
+        - security-headers@file
       priority: 10
       
-    keycloak-router:
-      rule: "PathPrefix(`/kc`)"
-      service: keycloak-service
+    # Health check endpoint (public access)
+    health-router:
+      rule: "PathPrefix(`/health`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file
+      priority: 400
+
+    health-secure-router:
+      rule: "PathPrefix(`/health`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}  # Use default certificate store
+      middlewares:
+        - public-endpoints@file
+      priority: 400
+
+    # Domain-based routers (highest priority) - will be ready when DNS is set up
+    api-domain-router:
+      rule: "Host(`admin.hccc.edu`) && PathPrefix(`/`)"
+      service: api-service
       entryPoints:
         - web
         - websecure
       middlewares:
-        - redirect-to-https
-        - keycloak-headers
-      tls: {}
-      priority: 100
+        - redirect-to-https@file
+        - ip-whitelist@file
+        - security-headers@file
+      tls: {}  # Use default certificate store
+      priority: 200
 
+    # Traefik dashboard (internal only)
     dashboard:
-      rule: "Host(`traefik.localhost`)"
+      rule: "Host(`traefik.10.1.6.12`)"
       service: api@internal
       entryPoints:
         - traefik
+      middlewares:
+        - ip-whitelist@file
 
   middlewares:
+    # HTTPS redirect
     redirect-to-https:
       redirectScheme:
         scheme: https
         permanent: true
+    
+    # Access restricted page redirect (replaces block-access)
+    access-restricted-redirect:
+      redirectRegex:
+        regex: "^.*$"
+        replacement: "/static/access-restricted.html"
+        permanent: false
+    
+    # Rate limiting
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1m
         
-    keycloak-headers:
+    # IP Whitelist (for admin/internal routes)
+    ip-whitelist:
+      ipWhiteList:
+        sourceRange:
+          - "10.1.6.0/23"     # Internal network
+          - "127.0.0.1/32"    # Localhost
+          - "172.16.0.0/12"   # Docker network
+          - "192.168.0.0/16"  # Private network
+          - "10.0.0.0/8"      # Private network
+          - "69.114.94.0/24"  # External network
+        
+    # Public endpoints middleware (no IP restrictions)
+    public-endpoints:
+      ipWhiteList:
+        sourceRange:
+          - "0.0.0.0/0"       # Allow all IPs
+          
+    # Security headers
+    security-headers:
       headers:
-        customRequestHeaders:
-          X-Forwarded-Proto: "https"
+        customResponseHeaders:
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "DENY"
+          X-XSS-Protection: "1; mode=block"
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         forceSTSHeader: true
         contentSecurityPolicy: "frame-ancestors 'self'; frame-src 'self'; object-src 'none';"
-        customFrameOptionsValue: "SAMEORIGIN"
+        customFrameOptionsValue: "DENY"
 
   services:
     api-service:
       loadBalancer:
         servers:
-          - url: "http://qr_generator_api:8000"
+          - url: "http://api:8000"
+        passHostHeader: true
           
-    keycloak-service:
-      loadBalancer:
-        servers:
-          - url: "http://keycloak:8080" 
+# TLS configuration moved to root level
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/certs/wildcard.crt.pem
+        keyFile: /etc/certs/wildcard.key.pem.nopass 

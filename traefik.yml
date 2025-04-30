@@ -1,10 +1,11 @@
 # Static configuration (traefik.yml)
 global:
-  checkNewVersion: true
+  checkNewVersion: false  # Disable in production
   sendAnonymousUsage: false
 
 log:
-  level: INFO
+  level: INFO  # Change to INFO or WARNING in production
+  format: json
 
 # Access Logs Configuration
 accessLog:
@@ -33,31 +34,39 @@ metrics:
 entryPoints:
   web:
     address: ":80"
+    # Add forwarded headers if behind another proxy
+    forwardedHeaders:
+      trustedIPs:
+        # NEEDED: List of trusted proxy IPs
+        - "127.0.0.1/32"
+        - "10.0.0.0/8"
+  
   websecure:
     address: ":443"
+    # TLS configuration handled in dynamic_conf.yml
+    http:
+      tls: {}  # Empty TLS config, actual certificates in dynamic_conf.yml
+  
   traefik:
-    address: ":8080"
+    address: ":8080"  # Consider changing or restricting
+    # NEEDED: Should this be exposed? If yes, how to secure?
+  
   metrics:
     address: ":8082"
+    # NEEDED: Should this be restricted to specific IPs?
 
 providers:
   docker:
-    endpoint: "unix:///var/run/docker.sock"
+    endpoint: "unix:///var/run/docker.sock"  # Confirm if this stays the same
     exposedByDefault: false
-    network: qr_generator_network
+    network: qr_generator_network            # Confirm network name
   file:
     filename: /etc/traefik/dynamic_conf.yml
     watch: true
 
 api:
-  dashboard: true
-  insecure: true  # For local development ONLY
+  dashboard: true  # NEEDED: Should this be enabled in production?
+  # NEEDED: How to secure the dashboard?
+  insecure: false  # Changed from true for production
 
-certificatesResolvers:
-  default:
-    acme:
-      email: "admin@localhost"  # Change in production
-      storage: "acme.json"
-      httpChallenge:
-        entryPoint: web
-      tlsChallenge: true 
+# Remove certificatesResolvers since we're using provided certificates 
