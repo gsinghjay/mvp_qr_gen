@@ -1,6 +1,113 @@
 # CHANGELOG
 
 
+## v0.15.0 (2025-04-30)
+
+### Bug Fixes
+
+- **db**: Improve database persistence by creating backups instead of removing database file
+  ([`e155222`](https://github.com/gsinghjay/mvp_qr_gen/commit/e1552226f29d15961c7b46e5468288b88b6e8b54))
+
+- **keycloak**: Configure traefik routing with explicit naming for keycloak service
+  ([`55673c0`](https://github.com/gsinghjay/mvp_qr_gen/commit/55673c0f325097aee39fc1522e5bfca5acf07043))
+
+### Build System
+
+- Remove Keycloak and authentication-related dependencies
+  ([`f3e88aa`](https://github.com/gsinghjay/mvp_qr_gen/commit/f3e88aa256a768891627c5ae7f696aa8332d10b9))
+
+### Chores
+
+- Redundant file, no longer using Giga
+  ([`9add430`](https://github.com/gsinghjay/mvp_qr_gen/commit/9add430bd05123e7f12226d66e4a2a9ef8a6bba3))
+
+- Update gitignore patterns
+  ([`3799bb4`](https://github.com/gsinghjay/mvp_qr_gen/commit/3799bb4a83cd2f83c634953e4cb4613dc227a976))
+
+- Update gitignore to exclude project rules
+  ([`ba97fa0`](https://github.com/gsinghjay/mvp_qr_gen/commit/ba97fa041973a876671bf65af947d76c80223625))
+
+- Update gitignore with Keycloak-related patterns
+  ([`2d674c2`](https://github.com/gsinghjay/mvp_qr_gen/commit/2d674c23e11685c91608dda9819667098a5763a7))
+
+- Updated gitignore to include sensitive data
+  ([`02a404d`](https://github.com/gsinghjay/mvp_qr_gen/commit/02a404d9da51700397feae30a92b4c9ee07dcb78))
+
+### Documentation
+
+- Update infrastructure documentation for network-based security model
+  ([`d6b055d`](https://github.com/gsinghjay/mvp_qr_gen/commit/d6b055da1fbc5dc4bd016c8b35cb92559eb75783))
+
+- Update project story to reflect security model evolution
+  ([`3d3f70d`](https://github.com/gsinghjay/mvp_qr_gen/commit/3d3f70dc5e4d85f9e55428fbed6324696362a19a))
+
+- Update README to reflect simplified security architecture
+  ([`bd338a7`](https://github.com/gsinghjay/mvp_qr_gen/commit/bd338a7fdf7cf4da4eafb6a91392a1dab802b771))
+
+- Update system documentation to include Keycloak migration
+  ([`faa7b32`](https://github.com/gsinghjay/mvp_qr_gen/commit/faa7b32bed724c1f889630e8e98488d0e4b71490))
+
+- **infra**: Update infrastructure documentation with Keycloak integration
+  ([`f4725f2`](https://github.com/gsinghjay/mvp_qr_gen/commit/f4725f2b847b38193d461a0306190bc43ca27635))
+
+### Features
+
+- Add access-restricted page for unauthorized navigation attempts
+  ([`83215ba`](https://github.com/gsinghjay/mvp_qr_gen/commit/83215ba658b6133be02585cc552a12f4e9e59903))
+
+- Add HCCC QR logo for branded QR codes
+  ([`6f3080d`](https://github.com/gsinghjay/mvp_qr_gen/commit/6f3080ddbc2e8d88e3e0fc0b45fa9d50ef802db0))
+
+- **infra**: Migrate from bind mounts to named volumes for improved permission handling
+  ([`64b502e`](https://github.com/gsinghjay/mvp_qr_gen/commit/64b502ec727773de3615204980755a918777ec9b))
+
+### Refactoring
+
+- Migrate from qrcode library to segno for improved QR generation
+  ([`6732bad`](https://github.com/gsinghjay/mvp_qr_gen/commit/6732bad28aeaa6e8bd9c28e8f028c46cd2dfd9d5))
+
+- Remove authentication dependencies from services and schemas
+  ([`2a68b85`](https://github.com/gsinghjay/mvp_qr_gen/commit/2a68b85bc2076bd6a35f6442ff571516dce44f9d))
+
+- Remove authentication directory and related code
+  ([`f02ca75`](https://github.com/gsinghjay/mvp_qr_gen/commit/f02ca750a60e0af5b06ff7fa1ad086e71257f98d))
+
+- Remove authentication environment variables from docker-compose
+  ([`5940134`](https://github.com/gsinghjay/mvp_qr_gen/commit/59401345d55e9f6ea1d771c3f0e7083a61f32f8e))
+
+- Remove authentication from frontend JavaScript
+  ([`f057b8a`](https://github.com/gsinghjay/mvp_qr_gen/commit/f057b8abb419b3a6e13a3a20ee1de143cff41082))
+
+- Remove authentication imports and dependencies from routers
+  ([`d868f3e`](https://github.com/gsinghjay/mvp_qr_gen/commit/d868f3ef10da3442c444bbcc9b1b9a21e4515813))
+
+- Remove authentication middleware and setup from main application
+  ([`0ac70ab`](https://github.com/gsinghjay/mvp_qr_gen/commit/0ac70ab538c8dd963a4fd47420f748c3936844a9))
+
+- Remove authentication router
+  ([`6eba6d7`](https://github.com/gsinghjay/mvp_qr_gen/commit/6eba6d75ccf1b3ddb7ddd569cc5e27bf4388f2e9))
+
+- Remove authentication UI elements from templates
+  ([`4e4e575`](https://github.com/gsinghjay/mvp_qr_gen/commit/4e4e575f1b2d54a492ff2c96ee9e1aed3fcc2f11))
+
+- Remove SESSION_SECRET_KEY and authentication config from settings
+  ([`51ac389`](https://github.com/gsinghjay/mvp_qr_gen/commit/51ac38967fa9bcdbf7130230b9f9e8013eccd473))
+
+- Simplify database session handling without auth considerations
+  ([`e5e5091`](https://github.com/gsinghjay/mvp_qr_gen/commit/e5e5091b8c91873535592f0f112c0904975bbb61))
+
+- Simplify security middleware without authentication
+  ([`3a6f9e2`](https://github.com/gsinghjay/mvp_qr_gen/commit/3a6f9e2b6bcda5d9da884cfd47d8612e69fc4c77))
+
+- Update scripts to remove authentication dependencies
+  ([`be4daae`](https://github.com/gsinghjay/mvp_qr_gen/commit/be4daae02b49b908e83eee4478cd39052d63de94))
+
+### Testing
+
+- Remove authentication-related tests
+  ([`848a45a`](https://github.com/gsinghjay/mvp_qr_gen/commit/848a45a1063e1f106e27e23572049dfbab43fc84))
+
+
 ## v0.14.0 (2025-03-25)
 
 ### Features
