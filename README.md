@@ -1,342 +1,275 @@
 # QR Code Generator
 
-A robust QR code generation and management API built with FastAPI and SQLite, featuring both static and dynamic QR codes with redirect URL support, scan tracking, and Microsoft Azure AD authentication.
+A robust QR code generation and management API built with FastAPI and SQLite. Features include static/dynamic QR codes, scan tracking, customizable appearance, and network-level security through Traefik.
 
 ## Features
 
-- **Static QR Codes**: Generate permanent QR codes with customizable appearance
-- **Dynamic QR Codes**: Create scannable codes with updatable redirect URLs
-- **Scan Tracking**: Monitor usage with scan count and timestamp tracking
-- **Microsoft Azure AD Authentication**: Secure your QR codes with Single Sign-On (SSO)
-- **User-Associated QR Codes**: Track which user created each QR code
-- **Docker & Traefik Integration**: Production-ready deployment with HTTPS support
-- **SQLite Optimization**: WAL mode, connection pooling, and performance tuning
-- **Comprehensive API**: Well-documented endpoints with proper validation and error handling
+-   **Static & Dynamic QR Codes**: Generate permanent codes or codes with updatable redirect URLs.
+-   **Customization**: Control QR code colors, size, and border.
+-   **Scan Tracking**: Monitor dynamic QR code usage with scan counts and timestamps.
+-   **Edge Security Model**:
+    -   **Network-level Access Control**: IP allowlisting for administrative functionality via Traefik
+    -   **Path-based Protection**: Only `/r/{short_id}` endpoints exposed on public domains
+    -   **No Authentication Required**: Simplified security model without user management
+-   **Web Interface**: Manage QR codes through an intuitive web UI built with Jinja2 templates and Bootstrap.
+-   **RESTful API**: Comprehensive API for programmatic QR code management.
+-   **Docker & Traefik**: Production-ready deployment with HTTPS support, reverse proxying, and load balancing capabilities provided by Traefik.
+-   **Optimized SQLite**: Utilizes WAL mode, connection pooling hints (via SQLAlchemy settings), and performance tuning PRAGMAs.
+-   **Database Migrations**: Managed with Alembic.
 
 ## Quick Start
 
 To run the QR Code Generator locally using Docker Compose:
 
-1. Ensure Docker and Docker Compose are installed
-2. Clone the repository
-3. Configure Azure AD credentials (see Authentication Setup below)
-4. Run: `docker-compose up --build`
+1.  **Prerequisites**: Docker and Docker Compose installed.
+2.  **Clone**: Clone this repository.
+3.  **Configure**: Create a `.env` file or set environment variables directly in `docker-compose.yml`.
+4.  **Run**:
+    ```bash
+    docker-compose up --build -d
+    ```
 
-The application will be available at:
-- Web interface: `https://localhost/`
-- API documentation: `https://localhost/docs`
-- API base URL: `https://localhost/api/v1`
-- Traefik dashboard: `http://localhost:8080/`
-- Prometheus metrics: `http://localhost:8082/metrics`
+**Access Points:**
+
+-   **Web Interface**: `https://localhost/` (e.g., `/`, `/qr-list`, `/qr-create`)
+-   **API Docs**: `https://localhost/docs`
+-   **API Base URL**: `https://localhost/api/v1`
+-   **Traefik Dashboard**: `http://localhost:8080/`
+-   **Prometheus Metrics**: `http://localhost:8082/metrics`
 
 ### Docker Container Configuration
 
-The application runs in a multi-container environment:
+| Container              | Purpose                                        | Ports Exposed (Host) | Internal Port | Network                  | Volumes Used                                                    |
+| :--------------------- | :--------------------------------------------- | :------------------- | :------------ | :----------------------- | :-------------------------------------------------------------- |
+| `qr_generator_api`     | FastAPI Application + Web UI                   | (via Traefik)        | 8000          | `qr_generator_network` | `qr_data`, `qr_logs`, `./app` (dev only)                        |
+| `qr_generator_traefik` | Reverse Proxy, TLS, Routing, Security         | 80, 443, 8080, 8082  | N/A           | `qr_generator_network` | `docker.sock`, `traefik_certs`, `traefik_logs`                |
 
-| Container | Purpose | Ports |
-|-----------|---------|-------|
-| `qr_generator_api` | FastAPI application | 8000 (internal) |
-| `qr_generator_traefik` | Reverse proxy, TLS termination | 80, 443, 8080, 8082 |
+## Security Setup
 
-All containers run in an isolated `qr_generator_network` for security.
+The application uses a simplified security model based on network-level controls:
 
-## Authentication Setup
+### Edge Gateway Security Model
 
-The application uses Microsoft Azure AD for authentication. To set it up:
+1. **Network-level Protection**: 
+   - IP allowlisting for administrative endpoints
+   - Path-based routing restrictions (only `/r/{short_id}` accessible on public domains)
+   - TLS termination at the edge
 
-1. **Create an Azure AD Application**:
-   - Go to the [Azure Portal](https://portal.azure.com)
-   - Navigate to "Azure Active Directory" > "App registrations"
-   - Create a new registration
-   - Set the redirect URI to match your deployment (e.g., `https://localhost/auth/callback`)
-   - Note the Application (client) ID and create a client secret
-
-2. **Configure Environment Variables**:
-   Add the following to your environment or docker-compose.yml:
-   ```yaml
-   environment:
-     - AZURE_CLIENT_ID=your-client-id
-     - AZURE_CLIENT_SECRET=your-client-secret
-     - AZURE_TENANT_ID=your-tenant-id
-     - REDIRECT_URI=https://localhost/auth/callback
-     - SECRET_KEY=your-secure-secret-key
+2. **Environment Variables**:
+   ```dotenv
+   # Basic configuration
+   BASE_URL=https://10.1.6.12
    ```
 
-3. **Authentication Endpoints**:
-   - `/auth/login`: Redirects to Microsoft login page
-   - `/auth/callback`: Processes OAuth response
-   - `/auth/logout`: Clears authentication state
-   - `/auth/me`: Returns current user information (protected)
+3. **No Authentication Required**:
+   - Administrative endpoints are protected via network-level controls
+   - No user management or login required
+   - Simplified deployment and maintenance
 
 ## Infrastructure Architecture
 
-The application follows a layered architecture with Docker containerization and Traefik for routing:
+The system uses Docker containers orchestrated by Docker Compose, with Traefik acting as the edge router and reverse proxy.
 
 ```mermaid
 flowchart TD
     USER((External User)) --> ENTRY
-    
-    subgraph traefik["Traefik Routing"]
+
+    subgraph traefik["Traefik Edge Gateway"]
         direction LR
         ENTRY["EntryPoints: web(:80), websecure(:443), traefik(:8080), metrics(:8082)"]
-        ROUTERS["Routers: api (HTTP/HTTPS)"]
-        SERVICES["Services: api(:8000)"]
-        ENTRY --> ROUTERS --> |"TLS"| SERVICES
+        ROUTERS["Routers: api-rtr (/*), public-rtr (/r/*), health-rtr (/health)"]
+        MIDDLEWARES["Middlewares: HTTPS Redirect, CORS, Security Headers, IP Whitelist"]
+        SERVICES["Services: api-svc(:8000)"]
+        ENTRY --> | Apply TLS | ROUTERS
+        ROUTERS --> MIDDLEWARES --> SERVICES
     end
-    
-    traefik --> dockerfile
 
-    subgraph dockerfile["Docker Build"]
+    traefik --> api_service
+
+    subgraph api_service["API Service (FastAPI Application)"]
+         direction LR
+         APP["FastAPI App"]
+         QR["QR Logic"]
+         DB[("SQLite DB")]
+         APP --> QR
+         APP --> DB
+         DB --> DB_VOL["Volume: qr_data"]
+         style APP fill:#ccf,stroke:#333,stroke-width:2px
+    end
+
+    subgraph docker_build["Docker Build Process"]
         direction LR
         subgraph builder["Builder Stage"]
-            B["python:3.12-slim + gcc, python3-dev + venv + requirements.txt"]
+            B["python:3.12-slim + build deps + venv + requirements.txt"]
         end
-        
+
         subgraph runtime["Runtime Stage"]
-            R["python:3.12-slim + curl, sqlite3 + application code + scripts"]
-            ENV["ENV: PORT=8000, WORKERS=4, PYTHONPATH=/app"]
-            HEALTH["Healthcheck: /health endpoint (30s interval)"]
+            R["python:3.12-slim + runtime deps (curl, sqlite3) + app code + scripts"]
+            ENV_VARS["ENV: PORT=8000, WORKERS, DB_URL, etc."]
+            HEALTH["Healthcheck: /health (curl)"]
         end
-        
+
         builder --> runtime
+        runtime --> DOCKER_IMAGE[("Docker Image: qr-generator")]
     end
-    
-    SERVICES --> API
-    
-    subgraph compose["Docker Compose"]
+
+
+    subgraph compose["Docker Compose Orchestration"]
         direction LR
-        subgraph services["Services"]
-            API["API Service"] 
-            PROXY["Traefik Proxy"]
+        subgraph compose_services["Services"]
+            API_SVC["API Service (qr_generator_api)"]
+            PROXY_SVC["Traefik Proxy (qr_generator_traefik)"]
         end
-        
-        subgraph env["Environment"]
+
+        subgraph compose_env["Environment"]
             direction LR
             subgraph DEV["Development (default)"]
-                DEV_FEATURES["Features: Hot reload, Debug, App mounting, Detailed logs"]
+                DEV_FEATURES["Features: Hot reload, Debug, App mounting"]
+                TEST_MODE["Testing: SQLite Test DB (pytest)"]
             end
-            
-            PROD["Production: No hot reload, Optimized perf, Enhanced security"]
+
+            PROD["Production Env: Optimized, No hot reload"]
         end
-        
-        subgraph storage["Storage & Network"]
+
+        subgraph compose_storage["Storage & Network"]
             direction LR
-            DB[("SQLite DB")] --- VOLUMES["Volumes: data, logs"]
+            VOLUMES["Named Volumes: qr_data, qr_logs, traefik_certs, traefik_logs"]
             NET["Network: qr_generator_network (bridge)"]
         end
-        
-        services --> env --> storage
+
+        compose_services -- Manages --> api_service
+        compose_services -- Uses --> compose_env
+        compose_services -- Uses --> compose_storage
+    end
+
+    docker_build --> compose
+    compose -- Deploys --> api_service
+    compose -- Deploys --> traefik
+
+    %% Logging Flow
+    subgraph logs["Logging Output"]
+        direction LR
+        LOG_VOL["Volumes: qr_logs, traefik_logs"] --> LOG_FILES["Log Files:<br>/logs/api/*<br>/logs/database/*<br>/logs/traefik/*"]
+        API_SVC -- Logs --> LOG_VOL
+        PROXY_SVC -- Logs --> LOG_VOL
     end
 ```
 
 ## API Documentation
 
-### API Endpoints
+The API provides endpoints for managing QR codes. Access the interactive documentation (Swagger UI) via `/docs`.
 
-#### Authentication
+### Key Endpoints
 
-- **GET /auth/login**: Redirects to Microsoft login page
-- **GET /auth/callback**: Processes OAuth response from Microsoft
-- **GET /auth/logout**: Clears authentication state
-- **GET /auth/me**: Returns current user information (protected)
-
-#### QR Code Management
-
-- **GET /api/v1/qr**: List QR codes with pagination and filtering
-- **GET /api/v1/qr/{qr_id}**: Get QR code details by ID
-- **GET /api/v1/qr/{qr_id}/image**: Get QR code image by ID
-- **PUT /api/v1/qr/{qr_id}**: Update QR code (redirect URL for dynamic codes)
-- **DELETE /api/v1/qr/{qr_id}**: Delete QR code by ID
-
-#### Dynamic QR Codes
-
-- **POST /api/v1/qr/dynamic**: Create a new dynamic QR code
-- **PUT /api/v1/qr/dynamic/{qr_id}**: Update dynamic QR code redirect URL
-
-#### Static QR Codes
-
-- **POST /api/v1/qr/static**: Create a new static QR code
-
-#### Redirects
-
-- **GET /r/{short_id}**: Redirect endpoint for dynamic QR codes
-
-#### Health Check
-
-- **GET /health**: System health check with detailed metrics
+-   **QR Management (`/api/v1/qr`)**: List, get details, get image, update, delete QR codes.
+-   **Static QR Creation (`/api/v1/qr/static`)**: `POST` to create static QR codes.
+-   **Dynamic QR Creation/Update (`/api/v1/qr/dynamic`)**: `POST` to create, `PUT` to update dynamic QR codes.
+-   **QR Redirects (`/r/{short_id}`)**: Endpoint hit when a dynamic QR code is scanned.
+-   **Health Check (`/health`)**: Monitors application and database status.
 
 ## Configuration
 
-The application can be configured via environment variables and configuration files:
-
-### Docker Environment Configuration
-
-The Docker environment is configured through the `docker-compose.yml` file. Key configuration options include:
-
-```yaml
-services:
-  api:
-    environment:
-      - DATABASE_URL=sqlite:////app/data/qr_codes.db
-      - ENVIRONMENT=${ENVIRONMENT:-development} # switch to production for deployment
-      - AZURE_CLIENT_ID=your-client-id
-      - AZURE_CLIENT_SECRET=your-client-secret
-      - AZURE_TENANT_ID=your-tenant-id
-      - REDIRECT_URI=https://localhost/auth/callback
-      - SECRET_KEY=your-secure-secret-key
-    volumes:
-      - ./data:/app/data  # Database persistence
-      - ./logs:/logs      # Log persistence
-      - ./app:/app/app    # Mount app directory for hot reloading (dev only)
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-```
-
-For production deployment, modify the `docker-compose.yml` file to remove the app volume mount and set `ENVIRONMENT=production`.
+Settings are managed via environment variables (loaded by `app/core/config.py`) and Traefik configuration files (`traefik.yml`, `dynamic_conf.yml`) or Docker labels.
 
 ### Environment Variables
 
-#### General Configuration
-- **`DATABASE_URL`**: Database connection string (default: `sqlite:///./data/qr_codes.db`)
-- **`ENVIRONMENT`**: `development` or `production` (default: `development`)
-- **`DEBUG`**: Enable debug mode (default: `False`)
-- **`TRUSTED_HOSTS`**: List of trusted hosts (default: `["*"]`)
-- **`CORS_ORIGINS`**: List of allowed CORS origins (default: `["*"]`)
-- **`ENABLE_GZIP`**: Enable GZip compression (default: `True`)
-- **`ENABLE_METRICS`**: Enable metrics endpoint (default: `True`)
-- **`ENABLE_LOGGING`**: Enable request logging (default: `True`)
+Key variables include:
 
-#### Authentication Configuration
-- **`AZURE_CLIENT_ID`**: Microsoft application client ID
-- **`AZURE_CLIENT_SECRET`**: Microsoft application client secret
-- **`AZURE_TENANT_ID`**: Microsoft tenant ID (default: "common")
-- **`REDIRECT_URI`**: Callback URL (e.g., "https://localhost/auth/callback")
-- **`SECRET_KEY`**: JWT signing key (must be secure in production)
-- **`SESSION_COOKIE_NAME`**: Name of the cookie storing the session token (default: "auth_token")
-- **`SESSION_COOKIE_SECURE`**: Whether to use secure cookies (default: True in production)
-- **`SESSION_COOKIE_HTTPONLY`**: Whether cookies are HTTP-only (default: True)
-- **`SESSION_COOKIE_SAMESITE`**: SameSite cookie policy (default: "lax")
-- **`SESSION_COOKIE_MAX_AGE`**: Cookie expiration in seconds (default: 3600)
+-   `DATABASE_URL`: Connection string for the application's SQLite database.
+-   `ENVIRONMENT`: Set to `production` or `development`.
+-   `BASE_URL`: The public base URL of the application (used for generating dynamic QR content).
+-   `LOG_LEVEL`: Logging level (e.g., `INFO`, `DEBUG`).
+-   `TRUSTED_HOSTS`, `CORS_ORIGINS`: Security settings for allowed hosts and origins.
 
 ### Directory Structure
 
-- **`data/`**: Contains SQLite database and backups
-- **`logs/`**: Container logs for API, database, and Traefik
-- **`certificates/`**: TLS certificates for secure connections
+-   **`app/`**: Main FastAPI application code.
+    -   `core/`: Configuration and base exceptions.
+    -   `database.py`: SQLAlchemy setup, session management, Base model.
+    -   `middleware/`: Custom middleware (Logging, Metrics, Security).
+    -   `models/`: SQLAlchemy models (`qr.py`).
+    -   `routers/`: API and web page route definitions.
+    -   `schemas/`: Pydantic models for validation.
+    -   `services/`: Business logic (e.g., `qr_service.py`).
+    -   `static/`: CSS, JavaScript files.
+    -   `templates/`: Jinja2 HTML templates.
+    -   `tests/`: Pytest tests, fixtures, factories.
+    -   `scripts/`: Utility scripts (`init.sh`, `manage_db.py`).
+-   **`alembic/`**: Database migration scripts.
+-   **`data/`**: Persistent storage for SQLite DB (via `qr_data` volume).
+-   **`logs/`**: Log file storage (via `qr_logs`, `traefik_logs` volumes).
+-   **`certs/`**: TLS certificates for Traefik.
+-   `Dockerfile`: Defines the application's Docker image build process.
+-   `docker-compose.yml`: Defines the multi-container setup.
+-   `traefik.yml`, `dynamic_conf.yml`: Traefik static and dynamic configuration.
+-   `alembic.ini`: Alembic configuration file.
+-   `requirements.txt`: Python dependencies.
 
 ## Security Architecture
 
-The application implements a comprehensive security architecture:
+-   **Edge Security (Traefik)**: 
+    -   TLS termination and HTTPS enforcement
+    -   IP-based access control for administrative endpoints
+    -   Path-based routing to restrict public access to only `/r/{short_id}` paths
+    -   Security headers (HSTS, Content-Security-Policy, etc.)
+    -   Rate limiting for public endpoints
 
-1. **Microsoft Azure AD Authentication**: Secure user authentication with SSO
-2. **JWT Token Management**: Secure token generation and validation
-3. **Docker Network Isolation**: Services run in an isolated network with Traefik controlling external access
-4. **CORS Configuration**: Properly configured to restrict access in production
-5. **Security Headers**: Comprehensive set of security headers to prevent common attacks
-6. **Database Operations**: Atomic updates and proper transaction management
-7. **TLS Encryption**: HTTPS with proper certificate handling through Traefik
+-   **Application Security:**
+    -   Input validation through Pydantic models
+    -   Parameter sanitization
+    -   CSRF protection for web forms
+    -   Database query parameterization via SQLAlchemy ORM
+    -   Network isolation through Docker configuration
 
 ## Development and Testing
 
-### Setting Up Development Environment
+### Local Development without Docker
 
-1. Clone the repository
-2. Create a virtual environment: `python -m venv venv`
-3. Activate the virtual environment and install dependencies: `pip install -r requirements.txt`
-4. Run tests: `pytest`
+1.  Set up a Python virtual environment (`python -m venv venv`).
+2.  Install requirements: `pip install -r requirements.txt`.
+3.  Set required environment variables (DB\_URL, etc.).
+4.  Initialize/Migrate database: `python app/scripts/manage_db.py --migrate`.
+5.  Run the development server: `uvicorn app.main:app --reload`.
 
-### Docker Development Environment
+### Testing with Docker
 
-The application is fully containerized and can be developed and tested entirely within Docker:
-
-#### Running the Application with Docker
-
-```bash
-# Build and start all services
-docker-compose up --build
-
-# Start in detached mode
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop all services
-docker-compose down
-```
-
-#### Running Tests through Docker
-
-The application includes a test environment configuration that uses an in-memory SQLite database:
+Use Docker Compose for an integrated testing environment:
 
 ```bash
-# Run all tests with coverage
-docker-compose exec api pytest --cov -v
+# Run all tests with coverage reports
+docker-compose exec api pytest --cov=app --cov-report=term-missing -v
 
-# Run specific test modules
-docker-compose exec api pytest app/tests/test_qr_service.py -v
-
-# Run tests with specific markers
-docker-compose exec api pytest -m "integration" -v
-
-# Generate HTML coverage report
-docker-compose exec api pytest --cov --cov-report=html -v
+# Run tests in a specific file
+docker-compose exec api pytest app/tests/test_api_v1.py -v
 ```
 
-#### Testing Authentication Flow
+Tests utilize a dedicated file-based SQLite database (`test_db_*.db`) managed by `conftest.py`, ensuring isolation.
 
-You can use the included test script to verify the authentication flow:
+### Database Management
+
+Use the provided scripts via Docker:
 
 ```bash
-# Run authentication test script
-docker-compose exec api /app/scripts/test_auth_flow.sh
+# Check if migrations are needed
+docker-compose exec api python app/scripts/manage_db.py --check
+
+# Apply pending migrations
+docker-compose exec api python app/scripts/manage_db.py --migrate
+
+# Validate database integrity and structure
+docker-compose exec api python app/scripts/manage_db.py --validate
 ```
 
-#### Executing Database Management Scripts
+The `init.sh` script automatically handles validation and migration checks on container startup.
 
-```bash
-# Initialize a fresh database
-docker-compose exec api /app/scripts/manage_db.py --init
+## Troubleshooting
 
-# Run database migrations
-docker-compose exec api /app/scripts/manage_db.py --migrate
-
-# Validate database structure
-docker-compose exec api /app/scripts/manage_db.py --validate
-```
-
-#### Testing the API Endpoints
-
-You can use the included test script to verify API endpoints:
-
-```bash
-# Run API test script
-docker-compose exec api /app/scripts/test_api_script.sh
-```
-
-### SQLite Production Tasks
-
-To-do:
-
-- **Implement Named Volumes**: Replace bind mounts with named volumes in docker-compose.yml
-- **Configure WAL Mode**: Enable Write-Ahead Logging for better concurrency
-- **Add Connection Pooling**: Optimize connection management
-- **Implement Backup Strategy**: Set up daily backups with rotation
-- **Add Database Integrity Checks**: Regular validation of database health
-
-## Troubleshooting Authentication
-
-If you encounter issues with authentication:
-
-1. **Redirect URI Mismatch**: Ensure the redirect URI in Azure AD matches exactly what's configured in your application
-2. **Environment Variables**: Verify all required authentication environment variables are set correctly
-3. **HTTPS Configuration**: For local development, ensure `allow_insecure_http=True` is set if using HTTP
-4. **Logs**: Check the application logs for authentication-related errors
-5. **Token Validation**: Verify the JWT token is being properly validated
+-   **Database Errors**: Check API logs and potentially run `docker-compose exec api python app/scripts/manage_db.py --validate`.
+-   **Connectivity**: Ensure containers are on the same `qr_generator_network`. Use `docker network inspect qr_generator_network`.
+-   **Traefik Issues**: Check Traefik logs (`docker-compose logs traefik`) or the Traefik dashboard for routing or middleware errors.
+-   **QR Redirect Issues**: Check for valid short_id and updated redirect URL in the database.
+-   **SQLite Permissions**: Ensure the `/app/data` directory in the container has the correct permissions.
 
 ## License
 
-[MIT License](LICENSE)
+This project is licensed under the MIT License - see the LICENSE file for details (if applicable).
