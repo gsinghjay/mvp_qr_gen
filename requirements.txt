@@ -5,11 +5,9 @@ pydantic>=2.6.1  # Latest Pydantic v2
 pydantic-settings>=2.1.0  # Required for settings management
 python-multipart>=0.0.7  # Form data parsing
 prometheus-client>=0.19.0  # Latest metrics client
+segno[pil]>=1.6.0  # QR code generation
 Pillow>=10.2.0  # Latest Pillow for image processing
-qrcode>=7.4.2  # QR code generation
 psutil>=5.9.8  # System metrics for health checks
-fastapi-sso>=0.10.0  # SSO integration for FastAPI
-python-jose[cryptography]>=3.3.0  # JWT token handling
 
 # Test dependencies
 pytest>=8.0.0
