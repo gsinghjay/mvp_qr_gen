@@ -10,7 +10,7 @@ A robust QR code generation and management API built with FastAPI and SQLite. Fe
 -   **Edge Security Model**:
     -   **Network-level Access Control**: IP allowlisting for administrative functionality via Traefik
     -   **Path-based Protection**: Only `/r/{short_id}` endpoints exposed on public domains
-    -   **No Authentication Required**: Simplified security model without user management
+    -   **Basic Authentication**: Dashboard access protected by username/password
 -   **Web Interface**: Manage QR codes through an intuitive web UI built with Jinja2 templates and Bootstrap.
 -   **RESTful API**: Comprehensive API for programmatic QR code management.
 -   **Docker & Traefik**: Production-ready deployment with HTTPS support, reverse proxying, and load balancing capabilities provided by Traefik.
@@ -32,6 +32,7 @@ To run the QR Code Generator locally using Docker Compose:
 **Access Points:**
 
 -   **Web Interface**: `https://localhost/` (e.g., `/`, `/qr-list`, `/qr-create`)
+    -   Requires basic authentication for dashboard access
 -   **API Docs**: `https://localhost/docs`
 -   **API Base URL**: `https://localhost/api/v1`
 -   **Traefik Dashboard**: `http://localhost:8080/`
@@ -55,15 +56,20 @@ The application uses a simplified security model based on network-level controls
    - Path-based routing restrictions (only `/r/{short_id}` accessible on public domains)
    - TLS termination at the edge
 
-2. **Environment Variables**:
+2. **Basic Authentication**:
+   - Dashboard access protected with username/password authentication
+   - Credentials managed via Traefik's basicAuth middleware
+   - Layered security approach (IP whitelisting + basic authentication)
+
+3. **Environment Variables**:
    ```dotenv
    # Basic configuration
    BASE_URL=https://10.1.6.12
    ```
 
-3. **No Authentication Required**:
-   - Administrative endpoints are protected via network-level controls
-   - No user management or login required
+4. **No Complex Authentication System**:
+   - Administrative endpoints are protected via network-level controls and basic authentication
+   - No complex user management or JWT/OAuth required
    - Simplified deployment and maintenance
 
 ## Infrastructure Architecture
@@ -213,6 +219,7 @@ Key variables include:
     -   Path-based routing to restrict public access to only `/r/{short_id}` paths
     -   Security headers (HSTS, Content-Security-Policy, etc.)
     -   Rate limiting for public endpoints
+    -   Basic authentication for dashboard access
 
 -   **Application Security:**
     -   Input validation through Pydantic models
@@ -269,6 +276,7 @@ The `init.sh` script automatically handles validation and migration checks on co
 -   **Traefik Issues**: Check Traefik logs (`docker-compose logs traefik`) or the Traefik dashboard for routing or middleware errors.
 -   **QR Redirect Issues**: Check for valid short_id and updated redirect URL in the database.
 -   **SQLite Permissions**: Ensure the `/app/data` directory in the container has the correct permissions.
+-   **Authentication Issues**: Verify that `users.htpasswd` is correctly mounted in the Traefik container and has appropriate permissions (600). Check that the middleware is correctly configured in `dynamic_conf.yml`.
 
 ## License
 
