@@ -69,6 +69,7 @@ services:
       - ./certs:/etc/certs:ro
       - ./traefik.yml:/etc/traefik/traefik.yml:ro
       - ./dynamic_conf.yml:/etc/traefik/dynamic_conf.yml:ro
+      - ./users.htpasswd:/etc/traefik/users.htpasswd:ro
       - traefik_logs:/logs/traefik
     ports:
       - "80:80"

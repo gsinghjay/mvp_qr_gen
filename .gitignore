@@ -57,6 +57,7 @@ docker-compose.override.yml
 
 # Traefik
 certificates/
+users.htpasswd
 
 # Operating System
 .DS_Store

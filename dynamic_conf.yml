@@ -102,6 +102,7 @@ http:
       middlewares:
         - redirect-to-https@file
         - ip-whitelist@file
+        - dashboard-auth@file
         - security-headers@file
       priority: 600
 
@@ -113,6 +114,7 @@ http:
       tls: {}  # Use default certificate store
       middlewares:
         - ip-whitelist@file
+        - dashboard-auth@file
         - security-headers@file
       priority: 600
       
@@ -233,6 +235,12 @@ http:
         forceSTSHeader: true
         contentSecurityPolicy: "frame-ancestors 'self'; frame-src 'self'; object-src 'none';"
         customFrameOptionsValue: "DENY"
+
+    # Dashboard Basic Authentication
+    dashboard-auth:
+      basicAuth:
+        usersFile: "/etc/traefik/users.htpasswd"
+        realm: "QR Dashboard - Authorized Access Only"
 
   services:
     api-service:
