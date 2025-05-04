@@ -29,6 +29,7 @@ class QRCode(Base):
         back_color (str): Background color of the QR code
         size (int): Size of QR code boxes
         border (int): Border size around QR code
+        error_level (str): Error correction level (l, m, q, h)
     """
 
     __tablename__ = "qr_codes"
@@ -52,6 +53,7 @@ class QRCode(Base):
     back_color: str = Column(String(50), nullable=False, default="#FFFFFF")
     size: int = Column(Integer, nullable=False, default=10)
     border: int = Column(Integer, nullable=False, default=4)
+    error_level: str = Column(String(1), nullable=False, default="m")
 
     def __init__(self, **kwargs):
         """Initialize a QR code with timezone-aware datetime fields."""
@@ -87,4 +89,5 @@ class QRCode(Base):
             "back_color": self.back_color,
             "size": self.size,
             "border": self.border,
+            "error_level": self.error_level,
         }
