@@ -1,8 +1,9 @@
 """
-Health check router for the application.
+Health check API endpoints.
 """
 
 import logging
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -11,12 +12,12 @@ from app.database import get_db
 from app.schemas.common import HTTPError
 from app.schemas.health import HealthResponse
 from app.services.health import HealthService
+from app.types import DbSessionDep
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/health",
-    tags=["Health"],
     responses={
         200: {"description": "Service is healthy"},
         503: {"description": "Service is unhealthy"},
@@ -34,7 +35,7 @@ router = APIRouter(
         503: {"model": HTTPError, "description": "Service unavailable"},
     },
 )
-def health_check(db: Session = Depends(get_db)) -> HealthResponse:
+def health_check(db: DbSessionDep) -> HealthResponse:
     """
     Perform a comprehensive health check of the API service.
 
@@ -55,4 +56,4 @@ def health_check(db: Session = Depends(get_db)) -> HealthResponse:
             detail="Service is currently unhealthy. Please check the logs for more details.",
         )
 
-    return health_status
+    return health_status 

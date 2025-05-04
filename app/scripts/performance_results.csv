@@ -1,0 +1,5 @@
+Endpoint,Path,Cold Start (s),Warm Average (s),Cold/Warm Ratio
+Health Check,/health,.016412236,.01735,.94
+QR Listing,/api/v1/qr?limit=1,.017958024,.01744,1.02
+Home Page,/,.033270984,.02002,1.66
+QR Redirect,/r/e0317492,.016688552,.01737,.96

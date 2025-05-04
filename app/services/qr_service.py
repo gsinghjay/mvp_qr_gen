@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, datetime
 from io import BytesIO
 from zoneinfo import ZoneInfo
-from typing import Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple, Dict
 
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
@@ -266,22 +266,22 @@ class QRCodeService:
     ) -> None:
         """
         Update scan statistics for a QR code.
-
+        
         This method updates the scan count, last scan timestamp, and other
         statistics for a QR code. It is designed to be run as a background
         task to avoid blocking the redirect response.
-
+        
         Args:
             qr_id: The ID of the QR code to update
             timestamp: The timestamp of the scan, defaults to current time
             client_ip: The IP address of the client that scanned the QR code
             user_agent: The user agent of the client that scanned the QR code
-
+            
         Raises:
             QRCodeNotFoundError: If the QR code is not found
             DatabaseError: If a database error occurs
         """
-        # Delegate to repository
+        # Use repository method to update scan statistics
         self.repository.update_scan_statistics(qr_id, timestamp, client_ip, user_agent)
 
     def validate_qr_code(self, qr_data: QRCodeCreate) -> None:
@@ -467,3 +467,83 @@ class QRCodeService:
         if not deleted:
             raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
         logger.info(f"Deleted QR code with ID {qr_id}")
+
+    def get_dashboard_data(self) -> Dict[str, Union[int, List[QRCode]]]:
+        """
+        Get data for the dashboard, including total QR code count and recent QR codes.
+        
+        Returns:
+            Dictionary containing total_qr_codes and recent_qr_codes
+            
+        Raises:
+            DatabaseError: If a database error occurs
+        """
+        try:
+            # Get count of all QR codes
+            total_qr_codes = self.repository.count()
+            
+            # Get recent QR codes
+            recent_qr_codes, _ = self.repository.list_qr_codes(
+                skip=0,
+                limit=5,
+                sort_by="created_at",
+                sort_desc=True
+            )
+            
+            return {
+                "total_qr_codes": total_qr_codes,
+                "recent_qr_codes": recent_qr_codes
+            }
+        except SQLAlchemyError as e:
+            logger.error(f"Database error retrieving dashboard data: {str(e)}")
+            raise DatabaseError(f"Database error retrieving dashboard data: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected error retrieving dashboard data: {str(e)}")
+            raise DatabaseError(f"Unexpected error retrieving dashboard data: {str(e)}")
+    
+    def get_qr_by_short_id(self, short_id: str) -> QRCode:
+        """
+        Get a QR code by short ID used in redirect URLs.
+        
+        This method handles different content formats for backward compatibility:
+        - Full URL: "{BASE_URL}/r/{short_id}"
+        - Relative path: "/r/{short_id}"
+        - Just the short ID itself
+        
+        Args:
+            short_id: The short ID from the QR code URL
+            
+        Returns:
+            The QR code object
+            
+        Raises:
+            QRCodeNotFoundError: If the QR code is not found
+            DatabaseError: If a database error occurs
+        """
+        try:
+            # The short path that would be in old QR codes
+            relative_path = f"/r/{short_id}"
+            
+            # The full URL that would be in new QR codes
+            full_url = f"{settings.BASE_URL}/r/{short_id}"
+            
+            # Try to find QR code by content matching any of the possible formats
+            qr = self.repository.find_by_pattern([
+                relative_path,
+                full_url,
+                short_id,
+                f"%/r/{short_id}"  # Pattern for partial match (backward compatibility)
+            ])
+            
+            if not qr:
+                raise QRCodeNotFoundError(f"QR code with short ID {short_id} not found")
+                
+            return qr
+        except QRCodeNotFoundError:
+            raise
+        except SQLAlchemyError as e:
+            logger.error(f"Database error finding QR code by short ID {short_id}: {str(e)}")
+            raise DatabaseError(f"Database error finding QR code by short ID: {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected error finding QR code by short ID {short_id}: {str(e)}")
+            raise DatabaseError(f"Unexpected error finding QR code by short ID: {str(e)}")

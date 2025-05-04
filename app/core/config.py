@@ -2,6 +2,7 @@
 Core configuration module for the FastAPI application.
 """
 
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,7 +10,7 @@ class Settings(BaseSettings):
     """Application settings using Pydantic v2."""
 
     DATABASE_URL: str = "sqlite:///./data/qr_codes.db"
-    ENVIRONMENT: str = "development"
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = True
     
     # Base URL for QR codes (full domain with protocol)

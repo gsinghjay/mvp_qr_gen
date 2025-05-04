@@ -1,26 +1,40 @@
 """
-API version 1 router.
+QR code API endpoints.
+
+This module consolidates all QR code-related operations including:
+- Listing QR codes
+- Getting QR code details
+- Creating static and dynamic QR codes
+- Updating QR codes
+- Deleting QR codes
+- Generating QR code images
 """
 
-from fastapi import APIRouter, Depends, status
-from fastapi.responses import Response
+import logging
+from typing import Annotated
 
-from ...core.exceptions import (
-    InvalidQRTypeError,
-)
-from ...dependencies import get_qr_service
-from ...schemas import (
+from fastapi import APIRouter, BackgroundTasks, Depends, status
+from fastapi.responses import Response
+from sqlalchemy.orm import Session
+
+from app.core.exceptions import InvalidQRTypeError
+from app.dependencies import get_qr_service
+from app.schemas import (
+    DynamicQRCreateParameters,
     QRCodeList,
     QRCodeResponse,
     QRImageParameters,
     QRListParameters,
     QRUpdateParameters,
+    StaticQRCreateParameters,
 )
-from ...services.qr_service import QRCodeService
+from app.services.qr_service import QRCodeService
+from app.types import QRServiceDep
+
+# Configure logger for QR code routes
+logger = logging.getLogger("app.qr")
 
 router = APIRouter(
-    prefix="/v1",
-    tags=["API v1"],
     responses={
         404: {"description": "QR code not found"},
         422: {"description": "Validation error"},
@@ -28,9 +42,9 @@ router = APIRouter(
     },
 )
 
-
+# List QR Codes
 @router.get(
-    "/qr",
+    "",
     response_model=QRCodeList,
     responses={
         200: {"description": "List of QR codes"},
@@ -39,8 +53,8 @@ router = APIRouter(
     },
 )
 async def list_qr_codes(
+    qr_service: QRServiceDep,
     params: QRListParameters = Depends(),
-    qr_service: QRCodeService = Depends(get_qr_service),
 ):
     """
     List QR codes with pagination and optional filtering.
@@ -85,9 +99,9 @@ async def list_qr_codes(
         "page_size": page_size,
     }
 
-
+# Get QR Code by ID
 @router.get(
-    "/qr/{qr_id}",
+    "/{qr_id}",
     response_model=QRCodeResponse,
     responses={
         200: {"description": "QR code details"},
@@ -95,7 +109,7 @@ async def list_qr_codes(
         500: {"description": "Database error"},
     },
 )
-async def get_qr(qr_id: str, qr_service: QRCodeService = Depends(get_qr_service)):
+async def get_qr(qr_id: str, qr_service: QRServiceDep):
     """
     Get QR code data by ID.
 
@@ -112,9 +126,9 @@ async def get_qr(qr_id: str, qr_service: QRCodeService = Depends(get_qr_service)
     """
     return qr_service.get_qr_by_id(qr_id)
 
-
+# Get QR Code Image
 @router.get(
-    "/qr/{qr_id}/image",
+    "/{qr_id}/image",
     responses={
         200: {
             "description": "QR code image",
@@ -132,8 +146,8 @@ async def get_qr(qr_id: str, qr_service: QRCodeService = Depends(get_qr_service)
 )
 async def get_qr_image(
     qr_id: str,
+    qr_service: QRServiceDep,
     params: QRImageParameters = Depends(),
-    qr_service: QRCodeService = Depends(get_qr_service),
 ):
     """
     Get QR code image by ID.
@@ -166,9 +180,82 @@ async def get_qr_image(
         include_logo=params.include_logo
     )
 
+# Create Static QR Code
+@router.post(
+    "/static",
+    response_model=QRCodeResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        201: {"description": "QR code created successfully"},
+        422: {"description": "Validation error"},
+        409: {"description": "Resource conflict"},
+        500: {"description": "Database error"},
+    },
+)
+async def create_static_qr(
+    data: StaticQRCreateParameters, 
+    qr_service: QRServiceDep
+):
+    """
+    Create a new static QR code.
 
+    Args:
+        data: The QR code data to create
+        qr_service: The QR code service (injected)
+
+    Returns:
+        The created QR code
+
+    Raises:
+        QRCodeValidationError: If the QR code data is invalid
+        ResourceConflictError: If a QR code with the same content already exists
+        DatabaseError: If a database error occurs
+    """
+    # The service layer will raise appropriate exceptions that will be
+    # handled by the exception handlers in main.py
+    qr = qr_service.create_static_qr(data)
+    logger.info("Created static QR code", extra={"qr_id": qr.id})
+    return qr
+
+# Create Dynamic QR Code
+@router.post(
+    "/dynamic",
+    response_model=QRCodeResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        201: {"description": "QR code created successfully"},
+        422: {"description": "Validation error"},
+        500: {"description": "Database error"},
+    },
+)
+async def create_dynamic_qr(
+    data: DynamicQRCreateParameters, 
+    qr_service: QRServiceDep
+):
+    """
+    Create a new dynamic QR code.
+
+    Args:
+        data: The QR code data to create
+        qr_service: The QR code service (injected)
+
+    Returns:
+        The created QR code
+
+    Raises:
+        QRCodeValidationError: If the QR code data is invalid
+        RedirectURLError: If the redirect URL is invalid
+        DatabaseError: If a database error occurs
+    """
+    # The service layer will raise appropriate exceptions that will be
+    # handled by the exception handlers in main.py
+    qr = qr_service.create_dynamic_qr(data)
+    logger.info("Created dynamic QR code", extra={"qr_id": qr.id})
+    return qr
+
+# Update QR Code
 @router.put(
-    "/qr/{qr_id}",
+    "/{qr_id}",
     response_model=QRCodeResponse,
     responses={
         200: {"description": "QR code updated successfully"},
@@ -180,7 +267,7 @@ async def get_qr_image(
 async def update_qr(
     qr_id: str,
     qr_update: QRUpdateParameters,
-    qr_service: QRCodeService = Depends(get_qr_service),
+    qr_service: QRServiceDep,
 ):
     """
     Update QR code data by ID.
@@ -201,11 +288,13 @@ async def update_qr(
         RedirectURLError: If the redirect URL is invalid
         DatabaseError: If a database error occurs
     """
-    return qr_service.update_dynamic_qr(qr_id, qr_update)
+    qr = qr_service.update_dynamic_qr(qr_id, qr_update)
+    logger.info(f"Updated QR code {qr_id} with new redirect URL")
+    return qr
 
-
+# Delete QR Code
 @router.delete(
-    "/qr/{qr_id}",
+    "/{qr_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
     responses={
@@ -216,7 +305,7 @@ async def update_qr(
 )
 async def delete_qr(
     qr_id: str,
-    qr_service: QRCodeService = Depends(get_qr_service),
+    qr_service: QRServiceDep,
 ):
     """
     Delete QR code by ID.
@@ -233,4 +322,4 @@ async def delete_qr(
         DatabaseError: If a database error occurs
     """
     qr_service.delete_qr(qr_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT) 
