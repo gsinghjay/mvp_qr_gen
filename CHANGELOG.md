@@ -1,6 +1,63 @@
 # CHANGELOG
 
 
+## v0.16.1 (2025-05-04)
+
+### Bug Fixes
+
+- Standardize dependency injection and code structure patterns
+  ([`992440d`](https://github.com/gsinghjay/mvp_qr_gen/commit/992440d782eb4cbed9b731f5ad817f81cefb34a0))
+
+- **auth**: Remove login endpoint functionality from pages.py router
+  ([`40e948b`](https://github.com/gsinghjay/mvp_qr_gen/commit/40e948ba26713f9e46bc2fbbe54ee7393e194151))
+
+- **config**: Explicitly load ENVIRONMENT from env variables
+  ([`07bdc49`](https://github.com/gsinghjay/mvp_qr_gen/commit/07bdc4987a7727cd3aecbbcd1b2d51ec3cc5822c))
+
+- **health**: Use settings.ENVIRONMENT in health endpoint response
+  ([`f31c9bb`](https://github.com/gsinghjay/mvp_qr_gen/commit/f31c9bbe19aefcb3056d1820b8e42ceb58824607))
+
+### Chores
+
+- Irrelevant task file
+  ([`5e7128f`](https://github.com/gsinghjay/mvp_qr_gen/commit/5e7128fa4ed2eb80028cd9d7551236bb8bfd6877))
+
+### Code Style
+
+- **css**: Remove login button styles from custom.css
+  ([`9a1b709`](https://github.com/gsinghjay/mvp_qr_gen/commit/9a1b7094750964c41b576ad732f1f0f83ce321ef))
+
+### Performance Improvements
+
+- Add route warmup to init.sh to improve first request performance
+  ([`300a4ee`](https://github.com/gsinghjay/mvp_qr_gen/commit/300a4eef2b0d04f44ffad136ffc593b53a60b860))
+
+- Optimize first-request performance with FastAPI lifespan initialization
+  ([`2a8769b`](https://github.com/gsinghjay/mvp_qr_gen/commit/2a8769b69dafd77e4bce4745ef4d3073688699da))
+
+### Refactoring
+
+- Move settings import to module level in qr_service.py for better initialization
+  ([`8261c41`](https://github.com/gsinghjay/mvp_qr_gen/commit/8261c41a271c0b6d7c294ded523bf1a4ecda6394))
+
+- **api**: Migrate to modern FastAPI structure
+  ([`131be20`](https://github.com/gsinghjay/mvp_qr_gen/commit/131be20d9f7cab7a90c25a43afbeb88a81e20712))
+
+- Move router endpoints to app/api/v1/endpoints - Organize endpoints by resource rather than
+  operation type - Implement proper API versioning with nested routers - Maintain backward
+  compatibility for all endpoints - Remove old router structure - Update main.py to use new router
+  imports - Add test script to verify API restructuring - Create documentation in app/api/README.md
+
+- **auth**: Delete portal-login.html template as part of login removal
+  ([`67f3fd2`](https://github.com/gsinghjay/mvp_qr_gen/commit/67f3fd2fc2cc5fef889eb98e5799a590ee9b3a89))
+
+- **js**: Remove setupLoginButtons function from main.js
+  ([`a55d31f`](https://github.com/gsinghjay/mvp_qr_gen/commit/a55d31f55eaeb336b04006dd26e142760d6dfa89))
+
+- **ui**: Remove logout link from base.html template
+  ([`01556f5`](https://github.com/gsinghjay/mvp_qr_gen/commit/01556f5e2ccfe53acff4d00b052529825a6f4b97))
+
+
 ## v0.16.0 (2025-04-30)
 
 ### Features
