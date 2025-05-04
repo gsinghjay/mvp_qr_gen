@@ -177,7 +177,10 @@ async def get_qr_image(
         back_color=params.back_color or qr.back_color,
         image_format=params.image_format.value,
         image_quality=params.image_quality,
-        include_logo=params.include_logo
+        include_logo=params.include_logo,
+        error_level=params.error_level.value,
+        svg_title=params.svg_title,
+        svg_description=params.svg_description
     )
 
 # Create Static QR Code
