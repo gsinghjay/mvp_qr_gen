@@ -17,38 +17,9 @@ document.addEventListener('DOMContentLoaded', function() {
         console.warn('script.js init function not available');
     }
     
-    // Handle login buttons
-    setupLoginButtons();
-    
     // Setup alerts (auto-dismiss after a few seconds)
     setupAlerts();
 });
-
-/**
- * Setup login button event listeners and enhance UI
- */
-function setupLoginButtons() {
-    // Get all login buttons
-    const loginButtons = document.querySelectorAll('a[href="/auth/login"]');
-    
-    // Add hover effects and transition animations to login buttons
-    loginButtons.forEach(button => {
-        button.addEventListener('mouseenter', function() {
-            this.classList.add('btn-hover-effect');
-        });
-        
-        button.addEventListener('mouseleave', function() {
-            this.classList.remove('btn-hover-effect');
-        });
-        
-        // Add a click animation
-        button.addEventListener('click', function(e) {
-            // Add loading state
-            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Redirecting...';
-            this.classList.add('disabled');
-        });
-    });
-}
 
 /**
  * Setup auto-dismissing alerts
@@ -87,7 +58,6 @@ function checkSessionStatus() {
 // Export functions for testing
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        setupLoginButtons,
         setupAlerts,
         checkSessionStatus
     };
