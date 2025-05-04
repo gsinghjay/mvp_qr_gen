@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v0.17.0 (2025-05-04)
+
+### Chores
+
+- Add users.htpasswd to .gitignore for security
+  ([`d149f4c`](https://github.com/gsinghjay/mvp_qr_gen/commit/d149f4cb21d714130cdfea90b7f1b0a686d0ee6a))
+
+### Documentation
+
+- Update documentation with basic authentication implementation details
+  ([`11ed736`](https://github.com/gsinghjay/mvp_qr_gen/commit/11ed736e3c83972046abd1eec32d7a9dab15bb7c))
+
+### Features
+
+- Configure Traefik to mount htpasswd file for basic authentication
+  ([`c202e95`](https://github.com/gsinghjay/mvp_qr_gen/commit/c202e9536a5b943da93aa43e48329fb7c5aee4c7))
+
+- Implement basic authentication middleware for dashboard access
+  ([`416d213`](https://github.com/gsinghjay/mvp_qr_gen/commit/416d2131980ac6e8831a7e591706f457ad6e763f))
+
+
 ## v0.16.1 (2025-05-04)
 
 ### Bug Fixes
