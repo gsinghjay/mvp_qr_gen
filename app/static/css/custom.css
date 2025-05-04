@@ -1,23 +1,16 @@
-/* Focus states without box shadow */
+/* Core Custom Styles */
 .form-control:focus,
 .btn:focus {
-    box-shadow: none !important;
-    border-color: #000 !important;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
 
-/* Custom transitions */
 .btn {
+    border-radius: 0;
     transition: all 0.2s ease-in-out;
 }
 
 .btn:hover {
     transform: translateY(-1px);
-}
-
-/* Button hover effect for login buttons */
-.btn-hover-effect {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Loading state */
