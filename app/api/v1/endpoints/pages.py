@@ -216,38 +216,4 @@ async def qr_detail(
                 "qr_id": qr_id,
             },
             status_code=404,
-        )
-
-
-@router.get("/login", response_class=HTMLResponse)
-async def login(request: Request):
-    """
-    Render the login page.
-    
-    Note: This is a legacy endpoint maintained for compatibility.
-    Authentication is now handled at the network level with IP whitelisting.
-    """
-    return templates.TemplateResponse(
-        name="login.html",
-        context={
-            "request": request,
-            "legacy_notice": "Authentication is now handled at the network level.",
-        },
-    )
-
-
-@router.get("/portal-login", response_class=HTMLResponse)
-async def portal_login(request: Request):
-    """
-    Render the portal login page.
-    
-    Note: This is a legacy endpoint maintained for compatibility.
-    Authentication is now handled at the network level with IP whitelisting.
-    """
-    return templates.TemplateResponse(
-        name="portal_login.html",
-        context={
-            "request": request,
-            "legacy_notice": "Authentication is now handled at the network level.",
-        },
-    ) 
+        ) 
