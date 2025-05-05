@@ -14,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.types import DbSessionDep, QRServiceDep
+from app.core.config import settings
 from app.core.exceptions import DatabaseError
 from app.models import QRCode
 
@@ -27,8 +28,6 @@ def get_base_template_context(request: Request) -> dict:
     Get base context for all templates.
     Includes common data like app version, environment info, etc.
     """
-    from app.core.config import settings
-
     # Force HTTPS for all URLs
     request.scope["scheme"] = "https"
 
@@ -40,15 +39,9 @@ def get_base_template_context(request: Request) -> dict:
         "api_base_url": "/api/v1",
     }
 
-# Configure templates directory
-# First try using Docker container path (templates are in /app/app/templates in the container)
-TEMPLATES_DIR = "/app/app/templates"
-if not os.path.exists(TEMPLATES_DIR):
-    # Fall back to relative path for development
-    TEMPLATES_DIR = Path(__file__).parents[4] / "templates"
-
+# Configure templates
 templates = Jinja2Templates(
-    directory=str(TEMPLATES_DIR),
+    directory=str(settings.TEMPLATES_DIR),
     context_processors=[get_base_template_context],
 )
 
@@ -181,7 +174,6 @@ async def qr_detail(
         qr_data = qr_code.to_dict()
         
         # Add the base URL for the short URL display
-        from app.core.config import settings
         base_url = f"{settings.BASE_URL}/r/"
         
         return templates.TemplateResponse(

@@ -4,7 +4,6 @@ Main FastAPI application module for the QR code generator.
 
 import logging
 import os
-import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,8 +19,6 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.base import RequestResponseEndpoint
 
 from .api import api_router, redirect_router_no_prefix, web_router_no_prefix, health_router_no_prefix
 from .core.config import settings
@@ -33,8 +30,7 @@ from .core.exceptions import (
     RedirectURLError,
     ResourceConflictError,
 )
-from .middleware.logging import LoggingMiddleware
-from .middleware.metrics import MetricsMiddleware
+from .middleware import LoggingMiddleware, MetricsMiddleware, RequestIDMiddleware
 from .database import get_db_with_logging
 from .repositories.qr_repository import QRCodeRepository
 from .services.qr_service import QRCodeService
@@ -64,10 +60,8 @@ async def lifespan(app: FastAPI):
     logger.info("Application starting up...")
 
     # Creating directories if they don't exist
-    # Check for Docker container path first
-    static_dir = Path(STATIC_DIR)
-    qr_codes_dir = static_dir / "assets" / "images" / "qr_codes"
-    qr_codes_dir.mkdir(parents=True, exist_ok=True)
+    # Ensure QR codes directory exists (should be created in config, but check again)
+    settings.QR_CODES_DIR.mkdir(parents=True, exist_ok=True)
     
     # NEW: Pre-initialize key dependencies
     logger.info("Pre-initializing key dependencies...")
@@ -148,49 +142,9 @@ app.add_middleware(MetricsMiddleware)
 app.add_middleware(LoggingMiddleware)
 
 # Mount static files
-# Check for Docker container path first
-STATIC_DIR = "/app/app/static"
-if not os.path.exists(STATIC_DIR):
-    # Fall back to relative path for development
-    STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(settings.STATIC_DIR)), name="static")
 
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-
-# Custom request ID middleware
-class RequestIDMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware to add a unique request ID to each request.
-
-    This middleware adds a unique ID to each request and includes it in the response headers.
-    This helps with tracing requests through logs and metrics.
-    """
-
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ):
-        """
-        Process a request and add a request ID to it.
-
-        Args:
-            request: The incoming request.
-            call_next: The next middleware or route handler to call.
-
-        Returns:
-            The response from the next middleware or route handler.
-        """
-        request_id = str(uuid.uuid4())
-        # Add request id to request state
-        request.state.request_id = request_id
-        # Add timestamp to request state
-        request.state.start_time = datetime.now(UTC)
-        # Process the request
-        response = await call_next(request)
-        # Add request id to response headers
-        response.headers["X-Request-ID"] = request_id
-        return response
-
-
+# Add RequestIDMiddleware
 app.add_middleware(RequestIDMiddleware)
 
 
