@@ -31,12 +31,23 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Load environment variables from .env file if it exists
+if [ -f ".env" ]; then
+    echo -e "${YELLOW}Loading environment variables from .env file...${NC}"
+    source .env
+fi
+
 # Default configuration
-API_URL="https://10.1.6.12"
+API_URL=${API_URL:-"https://10.1.6.12"}
 ITERATIONS=3
 WAIT_TIME=1
 OUTPUT_FILE="performance_results.csv"
 VERBOSE=false
+
+# Authentication credentials
+AUTH_USER=${AUTH_USER:-"admin_user"}
+AUTH_PASS=${AUTH_PASS:-"strongpassword"}
+AUTH_HEADER="--user ${AUTH_USER}:${AUTH_PASS}"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -82,6 +93,7 @@ done
 
 echo -e "${BLUE}=== QR App Performance Test ===${NC}"
 echo -e "${YELLOW}Testing API URL: ${API_URL}${NC}"
+echo -e "${YELLOW}Using authentication: ${AUTH_USER}${NC}"
 echo -e "Date/Time: $(date)"
 echo -e "Iterations per endpoint: ${ITERATIONS}"
 echo -e "Output file: ${OUTPUT_FILE}"
@@ -96,7 +108,7 @@ test_endpoint_performance() {
     # First request (cold start)
     echo -e "${YELLOW}First request (cold start):${NC}"
     local start_time=$(date +%s.%N)
-    local status_code=$(curl -k -s -o /dev/null -w "%{http_code}" "${API_URL}${endpoint}")
+    local status_code=$(curl -k -s $AUTH_HEADER -o /dev/null -w "%{http_code}" "${API_URL}${endpoint}")
     local end_time=$(date +%s.%N)
     local first_request_time=$(echo "$end_time - $start_time" | bc)
     
@@ -110,7 +122,7 @@ test_endpoint_performance() {
     for (( i=1; i<=$ITERATIONS; i++ )); do
         sleep $WAIT_TIME
         local warm_start_time=$(date +%s.%N)
-        local warm_status_code=$(curl -k -s -o /dev/null -w "%{http_code}" "${API_URL}${endpoint}")
+        local warm_status_code=$(curl -k -s $AUTH_HEADER -o /dev/null -w "%{http_code}" "${API_URL}${endpoint}")
         local warm_end_time=$(date +%s.%N)
         local warm_request_time=$(echo "$warm_end_time - $warm_start_time" | bc)
         
@@ -141,7 +153,7 @@ attempt=1
 
 while [ $attempt -le $max_attempts ] && [ "$ready" = false ]; do
     echo "Attempt $attempt of $max_attempts..."
-    health_status=$(curl -k -s -o /dev/null -w "%{http_code}" "${API_URL}/health" || echo "000")
+    health_status=$(curl -k -s $AUTH_HEADER -o /dev/null -w "%{http_code}" "${API_URL}/health" || echo "000")
     
     if [ "$health_status" = "200" ]; then
         echo -e "${GREEN}Application is ready!${NC}"
@@ -165,12 +177,12 @@ test_endpoint_performance "/" "Home Page"
 
 # Need to find a valid short_id for testing redirect
 echo -e "\n${YELLOW}Creating a test dynamic QR code for redirect testing...${NC}"
-REDIRECT_RESPONSE=$(curl -k -s -X POST "${API_URL}/api/v1/qr/dynamic" \
+REDIRECT_RESPONSE=$(curl -k -s $AUTH_HEADER -X POST "${API_URL}/api/v1/qr/dynamic" \
     -H "Content-Type: application/json" \
     -d '{"content": "perf-test", "redirect_url": "https://example.com"}')
 
 QR_ID=$(echo "$REDIRECT_RESPONSE" | grep -o '"id":"[^"]*' | sed 's/"id":"//g')
-CONTENT=$(curl -k -s "${API_URL}/api/v1/qr/$QR_ID" | grep -o '"content":"[^"]*' | sed 's/"content":"//g')
+CONTENT=$(curl -k -s $AUTH_HEADER "${API_URL}/api/v1/qr/$QR_ID" | grep -o '"content":"[^"]*' | sed 's/"content":"//g')
 SHORT_ID=$(echo "$CONTENT" | sed 's/.*\/r\///')
 
 if [ -n "$SHORT_ID" ]; then
