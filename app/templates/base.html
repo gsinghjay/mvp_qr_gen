@@ -9,8 +9,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <!-- Bootstrap Icons CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/custom.css') }}">
+    
+    <!-- HTMX Library -->
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     
     <!-- Environment-specific meta tags -->
     {% if environment != "production" %}
@@ -22,79 +23,75 @@
 <body class="bg-light">
     <!-- Error Alert -->
     {% if error %}
-    <div class="alert alert-danger alert-dismissible fade show m-3" role="alert">
+    <div class="alert alert-danger alert-dismissible fade show m-3 position-fixed top-0 end-0 shadow-sm" role="alert" style="max-width: 400px; z-index: 1080;">
         <i class="bi bi-exclamation-triangle me-2"></i>
         {{ error }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     {% endif %}
 
-    {% block sidebar %}
-    <!-- Sidebar - Only shown in authenticated views -->
-    <div class="wrapper d-flex">
-        <nav id="sidebar" class="bg-dark text-white shadow">
-            <div class="sidebar-header p-3 border-bottom border-secondary">
-                <h1 class="h3 mb-0 d-flex align-items-center">
-                    <i class="bi bi-qr-code me-2"></i>
-                    QR Generator
-                </h1>
+    <!-- Header with responsive menu -->
+    <header class="navbar navbar-expand-md navbar-light bg-white border-bottom shadow-sm sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-qr-code me-2"></i>
+                QR Generator
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="d-flex align-items-center">
+                <span class="text-muted small me-3">{{ current_user.display_name if current_user else 'Guest' }}</span>
             </div>
-            <div class="sidebar-content">
-                <ul class="list-unstyled p-3">
-                    <li class="nav-item mb-3">
-                        <a href="#dashboard" class="nav-link text-white text-decoration-none d-flex align-items-center py-2 px-3 rounded-0 active" data-bs-toggle="collapse" data-bs-target="#dashboardContent" aria-expanded="true" aria-controls="dashboardContent">
-                            <i class="bi bi-speedometer2 me-2"></i>
-                            <span>Dashboard</span>
-                            <i class="bi bi-chevron-down ms-auto"></i>
-                        </a>
-                        <div class="collapse show" id="dashboardContent">
-                            <ul class="list-unstyled ms-4 mt-2">
-                                <li>
-                                    <a href="/qr-create" class="nav-link text-white-50 text-decoration-none py-2 px-3 rounded-0 d-flex align-items-center">
-                                        <i class="bi bi-plus-circle me-2"></i>
-                                        <span>Create QR Code</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </li>
-                    <li class="nav-item mb-3">
-                        <a href="/qr-list" class="nav-link text-white text-decoration-none d-flex align-items-center py-2 px-3 rounded-0">
-                            <i class="bi bi-qr-code me-2"></i>
-                            <span>QR Codes</span>
-                        </a>
-                    </li>
-                    <li class="nav-item mb-3">
-                        <a href="#settings" class="nav-link text-white text-decoration-none d-flex align-items-center py-2 px-3 rounded-0">
-                            <i class="bi bi-gear me-2"></i>
-                            <span>Settings</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-            <div class="sidebar-footer p-3 mt-auto border-top border-secondary">
-                <div class="d-flex align-items-center">
-                    <div class="user-info d-flex align-items-center">
-                        <div class="user-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-                            <i class="bi bi-person"></i>
-                        </div>
-                        <div>
-                            <div class="small text-truncate">{{ current_user.display_name if current_user else 'Guest' }}</div>
-                            <div class="small text-white-50 text-truncate">{{ current_user.email if current_user else '' }}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </nav>
-    {% endblock %}
+        </div>
+    </header>
 
-    {% block content %}
-    <!-- Page content -->
-    {% endblock %}
-    
-    {% if sidebar is defined and sidebar %}
-    </div> <!-- Close wrapper from sidebar block -->
-    {% endif %}
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-white sidebar collapse border-end">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a href="/" class="nav-link text-body" id="nav-home">
+                                <i class="bi bi-house me-2"></i>
+                                Home
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/dashboard" class="nav-link text-body" id="nav-dashboard">
+                                <i class="bi bi-speedometer2 me-2"></i>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/qr-create" class="nav-link text-body" id="nav-create">
+                                <i class="bi bi-plus-circle me-2"></i>
+                                Create QR Code
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/qr-list" class="nav-link text-body" id="nav-list">
+                                <i class="bi bi-qr-code me-2"></i>
+                                QR Codes
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#settings" class="nav-link text-body" id="nav-settings">
+                                <i class="bi bi-gear me-2"></i>
+                                Settings
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main content area -->
+            {% block content %}
+            <!-- Page content -->
+            {% endblock %}
+        </div>
+    </div>
 
     {% block modals %}
     <!-- Modals will be included here -->
@@ -107,14 +104,35 @@
     <script>
         // Ensure bootstrap is globally available right after it loads
         window.bootstrap = bootstrap;
+        
+        // Set active nav based on current page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get current path
+            const path = window.location.pathname;
+            
+            // Remove any active classes
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Set active class based on path
+            if (path === '/' || path === '') {
+                document.getElementById('nav-home').classList.add('active');
+            } else if (path === '/dashboard') {
+                document.getElementById('nav-dashboard').classList.add('active');
+            } else if (path.includes('/qr-create')) {
+                document.getElementById('nav-create').classList.add('active');
+            } else if (path.includes('/qr-list')) {
+                document.getElementById('nav-list').classList.add('active');
+            } else if (path.includes('/settings')) {
+                document.getElementById('nav-settings').classList.add('active');
+            }
+        });
     </script>
 
-    <!-- Common JavaScript Modules -->
-    <script type="module" src="{{ url_for('static', path='/js/main.js') }}"></script>
-    
-    <!-- Individual modules are loaded by main.js as needed and aren't directly included here 
-         This improves page loading performance and simplifies future HTMX + Hyperscript migration
-    -->
+    {% block scripts %}
+    <!-- Additional page-specific scripts can be included here -->
+    {% endblock %}
 
     {% block extra_scripts %}
     <!-- Additional page-specific scripts can be included here -->
