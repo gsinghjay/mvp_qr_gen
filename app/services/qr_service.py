@@ -294,18 +294,8 @@ class QRCodeService:
         if qr_data.qr_type == QRType.DYNAMIC and not qr_data.redirect_url:
             raise RedirectURLError("Redirect URL is required for dynamic QR codes")
 
-        # Validate colors
-        try:
-            # Simple validation for hex color format
-            if not qr_data.fill_color.startswith("#") or len(qr_data.fill_color) != 7:
-                raise QRCodeValidationError(f"Invalid fill color format: {qr_data.fill_color}")
-            if not qr_data.back_color.startswith("#") or len(qr_data.back_color) != 7:
-                raise QRCodeValidationError(
-                    f"Invalid background color format: {qr_data.back_color}"
-                )
-        except (AttributeError, TypeError) as e:
-            # Handle type errors that might occur if colors are not proper strings
-            raise QRCodeValidationError(f"Color validation error: {str(e)}")
+        # Note: Color format validation is handled by Pydantic schemas
+        # via pattern validation and field_validator
 
     def generate_qr_image(
         self,
