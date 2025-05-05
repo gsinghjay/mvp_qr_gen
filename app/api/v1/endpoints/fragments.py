@@ -185,12 +185,35 @@ async def create_qr_code(
             
             qr = qr_service.create_dynamic_qr(params)
         
+        # Format dates for better readability
+        created_at_formatted = qr.created_at.strftime("%B %d, %Y at %H:%M")
+        last_scan_formatted = qr.last_scan_at.strftime("%B %d, %Y at %H:%M") if qr.last_scan_at else "Not yet scanned"
+        
+        # Handle short_id extraction for dynamic QR codes
+        short_id = None
+        short_url = None
+        if qr.qr_type == "dynamic" and '/r/' in qr.content:
+            short_id = qr.content.split('/r/')[-1]
+            short_url = f"{settings.BASE_URL}/r/{short_id}"
+        
+        # Format error level for display (uppercase)
+        error_level_display = qr.error_level.upper() if qr.error_level else "M"
+        
+        # Check if the QR code has been scanned
+        has_scan_data = qr.scan_count > 0 if hasattr(qr, 'scan_count') else False
+        
         # Return the created QR detail
         return templates.TemplateResponse(
             "fragments/qr_detail.html",
             {
                 "request": request,
                 "qr": qr,
+                "created_at_formatted": created_at_formatted,
+                "last_scan_formatted": last_scan_formatted,
+                "short_id": short_id,
+                "short_url": short_url,
+                "error_level_display": error_level_display,
+                "has_scan_data": has_scan_data,
                 "success_message": "QR Code created successfully!"
             }
         )
@@ -241,15 +264,56 @@ async def get_qr_detail_fragment(
     """
     try:
         qr = qr_service.get_qr_by_id(qr_id)
+        
+        # Format dates for better readability
+        created_at_formatted = qr.created_at.strftime("%B %d, %Y at %H:%M")
+        last_scan_formatted = qr.last_scan_at.strftime("%B %d, %Y at %H:%M") if qr.last_scan_at else "Not yet scanned"
+        
+        # Handle short_id extraction for dynamic QR codes
+        short_id = None
+        short_url = None
+        if qr.qr_type == "dynamic" and '/r/' in qr.content:
+            short_id = qr.content.split('/r/')[-1]
+            short_url = f"{settings.BASE_URL}/r/{short_id}"
+        
+        # Format error level for display (uppercase)
+        error_level_display = qr.error_level.upper() if qr.error_level else "M"
+        
+        # Check if the QR code has been scanned
+        has_scan_data = qr.scan_count > 0 if hasattr(qr, 'scan_count') else False
+        
         return templates.TemplateResponse(
             "fragments/qr_detail.html",
             {
                 "request": request,
-                "qr": qr
+                "qr": qr,
+                "created_at_formatted": created_at_formatted,
+                "last_scan_formatted": last_scan_formatted,
+                "short_id": short_id,
+                "short_url": short_url,
+                "error_level_display": error_level_display,
+                "has_scan_data": has_scan_data
             }
         )
     except QRCodeNotFoundError:
-        raise HTTPException(status_code=404, detail="QR code not found")
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": f"QR code with ID {qr_id} not found."
+            },
+            status_code=404,
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving QR code detail: {str(e)}")
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": "An error occurred while retrieving QR code details."
+            },
+            status_code=500,
+        )
 
 @router.get("/qr-edit/{qr_id}", response_class=HTMLResponse)
 async def get_qr_edit_fragment(
@@ -291,11 +355,11 @@ async def update_qr_code(
     redirect_url: str = Form(...),
 ):
     """
-    Update a QR code.
+    Update a dynamic QR code.
     
     Args:
         request: The FastAPI request object.
-        qr_id: The ID of the QR code.
+        qr_id: The ID of the QR code to update.
         qr_service: The QR code service.
         redirect_url: The new redirect URL.
         
@@ -303,40 +367,81 @@ async def update_qr_code(
         HTMLResponse: The rendered QR detail fragment.
     """
     try:
-        # Create update parameters object
-        params = QRUpdateParameters(
-            redirect_url=redirect_url
-        )
+        # Create update parameters
+        params = QRUpdateParameters(redirect_url=redirect_url)
         
-        # Update QR code using service
+        # Update the QR code
         qr = qr_service.update_dynamic_qr(qr_id, params)
+        
+        # Format dates for better readability
+        created_at_formatted = qr.created_at.strftime("%B %d, %Y at %H:%M")
+        last_scan_formatted = qr.last_scan_at.strftime("%B %d, %Y at %H:%M") if qr.last_scan_at else "Not yet scanned"
+        
+        # Handle short_id extraction for dynamic QR codes
+        short_id = None
+        short_url = None
+        if qr.qr_type == "dynamic" and '/r/' in qr.content:
+            short_id = qr.content.split('/r/')[-1]
+            short_url = f"{settings.BASE_URL}/r/{short_id}"
+        
+        # Format error level for display (uppercase)
+        error_level_display = qr.error_level.upper() if qr.error_level else "M"
+        
+        # Check if the QR code has been scanned
+        has_scan_data = qr.scan_count > 0 if hasattr(qr, 'scan_count') else False
         
         return templates.TemplateResponse(
             "fragments/qr_detail.html",
             {
                 "request": request,
                 "qr": qr,
+                "created_at_formatted": created_at_formatted,
+                "last_scan_formatted": last_scan_formatted,
+                "short_id": short_id,
+                "short_url": short_url,
+                "error_level_display": error_level_display,
+                "has_scan_data": has_scan_data,
                 "success_message": "QR Code updated successfully!"
             }
         )
-    except ValidationError as e:
-        qr = qr_service.get_qr_by_id(qr_id)
+    except QRCodeNotFoundError:
         return templates.TemplateResponse(
-            "fragments/qr_edit.html",
+            "fragments/error.html",
             {
                 "request": request,
-                "qr": qr,
-                "redirect_url": redirect_url,
-                "error_messages": e.errors()
-            }
+                "error": f"QR code with ID {qr_id} not found."
+            },
+            status_code=404,
         )
+    except ValidationError as e:
+        # Get the original QR code for the form
+        try:
+            qr = qr_service.get_qr_by_id(qr_id)
+            return templates.TemplateResponse(
+                "fragments/qr_edit.html",
+                {
+                    "request": request,
+                    "qr": qr,
+                    "redirect_url": redirect_url,
+                    "error_messages": e.errors()
+                }
+            )
+        except Exception:
+            return templates.TemplateResponse(
+                "fragments/error.html",
+                {
+                    "request": request,
+                    "error": "An error occurred while retrieving the QR code for editing."
+                },
+                status_code=500,
+            )
     except Exception as e:
         logger.error(f"Error updating QR code: {str(e)}")
         return templates.TemplateResponse(
             "fragments/error.html",
             {
                 "request": request,
-                "error": str(e)
+                "error": f"An error occurred while updating the QR code: {str(e)}"
             },
             status_code=500,
         )
