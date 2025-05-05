@@ -1,6 +1,81 @@
 # CHANGELOG
 
 
+## v0.19.0 (2025-05-05)
+
+### Bug Fixes
+
+- **performance**: Optimize redirect initialization for faster QR code scans
+  ([`9827fa4`](https://github.com/gsinghjay/mvp_qr_gen/commit/9827fa4211575a8fa2a9c20ee0484597004a803a))
+
+### Chores
+
+- Remove outdated performance results file
+  ([`10689ef`](https://github.com/gsinghjay/mvp_qr_gen/commit/10689ef9d3c2fe1ca15ae3c2041a96d9690b9938))
+
+### Documentation
+
+- Update development story with JS refactoring information
+  ([`c76e2cb`](https://github.com/gsinghjay/mvp_qr_gen/commit/c76e2cb76949d2d0ab95120af9343baf96b43f7c))
+
+- Update README with modular JS architecture details
+  ([`8b1a95d`](https://github.com/gsinghjay/mvp_qr_gen/commit/8b1a95d59d8e0fe49ed2b7dc9a0ff12b2dc3c08d))
+
+### Features
+
+- **js**: Add event-initializer module for setup and binding
+  ([`cf9f22d`](https://github.com/gsinghjay/mvp_qr_gen/commit/cf9f22d679bb0a555533061b82eb12a3addefbe1))
+
+- **js**: Add form-handler module for form submissions and validation
+  ([`5db36dd`](https://github.com/gsinghjay/mvp_qr_gen/commit/5db36dd1038633462be95ac56018c6d40426da75))
+
+- **js**: Add list-manager module for pagination and filtering
+  ([`601ca62`](https://github.com/gsinghjay/mvp_qr_gen/commit/601ca62daf4a08e82bf2f3f590d9e0e6feb8107b))
+
+- **js**: Add modal-handler module for dialog operations
+  ([`2797d9e`](https://github.com/gsinghjay/mvp_qr_gen/commit/2797d9e75f2c796c28af8cdb0de9a21ddd068e1d))
+
+- **js**: Add qr-operations module for core QR code functionality
+  ([`381a0cf`](https://github.com/gsinghjay/mvp_qr_gen/commit/381a0cf56874ffd39c21d077185bc122d8ba71f1))
+
+### Refactoring
+
+- Move RequestIDMiddleware to middleware directory
+  ([`09e593c`](https://github.com/gsinghjay/mvp_qr_gen/commit/09e593c4f2a46f3fa43981f3af7cc7296606092e))
+
+- Simplify error handling in repository and service layers
+  ([`e1a51f7`](https://github.com/gsinghjay/mvp_qr_gen/commit/e1a51f7bca575c46a2126bb46cbf916d3a882765))
+
+- Standardize schema validation placement by removing redundant color checks
+  ([`2a6ed8b`](https://github.com/gsinghjay/mvp_qr_gen/commit/2a6ed8b38153d6d8c037915bf578aa257f92df06))
+
+- **html**: Update base template for modular JS architecture
+  ([`bf1e272`](https://github.com/gsinghjay/mvp_qr_gen/commit/bf1e272e04f3f475f829d296f5cbb5c55ae8c239))
+
+- **html**: Update dashboard template for modular JS structure
+  ([`e79cfa4`](https://github.com/gsinghjay/mvp_qr_gen/commit/e79cfa4214df3d4cd0431962aeaa13c38e6014f7))
+
+- **html**: Update index template for modular JS structure
+  ([`b6600c7`](https://github.com/gsinghjay/mvp_qr_gen/commit/b6600c7b49243c68ee70b8dc6d5dd4433811eb65))
+
+- **html**: Update QR creation template for modular JS
+  ([`734ff9a`](https://github.com/gsinghjay/mvp_qr_gen/commit/734ff9aa7e48b5749d1306898818ae4130866064))
+
+- **html**: Update QR list template for modular JS structure
+  ([`97ce131`](https://github.com/gsinghjay/mvp_qr_gen/commit/97ce1315a7b6cb23a09b876cf47564b2bc2b9bf0))
+
+- **js**: Deprecate script.js with backward compatibility
+  ([`b35d999`](https://github.com/gsinghjay/mvp_qr_gen/commit/b35d999a3cea7a7d4708b233286de6e050b6766e))
+
+- **js**: Update main.js as modular architecture entry point
+  ([`6b64d00`](https://github.com/gsinghjay/mvp_qr_gen/commit/6b64d009e22d272b06d1359969004782f6e5737c))
+
+### Testing
+
+- Add updated performance results for modular architecture
+  ([`d02f1e4`](https://github.com/gsinghjay/mvp_qr_gen/commit/d02f1e4918611ea9c30bd05d66b710fa124f093e))
+
+
 ## v0.18.0 (2025-05-05)
 
 ### Features
