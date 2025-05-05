@@ -120,6 +120,7 @@ class QRCodeRepository(BaseRepository[QRCode]):
             )
 
             if result.rowcount == 0:
+                # Directly raise the exception instead of in a nested try/except
                 raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
 
             self.db.commit()
@@ -128,12 +129,6 @@ class QRCodeRepository(BaseRepository[QRCode]):
             self.db.rollback()
             logger.error(f"Database error updating scan count for QR code {qr_id}: {str(e)}")
             raise DatabaseError(f"Database error while updating scan count: {str(e)}")
-        except QRCodeNotFoundError:
-            raise
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"Unexpected error updating scan count for QR code {qr_id}: {str(e)}")
-            raise DatabaseError(f"Unexpected error while updating scan count: {str(e)}")
 
     @with_retry(max_retries=5, retry_delay=0.1)
     def update_scan_statistics(
@@ -175,6 +170,7 @@ class QRCodeRepository(BaseRepository[QRCode]):
             )
 
             if result.rowcount == 0:
+                # Directly raise the exception instead of in a nested try/except
                 raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
 
             self.db.commit()
@@ -196,12 +192,6 @@ class QRCodeRepository(BaseRepository[QRCode]):
             self.db.rollback()
             logger.error(f"Database error updating scan statistics for QR code {qr_id}: {str(e)}")
             raise DatabaseError(f"Database error while updating scan statistics: {str(e)}")
-        except QRCodeNotFoundError:
-            raise
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"Unexpected error updating scan statistics for QR code {qr_id}: {str(e)}")
-            raise DatabaseError(f"Unexpected error while updating scan statistics: {str(e)}")
 
     def list_qr_codes(
         self,
@@ -227,7 +217,6 @@ class QRCodeRepository(BaseRepository[QRCode]):
             A tuple of (list of QR codes, total count)
             
         Raises:
-            InvalidQRTypeError: If an invalid QR type is specified
             DatabaseError: If a database error occurs
         """
         try:
@@ -275,9 +264,6 @@ class QRCodeRepository(BaseRepository[QRCode]):
         except SQLAlchemyError as e:
             logger.error(f"Database error listing QR codes: {str(e)}")
             raise DatabaseError(f"Database error while listing QR codes: {str(e)}")
-        except Exception as e:
-            logger.error(f"Unexpected error listing QR codes: {str(e)}")
-            raise DatabaseError(f"Unexpected error while listing QR codes: {str(e)}")
 
     def find_by_pattern(self, patterns: List[str]) -> Optional[QRCode]:
         """

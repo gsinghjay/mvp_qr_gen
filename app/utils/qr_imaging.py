@@ -10,8 +10,7 @@ from PIL import Image
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
-# Default logo path
-DEFAULT_LOGO_PATH = "app/static/assets/images/logo_hccc_qr.jpg"
+from app.core.config import settings
 
 def generate_qr_image(
     content: str,
@@ -67,7 +66,7 @@ def generate_qr_image(
         actual_logo_path = None
         if logo_path:
             if isinstance(logo_path, bool):
-                actual_logo_path = DEFAULT_LOGO_PATH
+                actual_logo_path = str(settings.DEFAULT_LOGO_PATH)
             else:
                 actual_logo_path = logo_path
                 

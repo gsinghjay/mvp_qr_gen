@@ -82,7 +82,7 @@ class QRCodeService:
 
     def create_static_qr(self, data: StaticQRCreateParameters) -> QRCode:
         """
-        Create a new static QR code.
+        Create a static QR code.
 
         Args:
             data: Parameters for creating a static QR code
@@ -116,14 +116,9 @@ class QRCodeService:
             logger.info(f"Created static QR code with ID {qr.id}")
             return qr
         except ValidationError as e:
+            # Only catch and translate validation errors
             logger.error(f"Validation error creating static QR code: {str(e)}")
             raise QRCodeValidationError(detail=e.errors())
-        except DatabaseError:
-            # Let repository exceptions propagate up
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error creating static QR code: {str(e)}")
-            raise DatabaseError(f"Unexpected error while creating QR code: {str(e)}")
 
     def create_dynamic_qr(self, data: DynamicQRCreateParameters) -> QRCode:
         """
@@ -174,20 +169,17 @@ class QRCodeService:
             logger.info(f"Created dynamic QR code with ID {qr.id} and redirect path {qr.content}")
             return qr
         except ValidationError as e:
+            # Only catch and translate validation errors
             logger.error(f"Validation error creating dynamic QR code: {str(e)}")
             raise QRCodeValidationError(detail=e.errors())
         except ValueError as e:
+            # Handle URL validation errors
             if "URL" in str(e):
                 logger.error(f"Invalid redirect URL: {str(e)}")
                 raise RedirectURLError(f"Invalid redirect URL: {str(e)}")
+            # Other value errors are validation errors
             logger.error(f"Validation error creating dynamic QR code: {str(e)}")
             raise QRCodeValidationError(str(e))
-        except DatabaseError:
-            # Let repository exceptions propagate up
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error creating dynamic QR code: {str(e)}")
-            raise DatabaseError(f"Unexpected error while creating QR code: {str(e)}")
 
     def update_dynamic_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
         """
@@ -229,20 +221,17 @@ class QRCodeService:
             logger.info(f"Updated dynamic QR code with ID {updated_qr.id}")
             return updated_qr
         except ValidationError as e:
+            # Only catch and translate validation errors
             logger.error(f"Validation error updating QR code {qr_id}: {str(e)}")
             raise QRCodeValidationError(detail=e.errors())
         except ValueError as e:
+            # Handle URL validation errors
             if "URL" in str(e):
                 logger.error(f"Invalid redirect URL: {str(e)}")
                 raise RedirectURLError(f"Invalid redirect URL: {str(e)}")
+            # Other value errors are validation errors
             logger.error(f"Validation error updating QR code {qr_id}: {str(e)}")
             raise QRCodeValidationError(str(e))
-        except (QRCodeNotFoundError, QRCodeValidationError, RedirectURLError, DatabaseError):
-            # Let these exceptions propagate up
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error updating QR code {qr_id}: {str(e)}")
-            raise DatabaseError(f"Unexpected error while updating QR code: {str(e)}")
 
     def update_scan_count(self, qr_id: str, timestamp: datetime | None = None) -> None:
         """
@@ -305,17 +294,8 @@ class QRCodeService:
         if qr_data.qr_type == QRType.DYNAMIC and not qr_data.redirect_url:
             raise RedirectURLError("Redirect URL is required for dynamic QR codes")
 
-        # Validate colors
-        try:
-            # Simple validation for hex color format
-            if not qr_data.fill_color.startswith("#") or len(qr_data.fill_color) != 7:
-                raise QRCodeValidationError(f"Invalid fill color format: {qr_data.fill_color}")
-            if not qr_data.back_color.startswith("#") or len(qr_data.back_color) != 7:
-                raise QRCodeValidationError(
-                    f"Invalid background color format: {qr_data.back_color}"
-                )
-        except Exception as e:
-            raise QRCodeValidationError(f"Color validation error: {str(e)}")
+        # Note: Color format validation is handled by Pydantic schemas
+        # via pattern validation and field_validator
 
     def generate_qr_image(
         self,
@@ -346,7 +326,9 @@ class QRCodeService:
             A BytesIO object containing the image data
 
         Raises:
-            Exception: If there is an error generating the QR code image
+            QRCodeValidationError: If there is an validation error with the QR parameters
+            ValueError: If there are issues with the QR generation parameters
+            IOError: If there are problems with file operations
         """
         try:
             # Calculate the approximate size based on box_size
@@ -368,9 +350,14 @@ class QRCodeService:
             img_buffer.seek(0)
             
             return img_buffer
-        except Exception as e:
-            logger.error(f"Error generating QR code image: {e}")
-            raise
+        except ValueError as e:
+            # Handle parameter validation errors
+            logger.error(f"Parameter validation error generating QR code image: {e}")
+            raise QRCodeValidationError(f"Invalid parameters for QR generation: {str(e)}")
+        except IOError as e:
+            # Handle file/IO errors (e.g., logo file not found)
+            logger.error(f"IO error generating QR code image: {e}")
+            raise QRCodeValidationError(f"Error processing QR code image: {str(e)}")
 
     def generate_qr(
         self,
@@ -487,28 +474,22 @@ class QRCodeService:
         Raises:
             DatabaseError: If a database error occurs
         """
-        try:
-            # Get count of all QR codes
-            total_qr_codes = self.repository.count()
-            
-            # Get recent QR codes
-            recent_qr_codes, _ = self.repository.list_qr_codes(
-                skip=0,
-                limit=5,
-                sort_by="created_at",
-                sort_desc=True
-            )
-            
-            return {
-                "total_qr_codes": total_qr_codes,
-                "recent_qr_codes": recent_qr_codes
-            }
-        except SQLAlchemyError as e:
-            logger.error(f"Database error retrieving dashboard data: {str(e)}")
-            raise DatabaseError(f"Database error retrieving dashboard data: {str(e)}")
-        except Exception as e:
-            logger.error(f"Unexpected error retrieving dashboard data: {str(e)}")
-            raise DatabaseError(f"Unexpected error retrieving dashboard data: {str(e)}")
+        # No need for try-except, let repository errors propagate
+        # Get count of all QR codes
+        total_qr_codes = self.repository.count()
+        
+        # Get recent QR codes
+        recent_qr_codes, _ = self.repository.list_qr_codes(
+            skip=0,
+            limit=5,
+            sort_by="created_at",
+            sort_desc=True
+        )
+        
+        return {
+            "total_qr_codes": total_qr_codes,
+            "recent_qr_codes": recent_qr_codes
+        }
     
     def get_qr_by_short_id(self, short_id: str) -> QRCode:
         """
@@ -529,30 +510,21 @@ class QRCodeService:
             QRCodeNotFoundError: If the QR code is not found
             DatabaseError: If a database error occurs
         """
-        try:
-            # The short path that would be in old QR codes
-            relative_path = f"/r/{short_id}"
+        # The short path that would be in old QR codes
+        relative_path = f"/r/{short_id}"
+        
+        # The full URL that would be in new QR codes
+        full_url = f"{settings.BASE_URL}/r/{short_id}"
+        
+        # Try to find QR code by content matching any of the possible formats
+        qr = self.repository.find_by_pattern([
+            relative_path,
+            full_url,
+            short_id,
+            f"%/r/{short_id}"  # Pattern for partial match (backward compatibility)
+        ])
+        
+        if not qr:
+            raise QRCodeNotFoundError(f"QR code with short ID {short_id} not found")
             
-            # The full URL that would be in new QR codes
-            full_url = f"{settings.BASE_URL}/r/{short_id}"
-            
-            # Try to find QR code by content matching any of the possible formats
-            qr = self.repository.find_by_pattern([
-                relative_path,
-                full_url,
-                short_id,
-                f"%/r/{short_id}"  # Pattern for partial match (backward compatibility)
-            ])
-            
-            if not qr:
-                raise QRCodeNotFoundError(f"QR code with short ID {short_id} not found")
-                
-            return qr
-        except QRCodeNotFoundError:
-            raise
-        except SQLAlchemyError as e:
-            logger.error(f"Database error finding QR code by short ID {short_id}: {str(e)}")
-            raise DatabaseError(f"Database error finding QR code by short ID: {str(e)}")
-        except Exception as e:
-            logger.error(f"Unexpected error finding QR code by short ID {short_id}: {str(e)}")
-            raise DatabaseError(f"Unexpected error finding QR code by short ID: {str(e)}")
+        return qr
