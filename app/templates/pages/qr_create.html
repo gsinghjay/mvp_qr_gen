@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}QR Code Generator - Create QR Code{% endblock %}
+{% block description %}Create a new QR code with custom settings{% endblock %}
+
+{% block content %}
+<!-- Main content column -->
+<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Create QR Code</h1>
+        <a href="/qr-list" class="btn btn-outline-secondary d-flex align-items-center">
+            <i class="bi bi-arrow-left me-2"></i>
+            Back to QR List
+        </a>
+    </div>
+    
+    <!-- QR Type Selection -->
+    <div class="card border mb-4">
+        <div class="card-header bg-light">
+            <h2 class="card-title h5 mb-0 d-flex align-items-center">
+                <i class="bi bi-tag me-2"></i>
+                QR Code Type
+            </h2>
+        </div>
+        <div class="card-body p-4">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="qr-type" id="static-qr" value="static" 
+                               hx-get="/api/v1/fragments/qr-form/static"
+                               hx-target="#qr-form-container"
+                               hx-indicator="#type-loading-indicator"
+                               checked>
+                        <label class="form-check-label" for="static-qr">
+                            <strong>Static QR Code</strong>
+                            <p class="text-muted mb-0 small">Content cannot be changed after creation</p>
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="qr-type" id="dynamic-qr" value="dynamic"
+                               hx-get="/api/v1/fragments/qr-form/dynamic"
+                               hx-target="#qr-form-container"
+                               hx-indicator="#type-loading-indicator">
+                        <label class="form-check-label" for="dynamic-qr">
+                            <strong>Dynamic QR Code</strong>
+                            <p class="text-muted mb-0 small">Redirect URL can be updated at any time</p>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div id="type-loading-indicator" class="htmx-indicator text-center mt-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading form...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- QR Form Container (loaded by HTMX) -->
+    <div class="card border">
+        <div class="card-header bg-light">
+            <h2 class="card-title h5 mb-0 d-flex align-items-center">
+                <i class="bi bi-pencil-square me-2"></i>
+                QR Code Details
+            </h2>
+        </div>
+        <div class="card-body">
+            <div id="qr-form-container" 
+                hx-get="/api/v1/fragments/qr-form/static" 
+                hx-trigger="load"
+                hx-indicator="#form-loading-indicator">
+                <div id="form-loading-indicator" class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading form...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- QR Code Result Modal -->
+<div id="qr-detail-modal" class="modal fade" tabindex="-1" aria-labelledby="qrDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">QR Code Created Successfully</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading QR code details...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="/qr-list" class="btn btn-outline-secondary">View All QR Codes</a>
+                <a href="/qr-create" class="btn btn-primary">Create Another QR Code</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Listen for successful form submissions
+        document.body.addEventListener('htmx:afterRequest', function(event) {
+            // Check if this is a form submission to create a QR code
+            if (event.detail.requestConfig.path.endsWith('/api/v1/fragments/qr-create') && 
+                event.detail.successful) {
+                
+                // Show the success modal
+                const modalElement = document.getElementById('qr-detail-modal');
+                const modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            }
+        });
+    });
+</script>
+{% endblock %} 

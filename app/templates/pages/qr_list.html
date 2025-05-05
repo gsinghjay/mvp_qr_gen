@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}QR Code Generator - QR Code List{% endblock %}
+{% block description %}QR Code Generator - List and manage all your QR codes{% endblock %}
+
+{% block content %}
+<!-- Main content column -->
+<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">QR Code List</h1>
+        <a href="/qr-create" class="btn btn-primary d-flex align-items-center">
+            <i class="bi bi-plus-circle me-2"></i>
+            Create New QR Code
+        </a>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="card border mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input
+                            type="text"
+                            id="search-input"
+                            class="form-control"
+                            placeholder="Search QR codes..."
+                            hx-get="/api/v1/fragments/qr-list"
+                            hx-trigger="keyup changed delay:500ms"
+                            hx-target="#qr-list-container"
+                            hx-include="[name='sort_by'],[name='sort_order']"
+                            name="search"
+                        >
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select 
+                        class="form-select" 
+                        id="sort-by"
+                        name="sort_by"
+                        hx-get="/api/v1/fragments/qr-list"
+                        hx-trigger="change"
+                        hx-target="#qr-list-container"
+                        hx-include="[name='search'],[name='sort_order']"
+                    >
+                        <option value="created_at">Sort by Date Created</option>
+                        <option value="qr_type">Sort by Type</option>
+                        <option value="scan_count">Sort by Scan Count</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select 
+                        class="form-select" 
+                        id="sort-order"
+                        name="sort_order"
+                        hx-get="/api/v1/fragments/qr-list"
+                        hx-trigger="change"
+                        hx-target="#qr-list-container"
+                        hx-include="[name='search'],[name='sort_by']"
+                    >
+                        <option value="desc">Descending</option>
+                        <option value="asc">Ascending</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code List -->
+    <div class="card border">
+        <div class="card-header bg-light">
+            <h2 class="card-title h5 mb-0 d-flex align-items-center">
+                <i class="bi bi-qr-code me-2"></i>
+                All QR Codes
+            </h2>
+        </div>
+        <div class="card-body p-0">
+            <!-- This div will be populated by HTMX -->
+            <div id="qr-list-container" 
+                 hx-get="/api/v1/fragments/qr-list" 
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading QR codes...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Modal for QR Code Detail -->
+<div id="qr-detail-modal" class="modal fade" tabindex="-1" aria-labelledby="qrDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <!-- Modal content will be loaded here via HTMX -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get the modal element
+        const modalElement = document.getElementById('qr-detail-modal');
+        
+        // Create a Bootstrap modal instance
+        const modalInstance = new bootstrap.Modal(modalElement);
+        
+        // Use event delegation to handle clicks on view buttons
+        document.addEventListener('click', function(event) {
+            // Find button with hx-get for fragment details
+            const viewButton = event.target.closest('[hx-get^="/api/v1/fragments/qr-detail/"]');
+            if (viewButton) {
+                // Show the modal before HTMX loads the content
+                modalInstance.show();
+            }
+        });
+        
+        // Handle loading indicators during HTMX requests
+        document.body.addEventListener('htmx:beforeRequest', function(event) {
+            var loadingIndicator = document.querySelector('.spinner-border');
+            if (loadingIndicator) {
+                loadingIndicator.classList.remove('d-none');
+            }
+        });
+        
+        document.body.addEventListener('htmx:afterRequest', function(event) {
+            var loadingIndicator = document.querySelector('.spinner-border');
+            if (loadingIndicator) {
+                loadingIndicator.classList.add('d-none');
+            }
+        });
+    });
+</script>
+{% endblock %} 
