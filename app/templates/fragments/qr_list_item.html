@@ -1,0 +1,32 @@
+<tr id="qr-row-{{ qr.id }}">
+  <td>{{ qr.id[:8] }}</td>
+  <td>{{ qr.qr_type }}</td>
+  <td>
+    {% if qr.qr_type == "static" %}
+      {{ qr.content[:30] }}{% if qr.content|length > 30 %}...{% endif %}
+    {% else %}
+      <a href="{{ qr.redirect_url }}" target="_blank">{{ qr.redirect_url[:30] }}{% if qr.redirect_url|length > 30 %}...{% endif %}</a>
+    {% endif %}
+  </td>
+  <td>{{ qr.created_at.strftime('%Y-%m-%d') }}</td>
+  <td>{{ qr.scan_count or 0 }}</td>
+  <td class="actions">
+    <button
+      hx-get="/api/v1/fragments/qr-detail/{{ qr.id }}"
+      hx-target="#qr-detail-modal .modal-content"
+      hx-trigger="click"
+      class="btn btn-sm btn-info"
+    >
+      View
+    </button>
+    <button
+      hx-delete="/api/v1/qr/{{ qr.id }}"
+      hx-confirm="Are you sure you want to delete this QR code?"
+      hx-target="#qr-row-{{ qr.id }}"
+      hx-swap="outerHTML"
+      class="btn btn-sm btn-danger"
+    >
+      Delete
+    </button>
+  </td>
+</tr> 

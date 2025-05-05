@@ -1,0 +1,132 @@
+<div id="qr-form-container">
+  <div class="border-bottom p-3">
+    <h3 class="fs-5 mb-0">Create {{ qr_type|title }} QR Code</h3>
+  </div>
+  
+  <div class="p-3">
+    <form
+      hx-post="/api/v1/fragments/qr-create"
+      hx-target="#qr-detail-modal"
+      hx-swap="innerHTML"
+    >
+      <input type="hidden" name="qr_type" value="{{ qr_type }}">
+      
+      {% if error_messages %}
+      <div class="alert alert-danger">
+        <ul class="mb-0">
+          {% for error in error_messages %}
+            <li>{{ error.loc[0] }}: {{ error.msg }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      
+      {% if qr_type == "static" %}
+        <div class="mb-3">
+          <label for="content" class="form-label">Content</label>
+          <textarea 
+            id="content" 
+            name="content" 
+            class="form-control" 
+            required
+          >{{ content or "" }}</textarea>
+          <div class="form-text">
+            Enter the content for your static QR code (text, URL, etc.)
+          </div>
+        </div>
+      {% else %}
+        <div class="mb-3">
+          <label for="redirect_url" class="form-label">Redirect URL</label>
+          <input 
+            type="url" 
+            id="redirect_url" 
+            name="redirect_url" 
+            class="form-control" 
+            value="{{ redirect_url or "" }}"
+            placeholder="https://example.com"
+            required
+          >
+          <div class="form-text">
+            Enter the URL where users will be redirected when scanning this QR code
+          </div>
+        </div>
+      {% endif %}
+      
+      <div class="mb-3">
+        <label for="error_level" class="form-label">Error Correction Level</label>
+        <select id="error_level" name="error_level" class="form-select">
+          {% for level in error_levels %}
+            <option value="{{ level }}" {% if error_level == level %}selected{% endif %}>
+              {{ level }} - {% if level == "L" %}Low{% elif level == "M" %}Medium{% elif level == "Q" %}Quartile{% else %}High{% endif %}
+            </option>
+          {% endfor %}
+        </select>
+        <div class="form-text">
+          Higher error correction levels make QR codes more reliable but larger.
+        </div>
+      </div>
+      
+      <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="include_logo" name="include_logo" value="true" onchange="updateErrorLevel()">
+        <label class="form-check-label" for="include_logo">Include Organization Logo</label>
+        <div class="form-text">
+          Adds the organization logo to the center of the QR code. Requires high error correction level.
+        </div>
+      </div>
+      
+      <div class="mb-3">
+        <label for="svg_title" class="form-label">SVG Title (for accessibility)</label>
+        <input 
+          type="text" 
+          id="svg_title" 
+          name="svg_title" 
+          class="form-control" 
+          value="{{ svg_title or "" }}"
+          placeholder="QR code for example.com"
+        >
+        <div class="form-text">
+          Provide a title for screen readers (SVG format only)
+        </div>
+      </div>
+      
+      <div class="mb-3">
+        <label for="svg_description" class="form-label">SVG Description (for accessibility)</label>
+        <textarea 
+          id="svg_description" 
+          name="svg_description" 
+          class="form-control"
+          placeholder="This QR code links to example.com"
+        >{{ svg_description or "" }}</textarea>
+        <div class="form-text">
+          Provide a description for screen readers (SVG format only)
+        </div>
+      </div>
+      
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create QR Code</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function updateErrorLevel() {
+    const includeLogoCheckbox = document.getElementById('include_logo');
+    const errorLevelSelect = document.getElementById('error_level');
+    
+    if (includeLogoCheckbox.checked) {
+      // Save the current selection before forcing high error correction
+      errorLevelSelect.dataset.previousValue = errorLevelSelect.value;
+      // Set to high error correction level when including logo
+      errorLevelSelect.value = 'H';
+      errorLevelSelect.disabled = true;
+    } else {
+      // Restore previous selection if available
+      if (errorLevelSelect.dataset.previousValue) {
+        errorLevelSelect.value = errorLevelSelect.dataset.previousValue;
+      }
+      errorLevelSelect.disabled = false;
+    }
+  }
+</script> 

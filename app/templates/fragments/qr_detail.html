@@ -1,0 +1,131 @@
+<div class="modal-header">
+  <h5 class="modal-title">QR Code Details</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+{% if success_message %}
+<div class="alert alert-success m-3">{{ success_message }}</div>
+{% endif %}
+
+<div class="modal-body">
+  <div class="text-center mb-2">
+    <div class="form-check form-switch d-flex justify-content-center align-items-center mb-2">
+      <input class="form-check-input me-2" type="checkbox" id="includeLogo">
+      <label class="form-check-label" for="includeLogo">Include Logo</label>
+    </div>
+    <img id="qrImage" src="/api/v1/qr/{{ qr.id }}/image?image_format=png&size=10" alt="QR Code" class="img-fluid border" style="max-width: 250px;">
+  </div>
+  
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <tr>
+        <th style="width: 140px;">ID:</th>
+        <td>{{ qr.id }}</td>
+      </tr>
+      <tr>
+        <th>Type:</th>
+        <td>{{ qr.qr_type|title }}</td>
+      </tr>
+      <tr>
+        <th>Created:</th>
+        <td>{{ qr.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      </tr>
+      <tr>
+        <th>Error Level:</th>
+        <td id="errorLevelDisplay">{{ qr.error_level }}</td>
+      </tr>
+      {% if qr.qr_type == "static" %}
+      <tr>
+        <th>Content:</th>
+        <td>{{ qr.content }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <th>Redirect URL:</th>
+        <td><a href="{{ qr.redirect_url }}" target="_blank">{{ qr.redirect_url }}</a></td>
+      </tr>
+      <tr>
+        <th>Short URL:</th>
+        <td>
+          {% set short_id = qr.content.split('/r/')[-1] if '/r/' in qr.content else qr.content.split('/')[-1] %}
+          {% set short_url = "https://web.hccc.edu/r/" + short_id %}
+          <a href="/r/{{ short_id }}" target="_blank">{{ short_url }}</a>
+        </td>
+      </tr>
+      <tr>
+        <th>Scan Count:</th>
+        <td>{{ qr.scan_count or 0 }}</td>
+      </tr>
+      <tr>
+        <th>Last Scanned:</th>
+        <td>
+          {% if qr.last_scan_at %}
+            {{ qr.last_scan_at.strftime('%Y-%m-%d %H:%M') }}
+          {% else %}
+            Never
+          {% endif %}
+        </td>
+      </tr>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+<div class="modal-footer">
+  <div class="btn-group">
+    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=png&size=10" id="pngDownload" download="qr-{{ qr.id }}.png" class="btn btn-secondary">
+      <i class="bi bi-file-image me-1"></i> PNG
+    </a>
+    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=svg&size=10" id="svgDownload" download="qr-{{ qr.id }}.svg" class="btn btn-secondary">
+      <i class="bi bi-filetype-svg me-1"></i> SVG
+    </a>
+    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=jpeg&size=10" id="jpgDownload" download="qr-{{ qr.id }}.jpg" class="btn btn-secondary">
+      <i class="bi bi-file-image me-1"></i> JPG
+    </a>
+    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=webp&size=10" id="webpDownload" download="qr-{{ qr.id }}.webp" class="btn btn-secondary">
+      <i class="bi bi-file-image me-1"></i> WebP
+    </a>
+  </div>
+  
+  {% if qr.qr_type == "dynamic" %}
+  <button
+    hx-get="/api/v1/fragments/qr-edit/{{ qr.id }}"
+    hx-target="#qr-detail-modal .modal-content"
+    class="btn btn-primary"
+  >
+    <i class="bi bi-pencil me-1"></i> Edit URL
+  </button>
+  {% endif %}
+  
+  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+</div>
+
+<div id="formatNote" class="small text-muted mt-2 text-center" style="display: none;">
+  Note: SVG format does not support logo embedding. Use PNG, JPG, or WebP formats for QR codes with logos.
+</div>
+
+<script>
+  // Update image and download links when logo option changes
+  document.getElementById('includeLogo').addEventListener('change', function() {
+    const logoParam = this.checked ? '&include_logo=true' : '';
+    // When including a logo, always use the highest error correction level
+    const errorParam = this.checked ? '&error_level=h' : '';
+    // Use a larger size when including a logo for better visibility
+    const sizeParam = this.checked ? '&size=20' : '&size=10';
+    
+    // Update error level display
+    document.getElementById('errorLevelDisplay').textContent = this.checked ? 'h (High - for logo)' : '{{ qr.error_level }}';
+    
+    // Update the image source with logo, error level and size parameters
+    document.getElementById('qrImage').src = `/api/v1/qr/{{ qr.id }}/image?image_format=png${sizeParam}${logoParam}${errorParam}`;
+    
+    // Update download links with all parameters
+    document.getElementById('pngDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=png${sizeParam}${logoParam}${errorParam}`;
+    document.getElementById('svgDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=svg${sizeParam}${logoParam}${errorParam}`;
+    document.getElementById('jpgDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=jpeg${sizeParam}${logoParam}${errorParam}`;
+    document.getElementById('webpDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=webp${sizeParam}${logoParam}${errorParam}`;
+    
+    // Show/hide the format note based on logo selection
+    document.getElementById('formatNote').style.display = this.checked ? 'block' : 'none';
+  });
+</script> 
