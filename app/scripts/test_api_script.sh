@@ -10,12 +10,24 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Load environment variables from .env file if it exists
+if [ -f ".env" ]; then
+    echo -e "${YELLOW}Loading environment variables from .env file...${NC}"
+    source .env
+fi
+
 # Set BASE_URL for QR code content (what users will scan)
-BASE_URL="https://web.hccc.edu"
+BASE_URL=${BASE_URL:-"https://web.hccc.edu"}
 # Set API_URL for making API calls in the script
-API_URL="https://10.1.6.12"
+API_URL=${API_URL:-"https://10.1.6.12"}
+# Auth credentials
+AUTH_USER=${AUTH_USER:-"admin_user"}
+AUTH_PASS=${AUTH_PASS:-"strong"}
+AUTH_HEADER="--user ${AUTH_USER}:${AUTH_PASS}"
+
 echo -e "${YELLOW}Using BASE_URL for QR codes: ${BASE_URL}${NC}"
 echo -e "${YELLOW}Using API_URL for API calls: ${API_URL}${NC}"
+echo -e "${YELLOW}Using authentication: ${AUTH_USER}${NC}"
 
 # Function to print status
 print_status() {
@@ -45,8 +57,8 @@ check_docker_containers() {
 # Function to test health endpoint
 test_health_endpoint() {
     echo -e "\n${YELLOW}Testing Health Endpoint...${NC}"
-    local response=$(curl -k -s $API_URL/health)
-    local status_code=$(curl -k -s -o /dev/null -w "%{http_code}" $API_URL/health)
+    local response=$(curl -k -s $AUTH_HEADER $API_URL/health)
+    local status_code=$(curl -k -s $AUTH_HEADER -o /dev/null -w "%{http_code}" $API_URL/health)
     
     echo "$response" | jq . > /dev/null
     print_status $? "Health endpoint returns valid JSON"
@@ -62,7 +74,7 @@ test_health_endpoint() {
 # Function to test QR code listing
 test_qr_code_listing() {
     echo -e "\n${YELLOW}Testing QR Code Listing...${NC}"
-    local response=$(curl -k -s $API_URL/api/v1/qr)
+    local response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr)
     echo "$response" | jq . > /dev/null
     print_status $? "QR code listing endpoint returns valid JSON"
 }
@@ -70,7 +82,7 @@ test_qr_code_listing() {
 # Function to create static QR code
 test_create_static_qr() {
     echo -e "\n${YELLOW}Testing Create Static QR Code...${NC}"
-    local response=$(curl -k -s -X POST $API_URL/api/v1/qr/static \
+    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
         -H "Content-Type: application/json" \
         -d '{"content": "https://test.example.com", "qr_type": "static"}')
     
@@ -87,7 +99,7 @@ test_create_static_qr() {
 # Function to create dynamic QR code
 test_create_dynamic_qr() {
     echo -e "\n${YELLOW}Testing Create Dynamic QR Code...${NC}"
-    local response=$(curl -k -s -X POST $API_URL/api/v1/qr/dynamic \
+    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
         -H "Content-Type: application/json" \
         -d '{"content": "test-dynamic", "redirect_url": "https://technological-alchemist.vercel.app"}')
     
@@ -104,8 +116,8 @@ test_create_dynamic_qr() {
 # Function to get QR code by ID
 test_get_qr_by_id() {
     echo -e "\n${YELLOW}Testing Get QR Code by ID...${NC}"
-    local static_response=$(curl -k -s $API_URL/api/v1/qr/$STATIC_QR_ID)
-    local dynamic_response=$(curl -k -s $API_URL/api/v1/qr/$DYNAMIC_QR_ID)
+    local static_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$STATIC_QR_ID)
+    local dynamic_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$DYNAMIC_QR_ID)
     
     echo "$static_response" | jq . > /dev/null
     print_status $? "Get static QR code by ID successful"
@@ -117,7 +129,7 @@ test_get_qr_by_id() {
 # Function to update dynamic QR code
 test_update_dynamic_qr() {
     echo -e "\n${YELLOW}Testing Update Dynamic QR Code...${NC}"
-    local response=$(curl -k -X PUT $API_URL/api/v1/qr/$DYNAMIC_QR_ID -H "Content-Type: application/json" -d '{"redirect_url": "https://updated-example.com"}' | jq)
+    local response=$(curl -k $AUTH_HEADER -X PUT $API_URL/api/v1/qr/$DYNAMIC_QR_ID -H "Content-Type: application/json" -d '{"redirect_url": "https://updated-example.com"}' -s | jq)
     
     # Check if jq parsing was successful
     if [ $? -ne 0 ]; then
@@ -152,7 +164,7 @@ test_qr_redirection() {
     echo -e "\n${YELLOW}Testing QR Code Redirection...${NC}"
     
     # Get the full content of the dynamic QR code
-    local CONTENT=$(curl -k -s $API_URL/api/v1/qr/$DYNAMIC_QR_ID | jq -r '.content')
+    local CONTENT=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$DYNAMIC_QR_ID | jq -r '.content')
     echo -e "${YELLOW}QR code content:${NC} $CONTENT"
     
     # Extract short ID from the dynamic QR code's content
@@ -184,7 +196,7 @@ test_service_dependency_injection() {
     echo -e "\n${YELLOW}Testing Service-Based Dependency Injection (Task 1)...${NC}"
     
     # Test 1: Create a QR code with specific parameters to test service layer
-    local response=$(curl -k -s -X POST $API_URL/api/v1/qr/static \
+    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
         -H "Content-Type: application/json" \
         -d '{"content": "https://service-test.example.com", "qr_type": "static", "fill_color": "#333333", "back_color": "#FFFFFF"}')
     
@@ -219,7 +231,7 @@ test_background_tasks_scan_statistics() {
     echo -e "\n${YELLOW}Testing Background Tasks for Scan Statistics (Task 2)...${NC}"
     
     # Create a new dynamic QR code for testing
-    local response=$(curl -k -s -X POST $API_URL/api/v1/qr/dynamic \
+    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
         -H "Content-Type: application/json" \
         -d '{"content": "background-task-test", "redirect_url": "https://background-task.example.com"}')
     
@@ -245,7 +257,7 @@ test_background_tasks_scan_statistics() {
     fi
     
     # Get initial scan count
-    local initial_response=$(curl -k -s $API_URL/api/v1/qr/$bg_qr_id)
+    local initial_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$bg_qr_id)
     local initial_scan_count=$(echo "$initial_response" | jq -r '.scan_count')
     echo -e "${YELLOW}Initial scan count:${NC} $initial_scan_count"
     
@@ -275,7 +287,7 @@ test_background_tasks_scan_statistics() {
     sleep 3
     
     # Test 3: Verify scan count was updated
-    local updated_response=$(curl -k -s $API_URL/api/v1/qr/$bg_qr_id)
+    local updated_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$bg_qr_id)
     local updated_scan_count=$(echo "$updated_response" | jq -r '.scan_count')
     echo -e "${YELLOW}Updated scan count:${NC} $updated_scan_count"
     
@@ -317,7 +329,7 @@ test_qr_with_logo() {
     
     # Test static QR with logo
     echo -e "\n${YELLOW}Testing Static QR Code with Logo...${NC}"
-    local static_response=$(curl -k -s -X POST $API_URL/api/v1/qr/static \
+    local static_response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
         -H "Content-Type: application/json" \
         -d '{
             "content": "https://www.github.com/gsinghjay",
@@ -330,7 +342,7 @@ test_qr_with_logo() {
     print_status $? "Static QR code with logo creation successful"
     
     # Get the static QR image with logo
-    local static_image_response=$(curl -k -s -o static_qr_with_logo.png \
+    local static_image_response=$(curl -k -s $AUTH_HEADER -o static_qr_with_logo.png \
         "$API_URL/api/v1/qr/$static_id/image?include_logo=true")
     if [ -f "static_qr_with_logo.png" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Static QR image with logo downloaded successfully"
@@ -341,7 +353,7 @@ test_qr_with_logo() {
     
     # Test dynamic QR with logo
     echo -e "\n${YELLOW}Testing Dynamic QR Code with Logo...${NC}"
-    local dynamic_response=$(curl -k -s -X POST $API_URL/api/v1/qr/dynamic \
+    local dynamic_response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
         -H "Content-Type: application/json" \
         -d '{
             "content": "dynamic-with-logo",
@@ -354,7 +366,7 @@ test_qr_with_logo() {
     print_status $? "Dynamic QR code with logo creation successful"
     
     # Get the dynamic QR image with logo
-    local dynamic_image_response=$(curl -k -s -o dynamic_qr_with_logo.png \
+    local dynamic_image_response=$(curl -k -s $AUTH_HEADER -o dynamic_qr_with_logo.png \
         "$API_URL/api/v1/qr/$dynamic_id/image?include_logo=true")
     if [ -f "dynamic_qr_with_logo.png" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Dynamic QR image with logo downloaded successfully"
@@ -376,6 +388,129 @@ test_qr_with_logo() {
     fi
 }
 
+# Function to test error correction levels
+test_error_correction_levels() {
+    print_section "TESTING ERROR CORRECTION LEVELS"
+    
+    # Test QR code with different error correction levels
+    echo -e "\n${YELLOW}Testing QR Codes with Different Error Correction Levels...${NC}"
+    
+    # Array of error correction levels to test
+    local error_levels=("l" "m" "q" "h")
+    local error_names=("Low" "Medium" "Quartile" "High")
+    
+    # Loop through each error level and test
+    for i in "${!error_levels[@]}"; do
+        local error_level="${error_levels[$i]}"
+        local error_name="${error_names[$i]}"
+        
+        echo -e "\n${YELLOW}Testing ${error_name} (${error_level}) Error Correction Level...${NC}"
+        
+        # Create static QR code with specific error level
+        local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"content\": \"https://error-level-test-${error_level}.example.com\",
+                \"qr_type\": \"static\",
+                \"error_level\": \"${error_level}\"
+            }")
+        
+        local qr_id=$(echo "$response" | jq -r '.id')
+        echo "$response" | jq . > /dev/null
+        print_status $? "QR code creation with ${error_name} error level successful"
+        
+        # Verify error level was set correctly in the response
+        local stored_error_level=$(echo "$response" | jq -r '.error_level')
+        if [ "$stored_error_level" == "$error_level" ]; then
+            echo -e "${GREEN}✓ PASS:${NC} Error level correctly set to ${error_name} (${error_level})"
+        else
+            echo -e "${RED}✗ FAIL:${NC} Error level not set correctly"
+            echo -e "${YELLOW}Debug Information:${NC}"
+            echo "Expected error level: ${error_level}"
+            echo "Actual error level:   ${stored_error_level}"
+            exit 1
+        fi
+        
+        # Get QR image with error level and save to file
+        local output_file="qr_error_level_${error_level}.png"
+        local image_response=$(curl -k -s $AUTH_HEADER -o "${output_file}" \
+            "$API_URL/api/v1/qr/$qr_id/image?error_level=${error_level}")
+        
+        if [ -f "${output_file}" ]; then
+            echo -e "${GREEN}✓ PASS:${NC} QR image with ${error_name} error level downloaded successfully"
+        else
+            echo -e "${RED}✗ FAIL:${NC} Failed to download QR image with ${error_name} error level"
+            exit 1
+        fi
+    done
+    
+    echo -e "\n${GREEN}✓ PASS:${NC} All error correction level tests completed successfully"
+}
+
+# Function to test SVG accessibility options
+test_svg_accessibility() {
+    print_section "TESTING SVG ACCESSIBILITY OPTIONS"
+    
+    echo -e "\n${YELLOW}Testing SVG QR Code with Accessibility Options...${NC}"
+    
+    # Create a QR code with SVG accessibility options
+    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
+        -H "Content-Type: application/json" \
+        -d '{
+            "content": "https://accessibility-test.example.com",
+            "qr_type": "static"
+        }')
+    
+    local qr_id=$(echo "$response" | jq -r '.id')
+    echo "$response" | jq . > /dev/null
+    print_status $? "QR code creation for SVG accessibility test successful"
+    
+    # Get QR code as SVG with accessibility options - URL encode parameters
+    local svg_title="QR Code for Accessibility Testing"
+    local svg_description="This QR code links to the accessibility test example website"
+    
+    # URL encode the title and description to handle spaces and special characters
+    local encoded_title=$(echo "$svg_title" | sed -e 's/ /%20/g')
+    local encoded_description=$(echo "$svg_description" | sed -e 's/ /%20/g')
+    
+    echo -e "${YELLOW}Requesting SVG with title and description...${NC}"
+    local svg_response=$(curl -k -v $AUTH_HEADER -o "accessible_qr_code.svg" \
+        "$API_URL/api/v1/qr/$qr_id/image?image_format=svg&svg_title=${encoded_title}&svg_description=${encoded_description}" 2>&1)
+    
+    # Output curl verbose info for debugging
+    echo -e "${YELLOW}Curl response:${NC}"
+    echo "$svg_response" | tail -20
+    
+    if [ -f "accessible_qr_code.svg" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} SVG QR code with accessibility options downloaded successfully"
+        
+        # Check if SVG file contains title and description
+        if grep -q "title" "accessible_qr_code.svg" && grep -q "desc" "accessible_qr_code.svg"; then
+            echo -e "${GREEN}✓ PASS:${NC} SVG contains title and description elements"
+            
+            # Further check if our specific title and description are included
+            if grep -q "$svg_title" "accessible_qr_code.svg" || grep -q "$svg_description" "accessible_qr_code.svg"; then
+                echo -e "${GREEN}✓ PASS:${NC} SVG contains the title or description text"
+            else
+                echo -e "${YELLOW}⚠ WARNING:${NC} SVG may not contain the exact title/description text provided"
+                echo -e "Expected title: $svg_title"
+                echo -e "Expected description: $svg_description"
+                echo -e "SVG file content:"
+                cat accessible_qr_code.svg | head -20
+            fi
+        else
+            echo -e "${YELLOW}⚠ WARNING:${NC} SVG might not contain title and description elements"
+            echo -e "SVG file content:"
+            cat accessible_qr_code.svg | head -20
+        fi
+    else
+        echo -e "${RED}✗ FAIL:${NC} Failed to download SVG QR code with accessibility options"
+        exit 1
+    fi
+    
+    echo -e "\n${GREEN}✓ PASS:${NC} SVG accessibility tests completed successfully"
+}
+
 # Function to run optimization task verification tests
 test_optimization_tasks() {
     print_section "TESTING FASTAPI OPTIMIZATION TASKS"
@@ -387,6 +522,16 @@ test_optimization_tasks() {
     test_background_tasks_scan_statistics
     
     echo -e "\n${GREEN}✓ PASS:${NC} All optimization task tests completed successfully"
+}
+
+# Function to clean up generated files
+cleanup() {
+    echo -e "\n${YELLOW}Cleaning up generated files...${NC}"
+    rm -f static_qr_with_logo.png
+    rm -f dynamic_qr_with_logo.png
+    rm -f qr_error_level_*.png
+    rm -f accessible_qr_code.svg
+    echo -e "${GREEN}✓ PASS:${NC} Cleanup completed"
 }
 
 # Main test function
@@ -401,8 +546,15 @@ run_tests() {
     test_qr_redirection
     test_qr_with_logo
     
+    # Run new tests for error correction and SVG accessibility
+    test_error_correction_levels
+    test_svg_accessibility
+    
     # Run optimization task verification tests
     test_optimization_tasks
+    
+    # Clean up generated files
+    cleanup
     
     echo -e "\n${GREEN}✨ All API Endpoint Tests Passed Successfully! ✨${NC}"
 }

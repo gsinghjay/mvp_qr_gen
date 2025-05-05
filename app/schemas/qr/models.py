@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
-from ..common import QRType
+from ..common import QRType, ErrorCorrectionLevel
 
 
 class QRCodeBase(BaseModel):
@@ -17,6 +17,7 @@ class QRCodeBase(BaseModel):
     back_color: str = Field(default="#FFFFFF", pattern=r"^#[0-9A-Fa-f]{6}$")
     size: int = Field(default=10, ge=1, le=100)
     border: int = Field(default=4, ge=0, le=20)
+    error_level: str = Field(default=ErrorCorrectionLevel.M.value, description="Error correction level")
 
     @field_validator("fill_color", "back_color")
     @classmethod
@@ -64,6 +65,7 @@ class QRCodeResponse(QRCodeBase):
                 "back_color": "#FFFFFF",
                 "size": 10,
                 "border": 4,
+                "error_level": "m"
             }
         }
     )

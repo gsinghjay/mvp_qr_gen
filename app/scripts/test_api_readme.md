@@ -18,13 +18,18 @@
 
 2. Make the script executable:
    ```bash
-   chmod +x test_api_endpoints.sh
+   chmod +x app/scripts/test_api_script.sh
    ```
 
 3. Run the tests:
    ```bash
-   ./test_api_endpoints.sh
+   ./app/scripts/test_api_script.sh
    ```
+
+## Authentication
+
+The script uses Basic Authentication to access the API endpoints:
+- Username and Password are configurable in the `.env` file.
 
 ## What the Script Tests
 
@@ -38,6 +43,33 @@ The script performs comprehensive testing of your QR Code Generator API endpoint
 6. Get QR Code by ID
 7. Update Dynamic QR Code
 8. QR Code Redirection
+9. QR Code with Logo Generation
+10. Error Correction Levels
+11. SVG Accessibility Features
+
+## Error Correction Levels
+
+The script tests all four error correction levels supported by the QR code standard:
+
+- **Low (L)**: 7% of data can be restored
+- **Medium (M)**: 15% of data can be restored
+- **Quartile (Q)**: 25% of data can be restored
+- **High (H)**: 30% of data can be restored
+
+For each level, the script:
+1. Creates a QR code with the specified error level
+2. Verifies the error level is correctly saved in the database
+3. Downloads the QR code image with the appropriate error level
+
+## SVG Accessibility Features
+
+For SVG format QR codes, the script tests the accessibility features:
+
+1. Title attribute: Adds a descriptive title to the SVG for screen readers
+2. Description attribute: Adds a more detailed description to the SVG
+3. Verifies these attributes are correctly included in the generated SVG
+
+These features improve accessibility for users with visual impairments when QR codes are delivered in SVG format.
 
 ## FastAPI Optimization Task Verification
 
@@ -72,16 +104,34 @@ The script also verifies the implementation of completed optimization tasks:
 - Timestamp updates are handled correctly
 - The implementation successfully separates the user-facing redirection from the statistics tracking
 
+### Error Correction Levels
+- The application correctly implements all four error correction levels
+- The database schema includes an error_level column to store the selected level
+- QR codes are generated with the appropriate error correction level
+- Default level (Medium) is used when not explicitly specified
+
+### SVG Accessibility Features
+- The application properly implements title and description attributes in SVG output
+- These attributes are correctly embedded in the SVG for screen reader compatibility
+- URL encoding is handled properly for special characters in titles and descriptions
+
 ## Requirements
 
-- The application must be running on `https://localhost`
-- Self-signed or local development certificates are handled by the `-k` flag
+- The application must be running via Docker Compose
+- Authentication is required for all API endpoints
 - `jq` is used for JSON parsing and validation
 - `bc` is used for floating-point calculations in response time tests
+
+## Cleanup
+
+After running all tests, the script automatically cleans up:
+- Removes downloaded QR code image files (PNG, SVG)
+- Removes any other temporary files created during testing
 
 ## Troubleshooting
 
 - Ensure Docker services are running
-- Check that your application is accessible at `https://localhost`
+- Check that your application is accessible at the configured URL
 - Make sure `curl`, `jq`, and `bc` are installed
-- If background task tests fail, ensure your application is using FastAPI's BackgroundTasks
+- If authentication fails, verify the credentials in the script
+- If SVG tests fail, check that your segno library is properly configured

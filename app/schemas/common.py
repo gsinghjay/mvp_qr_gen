@@ -25,6 +25,20 @@ class ImageFormat(str, Enum):
     WEBP = "webp"
 
 
+class ErrorCorrectionLevel(str, Enum):
+    """
+    QR code error correction levels.
+    
+    The error correction level determines how much of the QR code can be damaged 
+    or obscured while still remaining scannable.
+    """
+    
+    L = "l"  # Low - 7% of data can be restored
+    M = "m"  # Medium - 15% of data can be restored
+    Q = "q"  # Quartile - 25% of data can be restored
+    H = "h"  # High - 30% of data can be restored
+
+
 class ColorValidator:
     """Validator for color values."""
 

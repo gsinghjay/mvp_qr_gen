@@ -7,7 +7,7 @@ These models provide consistent validation and documentation for API parameters.
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
-from ..common import ImageFormat, QRType
+from ..common import ImageFormat, QRType, ErrorCorrectionLevel
 
 
 class QRListParameters(BaseModel):
@@ -57,6 +57,20 @@ class QRImageParameters(BaseModel):
         default=False,
         description="Whether to include the default logo in the QR code"
     )
+    error_level: ErrorCorrectionLevel = Field(
+        default=ErrorCorrectionLevel.M,
+        description="Error correction level determines how much of the QR code can be damaged while still being scannable"
+    )
+    svg_title: str | None = Field(
+        default=None,
+        description="Title for SVG format (improves accessibility)",
+        max_length=100
+    )
+    svg_description: str | None = Field(
+        default=None,
+        description="Description for SVG format (improves accessibility)",
+        max_length=500
+    )
 
 
 class QRCreateParameters(BaseModel):
@@ -74,6 +88,10 @@ class QRCreateParameters(BaseModel):
     )
     size: int = Field(default=10, ge=1, le=100, description="QR code size (1-100)")
     border: int = Field(default=4, ge=0, le=20, description="QR code border width (0-20)")
+    error_level: ErrorCorrectionLevel = Field(
+        default=ErrorCorrectionLevel.M,
+        description="Error correction level determines how much of the QR code can be damaged while still being scannable"
+    )
 
     @model_validator(mode="after")
     def validate_colors_are_different(self) -> "QRCreateParameters":

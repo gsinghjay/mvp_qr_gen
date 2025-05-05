@@ -102,6 +102,7 @@ class QRCodeService:
                 qr_type=QRType.STATIC,
                 fill_color=data.fill_color,
                 back_color=data.back_color,
+                error_level=data.error_level.value,
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
             )
@@ -154,6 +155,7 @@ class QRCodeService:
                 redirect_url=str(data.redirect_url),  # Explicitly convert to string
                 fill_color=data.fill_color,
                 back_color=data.back_color,
+                error_level=data.error_level.value,
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
             )
@@ -377,10 +379,12 @@ class QRCodeService:
         border: int = 4,
         fill_color: str = "black",
         back_color: str = "white",
-        error_correction: int = None,  # Remove qrcode.constants.ERROR_CORRECT_H
+        error_level: str | None = None,
         image_format: str = "png",
         image_quality: int | None = None,
-        include_logo: bool = False,  # Add include_logo parameter
+        include_logo: bool = False,
+        svg_title: str | None = None,
+        svg_description: str | None = None,
     ) -> StreamingResponse:
         """
         Generate a QR code with the given parameters.
@@ -391,10 +395,12 @@ class QRCodeService:
             border: Border size around the QR code
             fill_color: Color of the QR code pattern
             back_color: Background color
-            error_correction: Error correction level (not used with segno)
+            error_level: Error correction level (l, m, q, h)
             image_format: Output image format (png, jpeg, svg, webp)
             image_quality: Quality for lossy formats (1-100)
             include_logo: Whether to include the default logo
+            svg_title: Optional title for SVG format (improves accessibility)
+            svg_description: Optional description for SVG format (improves accessibility)
 
         Returns:
             StreamingResponse: FastAPI response containing the QR code image
@@ -414,7 +420,10 @@ class QRCodeService:
             back_color=back_color,
             border=border,
             image_quality=image_quality,
-            logo_path=True if include_logo else None  # Pass logo_path based on include_logo
+            logo_path=True if include_logo else None,  # Pass logo_path based on include_logo
+            error_level=error_level,
+            svg_title=svg_title,
+            svg_description=svg_description
         )
 
     def list_qr_codes(
