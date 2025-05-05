@@ -8,7 +8,8 @@
 {% endif %}
 
 <div class="modal-body">
-  <div class="text-center mb-2">
+  <!-- QR Image Section -->
+  <div class="text-center mb-3">
     <div class="form-check form-switch d-flex justify-content-center align-items-center mb-2">
       <input class="form-check-input me-2" type="checkbox" id="includeLogo">
       <label class="form-check-label" for="includeLogo">Include Logo</label>
@@ -16,63 +17,111 @@
     <img id="qrImage" src="/api/v1/qr/{{ qr.id }}/image?image_format=png&size=10" alt="QR Code" class="img-fluid border" style="max-width: 250px;">
   </div>
   
-  <div class="table-responsive">
-    <table class="table table-striped">
-      <tr>
-        <th style="width: 140px;">ID:</th>
-        <td>{{ qr.id }}</td>
-      </tr>
-      <tr>
-        <th>Type:</th>
-        <td>{{ qr.qr_type|title }}</td>
-      </tr>
-      <tr>
-        <th>Created:</th>
-        <td>{{ qr.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-      </tr>
-      <tr>
-        <th>Error Level:</th>
-        <td id="errorLevelDisplay">{{ qr.error_level }}</td>
-      </tr>
-      {% if qr.qr_type == "static" %}
-      <tr>
-        <th>Content:</th>
-        <td>{{ qr.content }}</td>
-      </tr>
-      {% else %}
-      <tr>
-        <th>Redirect URL:</th>
-        <td><a href="{{ qr.redirect_url }}" target="_blank">{{ qr.redirect_url }}</a></td>
-      </tr>
-      <tr>
-        <th>Short URL:</th>
-        <td>
-          {% set short_id = qr.content.split('/r/')[-1] if '/r/' in qr.content else qr.content.split('/')[-1] %}
-          {% set short_url = "https://web.hccc.edu/r/" + short_id %}
+  <!-- Basic Information Card -->
+  <div class="card mb-3">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">Basic Information</h6>
+    </div>
+    <div class="card-body">
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">ID:</div>
+        <div class="col-8">{{ qr.id }}</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Type:</div>
+        <div class="col-8">{{ qr.qr_type|title }}</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Created:</div>
+        <div class="col-8">{{ created_at_formatted }}</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Error Level:</div>
+        <div class="col-8" id="errorLevelDisplay">{{ error_level_display }}</div>
+      </div>
+      {% if qr.qr_type == "dynamic" and short_url %}
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Short URL:</div>
+        <div class="col-8">
           <a href="/r/{{ short_id }}" target="_blank">{{ short_url }}</a>
-        </td>
-      </tr>
-      <tr>
-        <th>Scan Count:</th>
-        <td>{{ qr.scan_count or 0 }}</td>
-      </tr>
-      <tr>
-        <th>Last Scanned:</th>
-        <td>
-          {% if qr.last_scan_at %}
-            {{ qr.last_scan_at.strftime('%Y-%m-%d %H:%M') }}
-          {% else %}
-            Never
-          {% endif %}
-        </td>
-      </tr>
+          <button class="btn btn-sm btn-outline-secondary ms-2" onclick="navigator.clipboard.writeText('{{ short_url }}')">
+            <i class="bi bi-clipboard"></i> Copy
+          </button>
+        </div>
+      </div>
       {% endif %}
-    </table>
+    </div>
+  </div>
+  
+  <!-- Content Section for Static QR Codes -->
+  {% if qr.qr_type == "static" %}
+  <div class="card mb-3">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">Content</h6>
+    </div>
+    <div class="card-body">
+      <p class="text-break mb-0">
+        {% if qr.content.startswith('http') %}
+          <a href="{{ qr.content }}" target="_blank">{{ qr.content }}</a>
+        {% else %}
+          {{ qr.content }}
+        {% endif %}
+      </p>
+    </div>
+  </div>
+  {% endif %}
+  
+  <!-- Redirect URL for Dynamic QR Codes -->
+  {% if qr.qr_type == "dynamic" %}
+  <div class="card mb-3">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">Destination URL</h6>
+    </div>
+    <div class="card-body">
+      <p class="text-break mb-0">
+        <a href="{{ qr.redirect_url }}" target="_blank">{{ qr.redirect_url }}</a>
+      </p>
+    </div>
+  </div>
+  {% endif %}
+  
+  <!-- Usage Statistics Card -->
+  {% if qr.qr_type == "dynamic" %}
+  <div class="card mb-3">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">Usage Statistics</h6>
+    </div>
+    <div class="card-body">
+      {% if has_scan_data %}
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Scan Count:</div>
+        <div class="col-8">{{ qr.scan_count }}</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Last Scanned:</div>
+        <div class="col-8">{{ last_scan_formatted }}</div>
+      </div>
+      <div class="alert alert-info mb-0 mt-3 small">
+        <i class="bi bi-info-circle me-2"></i> More detailed statistics including device types and geographic data will be available soon in the upcoming dedicated statistics page.
+      </div>
+      {% else %}
+      <div class="alert alert-info mb-0">
+        <i class="bi bi-info-circle me-2"></i> This QR code has not been scanned yet.
+        <div class="mt-2 small">More detailed statistics will appear here after the first scan.</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  
+  <!-- Coming Soon Notification -->
+  <div class="alert alert-primary small">
+    <i class="bi bi-graph-up me-2"></i> <strong>Coming Soon:</strong> A dedicated statistics page with enhanced metrics including device types, geographic data, and scan patterns.
   </div>
 </div>
 
 <div class="modal-footer">
-  <div class="btn-group">
+  <div class="btn-group me-auto">
     <a href="/api/v1/qr/{{ qr.id }}/image?image_format=png&size=10" id="pngDownload" download="qr-{{ qr.id }}.png" class="btn btn-secondary">
       <i class="bi bi-file-image me-1"></i> PNG
     </a>
@@ -114,7 +163,7 @@
     const sizeParam = this.checked ? '&size=20' : '&size=10';
     
     // Update error level display
-    document.getElementById('errorLevelDisplay').textContent = this.checked ? 'h (High - for logo)' : '{{ qr.error_level }}';
+    document.getElementById('errorLevelDisplay').textContent = this.checked ? 'H (High - for logo)' : '{{ error_level_display }}';
     
     // Update the image source with logo, error level and size parameters
     document.getElementById('qrImage').src = `/api/v1/qr/{{ qr.id }}/image?image_format=png${sizeParam}${logoParam}${errorParam}`;
