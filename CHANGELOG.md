@@ -1,6 +1,32 @@
 # CHANGELOG
 
 
+## v0.18.0 (2025-05-05)
+
+### Features
+
+- Added auth to test scripts
+  ([`657f4c3`](https://github.com/gsinghjay/mvp_qr_gen/commit/657f4c3ed09517e6d2a2c1ba6dc25b334603901c))
+
+- **api**: Update endpoints to support error correction and SVG accessibility
+  ([`7defd7b`](https://github.com/gsinghjay/mvp_qr_gen/commit/7defd7b5bb7c15ae6103b086014a7dc1367c115f))
+
+- **db**: Add error_level column to qr_codes table
+  ([`64b6ed8`](https://github.com/gsinghjay/mvp_qr_gen/commit/64b6ed8f633b12c8d0a083d7c12ef506c5efd77a))
+
+- **models**: Add error_level field to QRCode model
+  ([`111ad77`](https://github.com/gsinghjay/mvp_qr_gen/commit/111ad77221c3a3d192f7b67b054d3da64fe256bb))
+
+- **schemas**: Add error correction level and SVG accessibility parameters
+  ([`0ce1381`](https://github.com/gsinghjay/mvp_qr_gen/commit/0ce138161678427c5bf4971f667ecbfdedd0174d))
+
+- **services**: Implement error correction level in QR generation service
+  ([`4a2fe45`](https://github.com/gsinghjay/mvp_qr_gen/commit/4a2fe451b6e4f54be297a4b47c6b758703ce9342))
+
+- **utils**: Enhance QR generation with error levels and SVG accessibility
+  ([`8106a54`](https://github.com/gsinghjay/mvp_qr_gen/commit/8106a54193e58b7761fb8eb4b2321dad724ed328))
+
+
 ## v0.17.0 (2025-05-04)
 
 ### Chores
