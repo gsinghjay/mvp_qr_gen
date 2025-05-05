@@ -60,8 +60,9 @@ async def home(request: Request, qr_service: QRServiceDep):
         # Get dashboard data using the service
         dashboard_data = qr_service.get_dashboard_data()
         
+        # Use the new HTMX-based dashboard template
         return templates.TemplateResponse(
-            name="dashboard.html",
+            name="pages/dashboard.html",
             context={
                 "request": request,  # Required by Jinja2Templates
                 "total_qr_codes": dashboard_data["total_qr_codes"],
@@ -71,7 +72,7 @@ async def home(request: Request, qr_service: QRServiceDep):
     except DatabaseError as e:
         logger.error("Database error in home page", extra={"error": str(e)})
         return templates.TemplateResponse(
-            name="dashboard.html",
+            name="pages/dashboard.html",
             context={
                 "request": request,  # Required by Jinja2Templates
                 "total_qr_codes": 0,
@@ -92,7 +93,7 @@ async def qr_list(request: Request, qr_service: QRServiceDep):
         dashboard_data = qr_service.get_dashboard_data()
         
         return templates.TemplateResponse(
-            name="qr_list.html",
+            name="pages/qr_list.html",
             context={
                 "request": request,
                 "total_qr_codes": dashboard_data["total_qr_codes"],
@@ -101,7 +102,7 @@ async def qr_list(request: Request, qr_service: QRServiceDep):
     except DatabaseError as e:
         logger.error("Database error in QR list page", extra={"error": str(e)})
         return templates.TemplateResponse(
-            name="qr_list.html",
+            name="pages/qr_list.html",
             context={
                 "request": request,
                 "total_qr_codes": 0,
@@ -127,7 +128,7 @@ async def qr_create(request: Request):
     """
     try:
         return templates.TemplateResponse(
-            name="qr_create.html",
+            name="pages/qr_create.html",
             context={
                 "request": request,
                 "is_authenticated": True,  # Network-level authentication is now used
@@ -136,7 +137,7 @@ async def qr_create(request: Request):
     except Exception as e:
         logger.error("Error in QR creation page", extra={"error": str(e)})
         return templates.TemplateResponse(
-            name="qr_create.html",
+            name="pages/qr_create.html",
             context={
                 "request": request,
                 "is_authenticated": True,  # Network-level authentication is now used
@@ -177,7 +178,7 @@ async def qr_detail(
         base_url = f"{settings.BASE_URL}/r/"
         
         return templates.TemplateResponse(
-            name="qr_detail.html",
+            name="pages/qr_detail.html",
             context={
                 "request": request,
                 "is_authenticated": True,  # Network-level authentication is now used
@@ -188,7 +189,7 @@ async def qr_detail(
     except DatabaseError as e:
         logger.error(f"Database error in QR detail page for {qr_id}", extra={"error": str(e)})
         return templates.TemplateResponse(
-            name="qr_detail.html",
+            name="pages/qr_detail.html",
             context={
                 "request": request,
                 "is_authenticated": True,  # Network-level authentication is now used
@@ -200,7 +201,7 @@ async def qr_detail(
     except Exception as e:
         logger.error(f"Error in QR detail page for {qr_id}", extra={"error": str(e)})
         return templates.TemplateResponse(
-            name="qr_detail.html",
+            name="pages/qr_detail.html",
             context={
                 "request": request,
                 "is_authenticated": True,  # Network-level authentication is now used
