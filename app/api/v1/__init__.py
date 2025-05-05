@@ -6,13 +6,14 @@ This module organizes all v1 API endpoints under a single router.
 
 from fastapi import APIRouter
 
-from .endpoints import health, qr, pages
+from .endpoints import health, qr, pages, fragments
 
 # Create the v1 API router
 api_router = APIRouter(prefix="/v1")
 
 # Include endpoint routers
 api_router.include_router(qr.router, prefix="/qr", tags=["QR Codes"])
+api_router.include_router(fragments.router)  # No prefix needed - router has its own prefix
 
 # Create the health router (no prefix under API router)
 health_router = APIRouter()
