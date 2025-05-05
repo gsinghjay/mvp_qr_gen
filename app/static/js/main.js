@@ -1,25 +1,10 @@
 /**
- * Main JavaScript file for the QR Generator application
+ * Main Application Entry Point
+ * 
+ * This file imports all modules and initializes the application.
+ * The modular design facilitates future migration to HTMX + Hyperscript.
  */
-
-// Import script.js init function if available
-import { init as scriptInit } from './script.js';
-
-// Wait for DOM to be fully loaded
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('QR Generator application loaded');
-    
-    // Initialize script.js functionality if available
-    if (typeof scriptInit === 'function') {
-        console.log('Initializing script.js functions');
-        scriptInit();
-    } else {
-        console.warn('script.js init function not available');
-    }
-    
-    // Setup alerts (auto-dismiss after a few seconds)
-    setupAlerts();
-});
+import { init } from './event-initializer.js';
 
 /**
  * Setup auto-dismissing alerts
@@ -46,19 +31,23 @@ function setupAlerts() {
     });
 }
 
-/**
- * Handle the session timeout and redirection
- */
-function checkSessionStatus() {
-    // This function could be expanded in the future to check session status
-    // and show warnings before session timeout
-    return true;
-}
+// Initialize the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('QR Generator application loaded');
+    
+    // Initialize the application
+    init();
+    
+    // Setup auto-dismissing alerts
+    setupAlerts();
+});
 
-// Export functions for testing
+// Also make init available globally for explicit calls
+window.initQRApp = init;
+
+// Export functions for testing (if using a test framework)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        setupAlerts,
-        checkSessionStatus
+        setupAlerts
     };
 } 

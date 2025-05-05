@@ -56,46 +56,192 @@ async def lifespan(app: FastAPI):
     Args:
         app: The FastAPI application instance.
     """
-    # Start up
+    start_time = datetime.now(UTC)
     logger.info("Application starting up...")
 
-    # Creating directories if they don't exist
-    # Ensure QR codes directory exists (should be created in config, but check again)
+    # Step 1: Ensure required directories exist
+    logger.info("Ensuring required directories exist...")
     settings.QR_CODES_DIR.mkdir(parents=True, exist_ok=True)
     
-    # NEW: Pre-initialize key dependencies
-    logger.info("Pre-initializing key dependencies...")
+    # Step 2: Pre-initialize key dependencies and routes
+    logger.info("Pre-initializing key dependencies and routes...")
+    db = None
     try:
         # Create DB session
         db = next(get_db_with_logging())
+        logger.info("Database session created")
         
-        # Initialize QR repository
+        # Initialize repositories and services
         qr_repo = QRCodeRepository(db)
-        
-        # Initialize QR service
         qr_service = QRCodeService(qr_repo)
+        logger.info("Repository and service layers initialized")
         
-        # Test basic operations to trigger code path initialization
+        # Explicitly import routing modules to load them
+        logger.info("Pre-loading route modules...")
+        from .api.v1.endpoints import redirect as redirect_module
+        from .api.v1.endpoints import qr as qr_module
+        logger.info(f"Loaded redirect module: {redirect_module.__name__}")
+        
+        # Pre-load the redirect endpoint function
+        from .api.v1.endpoints.redirect import redirect_qr
+        logger.info("Pre-loaded redirect endpoint function")
+        
+        # Try to warm up the most common code paths
         try:
-            # Perform minimal operations to initialize code paths
+            # Initialize database query paths
             total = qr_repo.count()
             logger.info(f"Database contains {total} QR codes")
             
-            # Initialize QR listing to load more code paths
-            recent_qrs, _ = qr_repo.list_qr_codes(skip=0, limit=1)
+            # Initialize API endpoints and template rendering
+            recent_qrs, _ = qr_repo.list_qr_codes(skip=0, limit=5)
+            
             if recent_qrs:
-                # Touch a QR object to initialize ORM paths
-                _ = recent_qrs[0].id
-                logger.info("Retrieved most recent QR code")
+                # Warm ORM model conversion paths
+                logger.info(f"Warming up ORM paths for {len(recent_qrs)} QR codes...")
+                _ = [qr.id for qr in recent_qrs]
+                _ = [qr.to_dict() for qr in recent_qrs]
+                
+                # Warm up QR generation paths
+                if len(recent_qrs) > 0:
+                    first_qr = recent_qrs[0]
+                    logger.info("Warming up QR image generation...")
+                    # Generate a test QR image to warm up the image generation path
+                    _ = qr_service.generate_qr(
+                        data=first_qr.content,
+                        size=10,
+                        border=4,
+                        fill_color=first_qr.fill_color,
+                        back_color=first_qr.back_color,
+                        image_format="png",
+                        image_quality=90,
+                        include_logo=False,
+                        error_level="M"
+                    )
+                
+                # Exercise the critical redirect path
+                logger.info("Warming up redirect code paths...")
+                dynamic_qrs = [qr for qr in recent_qrs if qr.qr_type == "dynamic"]
+                if dynamic_qrs:
+                    dynamic_qr = dynamic_qrs[0]
+                    # Extract the short_id from the content
+                    content = dynamic_qr.content
+                    if content and "/r/" in content:
+                        # Extract short_id from the URL path
+                        short_id = content.split("/r/")[-1]
+                        
+                        # CRITICAL: Warm up the exact service method used by redirect endpoint
+                        logger.info(f"Warming up get_qr_by_short_id with {short_id}...")
+                        try:
+                            # This calls find_by_pattern in the repository with the correct pattern list
+                            found_qr = qr_service.get_qr_by_short_id(short_id)
+                            logger.info(f"Successfully retrieved QR via short_id: {found_qr.id}")
+                            
+                            # Warm up redirect URL access
+                            if found_qr.qr_type == "dynamic" and found_qr.redirect_url:
+                                logger.info(f"Verifying redirect URL: {found_qr.redirect_url}")
+                            
+                            # Warm up the update_scan_statistics method (used in background task)
+                            try:
+                                # Call with minimal parameters since we're just warming up
+                                qr_service.update_scan_statistics(
+                                    qr_id=found_qr.id,
+                                    timestamp=datetime.now(UTC)
+                                )
+                                logger.info("Warmed up scan statistics update path")
+                            except Exception as e:
+                                logger.warning(f"Scan statistics update warm-up failed: {e}")
+                                
+                        except Exception as e:
+                            logger.warning(f"Service method warm-up failed: {e}")
+                            
+                            # Fallback to repository method directly
+                            patterns = [
+                                f"/r/{short_id}",
+                                f"{settings.BASE_URL}/r/{short_id}",
+                                short_id,
+                                f"%/r/{short_id}"
+                            ]
+                            found_qr = qr_repo.find_by_pattern(patterns)
+                            if found_qr:
+                                logger.info(f"Fallback to repository method successful")
+                                
+                                # Try to warm up update_scan_statistics with correct parameters
+                                try:
+                                    qr_repo.update_scan_statistics(
+                                        qr_id=found_qr.id, 
+                                        timestamp=datetime.now(UTC)
+                                    )
+                                    logger.info("Warmed up repository scan statistics update path")
+                                except Exception as e:
+                                    logger.warning(f"Repository scan statistics update failed: {e}")
+            else:
+                # If no QRs exist, create test ones to warm up paths
+                logger.info("No QR codes found, creating test QRs for initialization...")
+                
+                # Create a static test QR
+                test_static_qr = qr_service.create_static_qr({
+                    "content": "warmup-test",
+                    "size": 5,
+                    "border": 1,
+                    "fill_color": "#000000",
+                    "back_color": "#FFFFFF"
+                })
+                
+                # Create a dynamic test QR
+                test_dynamic_qr = qr_service.create_dynamic_qr({
+                    "redirect_url": "https://example.com",
+                    "size": 5,
+                    "border": 1,
+                    "fill_color": "#000000",
+                    "back_color": "#FFFFFF"
+                })
+                
+                # CRITICAL: Exercise the exact service method used by redirect endpoint
+                content = test_dynamic_qr.content
+                if content and "/r/" in content:
+                    short_id = content.split("/r/")[-1]
+                    logger.info(f"Warming up get_qr_by_short_id with test QR {short_id}...")
+                    try:
+                        found_qr = qr_service.get_qr_by_short_id(short_id)
+                        logger.info(f"Successfully retrieved test QR via short_id service method")
+                        
+                        # Warm up scan statistics with the test QR
+                        qr_service.update_scan_statistics(qr_id=found_qr.id)
+                        logger.info("Warmed up scan statistics with test QR")
+                    except Exception as e:
+                        logger.warning(f"Service method warm-up failed: {e}")
+                
+                # Generate test image
+                _ = qr_service.generate_qr(
+                    data=test_static_qr.content,
+                    size=5,
+                    border=1,
+                    fill_color="#000000",
+                    back_color="#FFFFFF",
+                    image_format="png"
+                )
+                
+                # Clean up test QRs - using correct delete method
+                qr_repo.delete(test_static_qr.id)
+                qr_repo.delete(test_dynamic_qr.id)
+                logger.info("Cleaned up test QRs after initialization")
+                
+            # Warm up error handling code paths
+            logger.info("Warming up error handling code paths...")
+            
         except Exception as e:
             logger.warning(f"Pre-initialization operation failed: {e}")
     except Exception as e:
         logger.warning(f"Pre-initialization failed: {e}")
     finally:
         # Don't forget to close the DB session if it was created
-        if 'db' in locals():
+        if db is not None:
             db.close()
-            logger.info("Pre-initialization complete, closed DB session")
+            logger.info("Pre-initialization DB session closed")
+
+    # Log successful initialization
+    init_duration = (datetime.now(UTC) - start_time).total_seconds()
+    logger.info(f"Application startup complete in {init_duration:.2f}s, ready to handle requests")
 
     yield  # Application runs here
 
