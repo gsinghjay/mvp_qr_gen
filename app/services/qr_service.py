@@ -80,9 +80,86 @@ class QRCodeService:
             raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
         return qr
 
+    def get_qr_by_short_id(self, short_id: str) -> QRCode:
+        """
+        Get a QR code by its short ID (used for redirects).
+
+        Args:
+            short_id: The short ID of the QR code to retrieve
+
+        Returns:
+            The QR code object
+
+        Raises:
+            QRCodeNotFoundError: If the QR code is not found
+            DatabaseError: If a database error occurs
+        """
+        # Build a list of possible patterns to match
+        # 1. Direct content match for static QR codes
+        # 2. /r/{short_id} pattern for relative URLs
+        # 3. https://domain.com/r/{short_id} pattern for absolute URLs with the default domain
+        # 4. Any other absolute URL pattern with /r/{short_id}
+        patterns = [
+            short_id,  # Direct content match
+            f"/r/{short_id}",  # Relative URL pattern
+            f"{settings.BASE_URL}/r/{short_id}",  # Absolute URL with our domain
+            f"%/r/{short_id}",  # LIKE pattern for any domain with our path
+        ]
+
+        # Try to find a QR code matching any of these patterns
+        qr = self.repository.find_by_pattern(patterns)
+        if not qr:
+            logger.warning(f"QR code with short ID {short_id} not found")
+            raise QRCodeNotFoundError(f"QR code with short ID {short_id} not found")
+
+        return qr
+
+    def list_qr_codes(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        qr_type: Union[QRType, str, None] = None,
+        search: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        sort_desc: bool = False,
+    ) -> Tuple[List[QRCode], int]:
+        """
+        List QR codes with optional filtering and sorting.
+
+        Args:
+            skip: Number of records to skip (for pagination)
+            limit: Maximum number of records to return
+            qr_type: QR code type to filter by
+            search: Search term for filtering
+            sort_by: Field to sort by
+            sort_desc: Sort in descending order if true
+
+        Returns:
+            Tuple of (list of QR codes, total count)
+
+        Raises:
+            DatabaseError: If a database error occurs
+        """
+        # Convert enum to value if it's an enum
+        qr_type_str = None
+        if qr_type is not None:
+            if isinstance(qr_type, QRType):
+                qr_type_str = qr_type.value
+            else:
+                qr_type_str = qr_type
+
+        return self.repository.list_qr_codes(
+            skip=skip,
+            limit=limit,
+            qr_type=qr_type_str,
+            search=search,
+            sort_by=sort_by,
+            sort_desc=sort_desc,
+        )
+
     def create_static_qr(self, data: StaticQRCreateParameters) -> QRCode:
         """
-        Create a static QR code.
+        Create a static QR code with the provided content.
 
         Args:
             data: Parameters for creating a static QR code
@@ -100,11 +177,14 @@ class QRCodeService:
                 id=str(uuid.uuid4()),
                 content=data.content,
                 qr_type=QRType.STATIC,
+                title=data.title,
+                description=data.description,
                 fill_color=data.fill_color,
                 back_color=data.back_color,
+                size=data.size,
+                border=data.border,
                 error_level=data.error_level.value,
                 created_at=datetime.now(UTC),
-                updated_at=datetime.now(UTC),
             )
 
             # Validate QR code data
@@ -116,13 +196,17 @@ class QRCodeService:
             logger.info(f"Created static QR code with ID {qr.id}")
             return qr
         except ValidationError as e:
-            # Only catch and translate validation errors
+            # Handle validation errors
             logger.error(f"Validation error creating static QR code: {str(e)}")
             raise QRCodeValidationError(detail=e.errors())
+        except ValueError as e:
+            # Handle value errors like color validation
+            logger.error(f"Validation error creating static QR code: {str(e)}")
+            raise QRCodeValidationError(str(e))
 
     def create_dynamic_qr(self, data: DynamicQRCreateParameters) -> QRCode:
         """
-        Create a dynamic QR code.
+        Create a dynamic QR code with the provided data.
 
         Args:
             data: Parameters for creating a dynamic QR code
@@ -148,11 +232,14 @@ class QRCodeService:
                 content=full_url,
                 qr_type=QRType.DYNAMIC,
                 redirect_url=str(data.redirect_url),  # Explicitly convert to string
+                title=data.title,
+                description=data.description,
                 fill_color=data.fill_color,
                 back_color=data.back_color,
+                size=data.size,
+                border=data.border,
                 error_level=data.error_level.value,
                 created_at=datetime.now(UTC),
-                updated_at=datetime.now(UTC),
             )
 
             # Validate QR code data
@@ -181,9 +268,9 @@ class QRCodeService:
             logger.error(f"Validation error creating dynamic QR code: {str(e)}")
             raise QRCodeValidationError(str(e))
 
-    def update_dynamic_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
+    def update_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
         """
-        Update a dynamic QR code.
+        Update a QR code with the provided data.
 
         Args:
             qr_id: The ID of the QR code to update
@@ -202,23 +289,38 @@ class QRCodeService:
             # Get the QR code
             qr = self.get_qr_by_id(qr_id)
 
-            # Verify it's a dynamic QR code
-            if qr.qr_type != QRType.DYNAMIC.value:
-                raise QRCodeValidationError(f"Cannot update non-dynamic QR code: {qr_id}")
-
-            # Update the QR code using repository
+            # Build update data dictionary
             update_data = {}
-            if data.redirect_url:
+            
+            # Handle title update
+            if data.title is not None:
+                update_data["title"] = data.title
+                
+            # Handle description update
+            if data.description is not None:
+                update_data["description"] = data.description
+                
+            # Handle redirect_url update (only for dynamic QR codes)
+            if data.redirect_url is not None:
+                # Verify it's a dynamic QR code
+                if qr.qr_type != QRType.DYNAMIC.value:
+                    raise QRCodeValidationError(f"Cannot update redirect URL for non-dynamic QR code: {qr_id}")
                 # Ensure redirect_url is a string
                 update_data["redirect_url"] = str(data.redirect_url)
+            
+            # Only set updated_at if we're actually updating something
+            if update_data:
                 update_data["updated_at"] = datetime.now(UTC)
+            else:
+                # No fields to update - return the existing QR code
+                return qr
 
             # Update the QR code in the database using repository
             updated_qr = self.repository.update_qr(qr_id, update_data)
             if not updated_qr:
                 raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
 
-            logger.info(f"Updated dynamic QR code with ID {updated_qr.id}")
+            logger.info(f"Updated QR code with ID {updated_qr.id}")
             return updated_qr
         except ValidationError as e:
             # Only catch and translate validation errors
@@ -232,6 +334,28 @@ class QRCodeService:
             # Other value errors are validation errors
             logger.error(f"Validation error updating QR code {qr_id}: {str(e)}")
             raise QRCodeValidationError(str(e))
+    
+    # Keep the update_dynamic_qr method for backwards compatibility
+    def update_dynamic_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
+        """
+        Update a dynamic QR code.
+
+        This method is maintained for backwards compatibility and delegates to update_qr.
+
+        Args:
+            qr_id: The ID of the QR code to update
+            data: Parameters for updating the QR code
+
+        Returns:
+            The updated QR code object
+
+        Raises:
+            QRCodeNotFoundError: If the QR code is not found
+            QRCodeValidationError: If the QR code data is invalid
+            RedirectURLError: If the redirect URL is invalid
+            DatabaseError: If a database error occurs
+        """
+        return self.update_qr(qr_id, data)
 
     def update_scan_count(self, qr_id: str, timestamp: datetime | None = None) -> None:
         """
@@ -286,16 +410,15 @@ class QRCodeService:
             QRCodeValidationError: If the QR code data is invalid
             RedirectURLError: If the redirect URL is invalid
         """
-        # Validate content
-        if not qr_data.content:
-            raise QRCodeValidationError("QR code content cannot be empty")
+        # Check for required content in static QR codes
+        if qr_data.qr_type == QRType.STATIC and not qr_data.content:
+            raise QRCodeValidationError("Static QR codes must have content")
 
-        # Validate redirect URL for dynamic QR codes
+        # Check for required redirect_url in dynamic QR codes
         if qr_data.qr_type == QRType.DYNAMIC and not qr_data.redirect_url:
-            raise RedirectURLError("Redirect URL is required for dynamic QR codes")
+            raise RedirectURLError("Dynamic QR codes must have a redirect URL")
 
-        # Note: Color format validation is handled by Pydantic schemas
-        # via pattern validation and field_validator
+        # Color format validation is handled by Pydantic schemas
 
     def generate_qr_image(
         self,
@@ -413,40 +536,6 @@ class QRCodeService:
             svg_description=svg_description
         )
 
-    def list_qr_codes(
-        self,
-        skip: int = 0,
-        limit: int = 100,
-        qr_type: str | None = None,
-        search: str | None = None,
-        sort_by: str | None = None,
-        sort_desc: bool = False,
-    ) -> Tuple[List[QRCode], int]:
-        """
-        List QR codes with pagination and optional filtering.
-
-        Args:
-            skip: Number of records to skip
-            limit: Maximum number of records to return
-            qr_type: Optional QR code type to filter by
-            search: Optional search term for filtering content or redirect URL
-            sort_by: Optional field to sort by
-            sort_desc: Sort in descending order if true
-
-        Returns:
-            A tuple of (list of QR codes, total count)
-
-        Raises:
-            InvalidQRTypeError: If an invalid QR type is specified
-            DatabaseError: If a database error occurs
-        """
-        # Validate QR type if specified
-        if qr_type and qr_type not in [QRType.STATIC.value, QRType.DYNAMIC.value]:
-            raise InvalidQRTypeError(f"Invalid QR type: {qr_type}")
-        
-        # Delegate to repository
-        return self.repository.list_qr_codes(skip, limit, qr_type, search, sort_by, sort_desc)
-
     def delete_qr(self, qr_id: str) -> None:
         """
         Delete a QR code by ID.
@@ -490,41 +579,3 @@ class QRCodeService:
             "total_qr_codes": total_qr_codes,
             "recent_qr_codes": recent_qr_codes
         }
-    
-    def get_qr_by_short_id(self, short_id: str) -> QRCode:
-        """
-        Get a QR code by short ID used in redirect URLs.
-        
-        This method handles different content formats for backward compatibility:
-        - Full URL: "{BASE_URL}/r/{short_id}"
-        - Relative path: "/r/{short_id}"
-        - Just the short ID itself
-        
-        Args:
-            short_id: The short ID from the QR code URL
-            
-        Returns:
-            The QR code object
-            
-        Raises:
-            QRCodeNotFoundError: If the QR code is not found
-            DatabaseError: If a database error occurs
-        """
-        # The short path that would be in old QR codes
-        relative_path = f"/r/{short_id}"
-        
-        # The full URL that would be in new QR codes
-        full_url = f"{settings.BASE_URL}/r/{short_id}"
-        
-        # Try to find QR code by content matching any of the possible formats
-        qr = self.repository.find_by_pattern([
-            relative_path,
-            full_url,
-            short_id,
-            f"%/r/{short_id}"  # Pattern for partial match (backward compatibility)
-        ])
-        
-        if not qr:
-            raise QRCodeNotFoundError(f"QR code with short ID {short_id} not found")
-            
-        return qr

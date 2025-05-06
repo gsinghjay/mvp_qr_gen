@@ -22,6 +22,8 @@ class QRCode(Base):
         content (str): The content encoded in the QR code (for static) or target URL (for dynamic)
         qr_type (str): Type of QR code (static/dynamic)
         redirect_url (str): The URL where dynamic QR codes redirect to (None for static)
+        title (str): User-friendly title for the QR code
+        description (str): Detailed description of the QR code
         created_at (datetime): Timestamp of creation (UTC)
         scan_count (int): Number of times the QR code has been scanned
         last_scan_at (datetime): Timestamp of last scan (UTC)
@@ -38,6 +40,8 @@ class QRCode(Base):
     content: str = Column(String(2048), nullable=False, index=True)
     qr_type: str = Column(String(50), nullable=False, index=True)
     redirect_url: str = Column(Text, nullable=True)
+    title: str = Column(String(100), nullable=True)
+    description: str = Column(Text, nullable=True)
     created_at: datetime = Column(
         UTCDateTime,
         nullable=False,
@@ -82,6 +86,8 @@ class QRCode(Base):
             "content": self.content,
             "qr_type": self.qr_type,
             "redirect_url": self.redirect_url if self.qr_type == "dynamic" else None,
+            "title": self.title,
+            "description": self.description,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "scan_count": self.scan_count,
             "last_scan_at": (self.last_scan_at.isoformat() if self.last_scan_at else None),

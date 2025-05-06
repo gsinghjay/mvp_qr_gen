@@ -63,6 +63,17 @@
                 <i class="bi bi-caret-{% if sort_order == 'asc' %}up{% else %}down{% endif %}-fill ms-1"></i>
               {% endif %}
             </th>
+            <th hx-get="/api/v1/fragments/qr-list?sort_by=title&sort_order={% if sort_by == 'title' and sort_order == 'asc' %}desc{% else %}asc{% endif %}&page={{ page }}&limit={{ limit }}&search={{ search }}"
+                hx-target="#qr-list-container"
+                hx-indicator="#table-loading"
+                role="button"
+                scope="col"
+                class="{% if sort_by == 'title' %}table-active{% endif %}">
+              Title
+              {% if sort_by == 'title' %}
+                <i class="bi bi-caret-{% if sort_order == 'asc' %}up{% else %}down{% endif %}-fill ms-1"></i>
+              {% endif %}
+            </th>
             <th hx-get="/api/v1/fragments/qr-list?sort_by=qr_type&sort_order={% if sort_by == 'qr_type' and sort_order == 'asc' %}desc{% else %}asc{% endif %}&page={{ page }}&limit={{ limit }}&search={{ search }}"
                 hx-target="#qr-list-container"
                 hx-indicator="#table-loading"

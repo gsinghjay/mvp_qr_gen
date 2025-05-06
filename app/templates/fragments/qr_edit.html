@@ -19,6 +19,37 @@
     {% endif %}
     
     <div class="mb-3">
+      <label for="title" class="form-label">Title</label>
+      <input 
+        type="text" 
+        id="title" 
+        name="title" 
+        class="form-control" 
+        value="{{ title or qr.title or '' }}"
+        placeholder="My QR Code"
+        maxlength="100"
+      >
+      <div class="form-text">
+        Update the descriptive title for this QR code
+      </div>
+    </div>
+    
+    <div class="mb-3">
+      <label for="description" class="form-label">Description</label>
+      <textarea 
+        id="description" 
+        name="description" 
+        class="form-control"
+        placeholder="Optional description for this QR code"
+        maxlength="500"
+      >{{ description or qr.description or '' }}</textarea>
+      <div class="form-text">
+        Update the optional description for this QR code
+      </div>
+    </div>
+    
+    {% if qr.qr_type == "dynamic" %}
+    <div class="mb-3">
       <label for="redirect_url" class="form-label">Redirect URL</label>
       <input 
         type="url" 
@@ -27,18 +58,18 @@
         class="form-control" 
         value="{{ redirect_url or qr.redirect_url }}"
         placeholder="https://example.com"
-        required
       >
       <div class="form-text">
         Update where users will be redirected when scanning this QR code
       </div>
     </div>
+    {% endif %}
     
     <div class="text-center mt-4">
       <img src="/api/v1/qr/{{ qr.id }}/image?format=png&size=10" alt="QR Code" class="img-fluid border" style="width: 200px; height: 200px; object-fit: contain;">
       <div class="form-text">
         <i class="bi bi-info-circle"></i>
-        The QR code appearance won't change, but it will redirect to the new URL.
+        The QR code appearance won't change, but the metadata will be updated.
       </div>
     </div>
   </div>

@@ -19,7 +19,7 @@ class QRListParameters(BaseModel):
         default=None, description="Filter by QR code type (static or dynamic)"
     )
     search: str | None = Field(
-        default=None, description="Search term for filtering content or redirect URL"
+        default=None, description="Search term for filtering content, title, description or redirect URL"
     )
     sort_by: str | None = Field(
         default=None, description="Field to sort by (created_at, scan_count, etc.)"
@@ -76,6 +76,16 @@ class QRImageParameters(BaseModel):
 class QRCreateParameters(BaseModel):
     """Common parameters for creating QR codes."""
 
+    title: str = Field(
+        ..., 
+        max_length=100, 
+        description="User-friendly title for the QR code"
+    )
+    description: str | None = Field(
+        None, 
+        max_length=500, 
+        description="Detailed description of the QR code"
+    )
     fill_color: str = Field(
         default="#000000",
         pattern=r"^#[0-9A-Fa-f]{6}$",
@@ -132,6 +142,16 @@ class DynamicQRCreateParameters(QRCreateParameters):
 class QRUpdateParameters(BaseModel):
     """Parameters for updating QR codes."""
 
-    redirect_url: HttpUrl = Field(
-        ..., description="New URL to redirect to when the QR code is scanned"
+    redirect_url: HttpUrl | None = Field(
+        None, description="New URL to redirect to when the QR code is scanned (for dynamic QR codes only)"
+    )
+    title: str | None = Field(
+        None, 
+        max_length=100, 
+        description="Updated title for the QR code"
+    )
+    description: str | None = Field(
+        None, 
+        max_length=500, 
+        description="Updated description for the QR code"
     )
