@@ -57,6 +57,25 @@ class QRCodeRepository(BaseRepository[QRCode]):
             logger.error(f"Database error retrieving QR code by content: {str(e)}")
             raise DatabaseError(f"Database error retrieving QR code by content: {str(e)}")
 
+    def get_by_short_id(self, short_id: str) -> Optional[QRCode]:
+        """
+        Get a QR code by its short_id.
+        
+        Args:
+            short_id: The short_id of the QR code
+            
+        Returns:
+            The QR code if found, None otherwise
+            
+        Raises:
+            DatabaseError: If a database error occurs
+        """
+        try:
+            return self.db.query(QRCode).filter(QRCode.short_id == short_id).first()
+        except SQLAlchemyError as e:
+            logger.error(f"Database error retrieving QR code by short_id: {str(e)}")
+            raise DatabaseError(f"Database error retrieving QR code by short_id: {str(e)}")
+
     @with_retry(max_retries=3, retry_delay=0.2)
     def update_qr(self, qr_id: str, update_data: Dict[str, Any]) -> Optional[QRCode]:
         """
