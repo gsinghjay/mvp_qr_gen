@@ -721,53 +721,69 @@ class DatabaseManager:
                 return False
 
 
-def main():
-    """Main entry point for the script."""
-    parser = argparse.ArgumentParser(description="Database management script")
+def run_cli():
+    """Process command line arguments."""
+    parser = argparse.ArgumentParser(description="Database management tool")
     parser.add_argument("--init", action="store_true", help="Initialize a fresh database")
     parser.add_argument("--migrate", action="store_true", help="Run database migrations")
     parser.add_argument("--check", action="store_true", help="Check if migrations are needed")
     parser.add_argument("--validate", action="store_true", help="Validate database structure")
     parser.add_argument("--postgres", action="store_true", help="Force PostgreSQL mode for testing")
+    parser.add_argument("--create-backup", action="store_true", help="Create a database backup")
+
     args = parser.parse_args()
-    
+
     # Override USE_POSTGRES based on command line for testing
     global USE_POSTGRES
     if args.postgres:
         USE_POSTGRES = True
-        print("Forced PostgreSQL mode")
+        loggers["operations"].info(_("PostgreSQL mode enabled via command line"))
 
-    try:
-        manager = DatabaseManager(DB_PATH, BACKUP_DIR, ALEMBIC_INI)
+    if not (args.init or args.migrate or args.check or args.validate or args.create_backup):
+        parser.print_help()
+        return
 
-        if args.validate:
-            loggers["operations"].info(_("Validating database"))
-            is_valid = manager.validate_database()
-            sys.exit(0 if is_valid else 1)
+    db_manager = DatabaseManager(
+        db_path=DB_PATH,
+        backup_dir=BACKUP_DIR,
+        alembic_ini=ALEMBIC_INI,
+    )
 
-        if args.init:
-            loggers["operations"].info(_("Initializing database"))
-            if not manager.init_database():
-                sys.exit(1)
-            sys.exit(0)
+    # Check for backup request first
+    if args.create_backup:
+        try:
+            with db_manager.backup_database():
+                loggers["operations"].info(_("Backup created successfully"))
+                return
+        except Exception as e:
+            loggers["errors"].error(
+                _("Failed to create backup", error=str(e))
+            )
+            sys.exit(1)
 
-        if args.migrate:
-            loggers["operations"].info(_("Running database migrations"))
-            if not manager.run_migrations():
-                sys.exit(1)
-            sys.exit(0)
+    # Other operations
+    if args.init:
+        db_manager.init_database()
 
-        if args.check:
-            loggers["operations"].info(_("Database upgrade check"))
-            needs_upgrade = manager.needs_upgrade()
-            sys.exit(1 if needs_upgrade else 0)
+    if args.check:
+        needs_upgrade = db_manager.needs_upgrade()
+        if needs_upgrade:
+            loggers["operations"].info(_("Database needs migration"))
+            sys.exit(1)
+        else:
+            loggers["operations"].info(_("Database is up to date"))
 
-    except Exception as e:
-        loggers["errors"].error(
-            _("Script execution failed", error=str(e), traceback=traceback.format_exc())
-        )
-        sys.exit(1)
+    if args.validate:
+        is_valid = db_manager.validate_database()
+        if not is_valid:
+            loggers["operations"].error(_("Database validation failed"))
+            sys.exit(1)
+        else:
+            loggers["operations"].info(_("Database validation successful"))
+
+    if args.migrate:
+        db_manager.run_migrations()
 
 
 if __name__ == "__main__":
-    main()
+    run_cli()
