@@ -130,6 +130,8 @@ async def create_qr_code(
     qr_service: QRServiceDep,
     qr_type: str = Form(...),
     content: str = Form(None),
+    title: str = Form(...),
+    description: str = Form(None),
     redirect_url: str = Form(None),
     error_level: str = Form("M"),
     svg_title: str = Form(None),
@@ -144,6 +146,8 @@ async def create_qr_code(
         qr_service: The QR code service.
         qr_type: The type of QR code to create ("static" or "dynamic").
         content: The content for static QR codes.
+        title: The title of the QR code.
+        description: The description of the QR code.
         redirect_url: The redirect URL for dynamic QR codes.
         error_level: The error correction level.
         svg_title: The SVG title for accessibility.
@@ -169,6 +173,8 @@ async def create_qr_code(
             # Create parameters object
             params = StaticQRCreateParameters(
                 content=content,
+                title=title,
+                description=description,
                 error_level=error_level_enum
             )
             
@@ -180,6 +186,8 @@ async def create_qr_code(
             # Create parameters object
             params = DynamicQRCreateParameters(
                 redirect_url=redirect_url,
+                title=title,
+                description=description,
                 error_level=error_level_enum
             )
             
@@ -225,6 +233,8 @@ async def create_qr_code(
                 "request": request,
                 "qr_type": qr_type,
                 "content": content,
+                "title": title,
+                "description": description,
                 "redirect_url": redirect_url,
                 "error_level": error_level.upper(),
                 "svg_title": svg_title,
@@ -352,26 +362,34 @@ async def update_qr_code(
     request: Request,
     qr_id: str,
     qr_service: QRServiceDep,
-    redirect_url: str = Form(...),
+    redirect_url: str = Form(None),
+    title: str = Form(None),
+    description: str = Form(None),
 ):
     """
-    Update a dynamic QR code.
+    Update a QR code.
     
     Args:
         request: The FastAPI request object.
         qr_id: The ID of the QR code to update.
         qr_service: The QR code service.
-        redirect_url: The new redirect URL.
+        redirect_url: The new redirect URL for dynamic QR codes.
+        title: The updated title for the QR code.
+        description: The updated description for the QR code.
         
     Returns:
         HTMLResponse: The rendered QR detail fragment.
     """
     try:
         # Create update parameters
-        params = QRUpdateParameters(redirect_url=redirect_url)
+        params = QRUpdateParameters(
+            redirect_url=redirect_url if redirect_url else None,
+            title=title,
+            description=description
+        )
         
         # Update the QR code
-        qr = qr_service.update_dynamic_qr(qr_id, params)
+        qr = qr_service.update_qr(qr_id, params)
         
         # Format dates for better readability
         created_at_formatted = qr.created_at.strftime("%B %d, %Y at %H:%M")
@@ -423,6 +441,8 @@ async def update_qr_code(
                     "request": request,
                     "qr": qr,
                     "redirect_url": redirect_url,
+                    "title": title,
+                    "description": description,
                     "error_messages": e.errors()
                 }
             )
