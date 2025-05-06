@@ -13,6 +13,8 @@ class QRCodeBase(BaseModel):
     """Base QR code schema."""
 
     content: str = Field(..., max_length=2048)
+    title: str | None = Field(None, max_length=100)
+    description: str | None = Field(None, max_length=500)
     fill_color: str = Field(default="#000000", pattern=r"^#[0-9A-Fa-f]{6}$")
     back_color: str = Field(default="#FFFFFF", pattern=r"^#[0-9A-Fa-f]{6}$")
     size: int = Field(default=10, ge=1, le=100)
@@ -38,14 +40,16 @@ class QRCodeCreate(QRCodeBase):
 class QRCodeUpdate(BaseModel):
     """Schema for updating a QR code."""
 
-    redirect_url: HttpUrl
+    redirect_url: HttpUrl | None = None
+    title: str | None = None
+    description: str | None = None
 
 
 class QRCodeResponse(QRCodeBase):
     """Schema for QR code response."""
 
     id: str
-    qr_type: str
+    qr_type: QRType
     redirect_url: HttpUrl | None = None
     created_at: datetime
     scan_count: int
