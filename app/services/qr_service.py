@@ -92,27 +92,20 @@ class QRCodeService:
 
         Raises:
             QRCodeNotFoundError: If the QR code is not found
+            InvalidQRTypeError: If the QR code is not of type 'dynamic'
             DatabaseError: If a database error occurs
         """
         # Look up QR code directly by short_id
         qr = self.repository.get_by_short_id(short_id)
 
-        # If not found, try legacy pattern matching as a fallback
-        if not qr:
-            # Build a list of possible patterns to match for legacy QR codes without short_id
-            patterns = [
-                short_id,  # Direct content match
-                f"/r/{short_id}",  # Relative URL pattern
-                f"{settings.BASE_URL}/r/{short_id}",  # Absolute URL with our domain
-                f"%/r/{short_id}",  # LIKE pattern for any domain with our path
-            ]
-
-            # Try to find a QR code matching any of these patterns
-            qr = self.repository.find_by_pattern(patterns)
-
         if not qr:
             logger.warning(f"QR code with short ID {short_id} not found")
             raise QRCodeNotFoundError(f"QR code with short ID {short_id} not found")
+
+        # Ensure the QR code is of type 'dynamic' for redirects
+        if qr.qr_type != 'dynamic':
+            logger.warning(f"QR code with short ID {short_id} is not dynamic (type: {qr.qr_type})")
+            raise InvalidQRTypeError(f"QR code with short ID {short_id} is not dynamic")
 
         return qr
 
