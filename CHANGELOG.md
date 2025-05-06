@@ -1,6 +1,54 @@
 # CHANGELOG
 
 
+## v0.20.0 (2025-05-06)
+
+### Chores
+
+- Backup original custom CSS file for reference
+  ([`5f9259c`](https://github.com/gsinghjay/mvp_qr_gen/commit/5f9259c59efbb16d29cb3424e15c42030ca873d6))
+
+### Features
+
+- **api**: Add fragments endpoint for HTMX integration
+  ([`20bf094`](https://github.com/gsinghjay/mvp_qr_gen/commit/20bf094f7afd80ce7509a02d460be67f1e47b951))
+
+- **api**: Register fragments router in API initialization
+  ([`7d84d81`](https://github.com/gsinghjay/mvp_qr_gen/commit/7d84d818770f4d00e76141e1804cb77a80eb399e))
+
+- **ui**: Add HTML fragments for HTMX partial updates
+  ([`01c950a`](https://github.com/gsinghjay/mvp_qr_gen/commit/01c950a1ddbf335671e520233365a6876fd851fd))
+
+- **ui**: Add HTMX library to base template
+  ([`8373e42`](https://github.com/gsinghjay/mvp_qr_gen/commit/8373e42dd68643cd3b5f11ac9ea1ce98862c5de6))
+
+### Refactoring
+
+- **api**: Update QR endpoints for HTMX compatibility
+  ([`4418ff0`](https://github.com/gsinghjay/mvp_qr_gen/commit/4418ff02cb64b0a99922f3da88458939c1f593ae))
+
+- **css**: Remove custom CSS in favor of Bootstrap classes
+  ([`a57fb7d`](https://github.com/gsinghjay/mvp_qr_gen/commit/a57fb7d7ca3812edb4bf45b71a4b51fad5b84521))
+
+- **js**: Move unused JavaScript to depreciated-js directory
+  ([`2632683`](https://github.com/gsinghjay/mvp_qr_gen/commit/26326833b1cf7098ae48d879227788c0b7a15bb5))
+
+- **js**: Remove JavaScript files replaced by HTMX
+  ([`9006f7f`](https://github.com/gsinghjay/mvp_qr_gen/commit/9006f7fbf3164994b7f48e67e7b8eb1cf47be37f))
+
+- **pages**: Update page handlers to use new template structure
+  ([`a6ee368`](https://github.com/gsinghjay/mvp_qr_gen/commit/a6ee368fce5090e2d766b51b75c4e49bd381c7b2))
+
+- **ui**: Migrate templates to pages directory structure
+  ([`25cd908`](https://github.com/gsinghjay/mvp_qr_gen/commit/25cd90883e4be6b9ad082d8f250e3886aae8d85f))
+
+- **ui**: Remove templates moved to pages directory
+  ([`2115884`](https://github.com/gsinghjay/mvp_qr_gen/commit/211588495bd649b3b64ad276b0624ea766cfbc71))
+
+- **ui**: Update QR list template for HTMX compatibility
+  ([`4a2de54`](https://github.com/gsinghjay/mvp_qr_gen/commit/4a2de54c6f46ca3a259b9c619bd241a493db3e19))
+
+
 ## v0.19.0 (2025-05-05)
 
 ### Bug Fixes
