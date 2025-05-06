@@ -1,0 +1,180 @@
+<div class="modal-header">
+  <h5 class="modal-title">QR Code Details</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+{% if success_message %}
+<div class="alert alert-success m-3">{{ success_message }}</div>
+{% endif %}
+
+<div class="modal-body">
+  <!-- QR Image Section -->
+  <div class="text-center mb-3">
+    <div class="form-check form-switch d-flex justify-content-center align-items-center mb-2">
+      <input class="form-check-input me-2" type="checkbox" id="includeLogo">
+      <label class="form-check-label" for="includeLogo">Include Logo</label>
+    </div>
+    <img id="qrImage" src="/api/v1/qr/{{ qr.id }}/image?image_format=png&size=10" alt="QR Code" class="img-fluid border" style="max-width: 250px;">
+  </div>
+  
+  <!-- Basic Information Card -->
+  <div class="card mb-3">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">Basic Information</h6>
+    </div>
+    <div class="card-body">
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">ID:</div>
+        <div class="col-8">{{ qr.id }}</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Type:</div>
+        <div class="col-8">{{ qr.qr_type|title }}</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Created:</div>
+        <div class="col-8">{{ created_at_formatted }}</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Error Level:</div>
+        <div class="col-8" id="errorLevelDisplay">{{ error_level_display }}</div>
+      </div>
+      {% if qr.qr_type == "dynamic" and short_url %}
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Short URL:</div>
+        <div class="col-8">
+          <a href="/r/{{ short_id }}" target="_blank">{{ short_url }}</a>
+          <button class="btn btn-sm btn-outline-secondary ms-2" onclick="navigator.clipboard.writeText('{{ short_url }}')">
+            <i class="bi bi-clipboard"></i> Copy
+          </button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <!-- Content Section for Static QR Codes -->
+  {% if qr.qr_type == "static" %}
+  <div class="card mb-3">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">Content</h6>
+    </div>
+    <div class="card-body">
+      <p class="text-break mb-0">
+        {% if qr.content.startswith('http') %}
+          <a href="{{ qr.content }}" target="_blank">{{ qr.content }}</a>
+        {% else %}
+          {{ qr.content }}
+        {% endif %}
+      </p>
+    </div>
+  </div>
+  {% endif %}
+  
+  <!-- Redirect URL for Dynamic QR Codes -->
+  {% if qr.qr_type == "dynamic" %}
+  <div class="card mb-3">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">Destination URL</h6>
+    </div>
+    <div class="card-body">
+      <p class="text-break mb-0">
+        <a href="{{ qr.redirect_url }}" target="_blank">{{ qr.redirect_url }}</a>
+      </p>
+    </div>
+  </div>
+  {% endif %}
+  
+  <!-- Usage Statistics Card -->
+  {% if qr.qr_type == "dynamic" %}
+  <div class="card mb-3">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">Usage Statistics</h6>
+    </div>
+    <div class="card-body">
+      {% if has_scan_data %}
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Scan Count:</div>
+        <div class="col-8">{{ qr.scan_count }}</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Last Scanned:</div>
+        <div class="col-8">{{ last_scan_formatted }}</div>
+      </div>
+      <div class="alert alert-info mb-0 mt-3 small">
+        <i class="bi bi-info-circle me-2"></i> More detailed statistics including device types and geographic data will be available soon in the upcoming dedicated statistics page.
+      </div>
+      {% else %}
+      <div class="alert alert-info mb-0">
+        <i class="bi bi-info-circle me-2"></i> This QR code has not been scanned yet.
+        <div class="mt-2 small">More detailed statistics will appear here after the first scan.</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  
+  <!-- Coming Soon Notification -->
+  <div class="alert alert-primary small">
+    <i class="bi bi-graph-up me-2"></i> <strong>Coming Soon:</strong> A dedicated statistics page with enhanced metrics including device types, geographic data, and scan patterns.
+  </div>
+</div>
+
+<div class="modal-footer">
+  <div class="btn-group me-auto">
+    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=png&size=10" id="pngDownload" download="qr-{{ qr.id }}.png" class="btn btn-secondary">
+      <i class="bi bi-file-image me-1"></i> PNG
+    </a>
+    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=svg&size=10" id="svgDownload" download="qr-{{ qr.id }}.svg" class="btn btn-secondary">
+      <i class="bi bi-filetype-svg me-1"></i> SVG
+    </a>
+    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=jpeg&size=10" id="jpgDownload" download="qr-{{ qr.id }}.jpg" class="btn btn-secondary">
+      <i class="bi bi-file-image me-1"></i> JPG
+    </a>
+    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=webp&size=10" id="webpDownload" download="qr-{{ qr.id }}.webp" class="btn btn-secondary">
+      <i class="bi bi-file-image me-1"></i> WebP
+    </a>
+  </div>
+  
+  {% if qr.qr_type == "dynamic" %}
+  <button
+    hx-get="/api/v1/fragments/qr-edit/{{ qr.id }}"
+    hx-target="#qr-detail-modal .modal-content"
+    class="btn btn-primary"
+  >
+    <i class="bi bi-pencil me-1"></i> Edit URL
+  </button>
+  {% endif %}
+  
+  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+</div>
+
+<div id="formatNote" class="small text-muted mt-2 text-center" style="display: none;">
+  Note: SVG format does not support logo embedding. Use PNG, JPG, or WebP formats for QR codes with logos.
+</div>
+
+<script>
+  // Update image and download links when logo option changes
+  document.getElementById('includeLogo').addEventListener('change', function() {
+    const logoParam = this.checked ? '&include_logo=true' : '';
+    // When including a logo, always use the highest error correction level
+    const errorParam = this.checked ? '&error_level=h' : '';
+    // Use a larger size when including a logo for better visibility
+    const sizeParam = this.checked ? '&size=20' : '&size=10';
+    
+    // Update error level display
+    document.getElementById('errorLevelDisplay').textContent = this.checked ? 'H (High - for logo)' : '{{ error_level_display }}';
+    
+    // Update the image source with logo, error level and size parameters
+    document.getElementById('qrImage').src = `/api/v1/qr/{{ qr.id }}/image?image_format=png${sizeParam}${logoParam}${errorParam}`;
+    
+    // Update download links with all parameters
+    document.getElementById('pngDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=png${sizeParam}${logoParam}${errorParam}`;
+    document.getElementById('svgDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=svg${sizeParam}${logoParam}${errorParam}`;
+    document.getElementById('jpgDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=jpeg${sizeParam}${logoParam}${errorParam}`;
+    document.getElementById('webpDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=webp${sizeParam}${logoParam}${errorParam}`;
+    
+    // Show/hide the format note based on logo selection
+    document.getElementById('formatNote').style.display = this.checked ? 'block' : 'none';
+  });
+</script> 

@@ -1,0 +1,52 @@
+<div class="modal-header">
+  <h5 class="modal-title">Edit QR Code</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body">
+  <form
+    hx-post="/api/v1/fragments/qr-update/{{ qr.id }}"
+    hx-target="#qr-detail-modal .modal-content"
+  >
+    {% if error_messages %}
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        {% for error in error_messages %}
+          <li>{{ error.loc[0] }}: {{ error.msg }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    
+    <div class="mb-3">
+      <label for="redirect_url" class="form-label">Redirect URL</label>
+      <input 
+        type="url" 
+        id="redirect_url" 
+        name="redirect_url" 
+        class="form-control" 
+        value="{{ redirect_url or qr.redirect_url }}"
+        placeholder="https://example.com"
+        required
+      >
+      <div class="form-text">
+        Update where users will be redirected when scanning this QR code
+      </div>
+    </div>
+    
+    <div class="text-center mt-4">
+      <img src="/api/v1/qr/{{ qr.id }}/image?format=png&size=10" alt="QR Code" class="img-fluid border" style="width: 200px; height: 200px; object-fit: contain;">
+      <div class="form-text">
+        <i class="bi bi-info-circle"></i>
+        The QR code appearance won't change, but it will redirect to the new URL.
+      </div>
+    </div>
+  </div>
+  
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-check2 me-1"></i> Save Changes
+    </button>
+  </div>
+</form> 

@@ -345,11 +345,6 @@ footer {
     margin-right: 0;
 }
 
-/* Dropdowns */
-.dropdown-menu {
-    z-index: 1050;
-}
-
 /* Loading Indicator */
 #loading-indicator {
     position: fixed;

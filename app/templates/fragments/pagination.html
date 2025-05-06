@@ -1,0 +1,88 @@
+{% if total_pages > 1 %}
+<nav aria-label="Page navigation">
+  <ul class="pagination">
+    {% set prev_page = page - 1 if page > 1 else none %}
+    {% set next_page = page + 1 if page < total_pages else none %}
+
+    <!-- Previous button -->
+    <li class="page-item {% if not prev_page %}disabled{% endif %}">
+      <a class="page-link" 
+        {% if prev_page %}
+          hx-get="/api/v1/fragments/qr-list?page={{ prev_page }}&limit={{ limit }}&search={{ search }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+          hx-target="#qr-list-container"
+          hx-indicator="#table-loading"
+        {% endif %}
+        aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+      </a>
+    </li>
+
+    <!-- First page -->
+    {% if page > 3 %}
+    <li class="page-item">
+      <a class="page-link" 
+        hx-get="/api/v1/fragments/qr-list?page=1&limit={{ limit }}&search={{ search }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+        hx-target="#qr-list-container"
+        hx-indicator="#table-loading">
+        1
+      </a>
+    </li>
+    {% endif %}
+
+    <!-- Ellipsis for gap at beginning -->
+    {% if page > 4 %}
+    <li class="page-item disabled">
+      <span class="page-link">...</span>
+    </li>
+    {% endif %}
+
+    <!-- Page numbers -->
+    {% set start_page = page - 2 if page - 2 > 0 else 1 %}
+    {% set end_page = page + 2 if page + 2 < total_pages else total_pages %}
+    {% for p in range(start_page, end_page + 1) %}
+    <li class="page-item {% if p == page %}active{% endif %}">
+      <a class="page-link"
+        {% if p != page %}
+          hx-get="/api/v1/fragments/qr-list?page={{ p }}&limit={{ limit }}&search={{ search }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+          hx-target="#qr-list-container"
+          hx-indicator="#table-loading"
+        {% endif %}>
+        {{ p }}
+      </a>
+    </li>
+    {% endfor %}
+
+    <!-- Ellipsis for gap at end -->
+    {% if page < total_pages - 3 %}
+    <li class="page-item disabled">
+      <span class="page-link">...</span>
+    </li>
+    {% endif %}
+
+    <!-- Last page -->
+    {% if page < total_pages - 2 %}
+    <li class="page-item">
+      <a class="page-link"
+        hx-get="/api/v1/fragments/qr-list?page={{ total_pages }}&limit={{ limit }}&search={{ search }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+        hx-target="#qr-list-container"
+        hx-indicator="#table-loading">
+        {{ total_pages }}
+      </a>
+    </li>
+    {% endif %}
+
+    <!-- Next button -->
+    <li class="page-item {% if not next_page %}disabled{% endif %}">
+      <a class="page-link" 
+        {% if next_page %}
+          hx-get="/api/v1/fragments/qr-list?page={{ next_page }}&limit={{ limit }}&search={{ search }}&sort_by={{ sort_by }}&sort_order={{ sort_order }}"
+          hx-target="#qr-list-container"
+          hx-indicator="#table-loading"
+        {% endif %}
+        aria-label="Next">
+        <span aria-hidden="true">&raquo;</span>
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endif %} 
