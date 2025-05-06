@@ -13,7 +13,15 @@ services:
       - BASE_URL=${BASE_URL:-https://10.1.6.12}
       # Database Configuration
       - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/qr_codes.db}
+      - PG_DATABASE_URL=${PG_DATABASE_URL:-postgresql+psycopg2://pguser:pgpassword@postgres:5432/qrdb}
+      - USE_POSTGRES=${USE_POSTGRES:-false}
       - ENVIRONMENT=production # Production environment settings
+      # PostgreSQL Configuration
+      - POSTGRES_USER=${POSTGRES_USER:-pguser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pgpassword}
+      - POSTGRES_DB=${POSTGRES_DB:-qrdb}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       # Cookie settings (for CSRF protection only)
       - COOKIE_DOMAIN=${COOKIE_DOMAIN:-10.1.6.12}
     volumes:
@@ -26,10 +34,10 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
-    # Will be uncommented in Phase 3 when switching to PostgreSQL
-    #depends_on:
-    #  postgres:
-    #    condition: service_healthy
+    # Uncommented for Phase 2 to establish dependency, but keeping connection optional
+    depends_on:
+      postgres:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
       # Default route (INTERNAL ONLY)
