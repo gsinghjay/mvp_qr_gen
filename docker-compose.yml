@@ -26,6 +26,10 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    # Will be uncommented in Phase 3 when switching to PostgreSQL
+    #depends_on:
+    #  postgres:
+    #    condition: service_healthy
     labels:
       - "traefik.enable=true"
       # Default route (INTERNAL ONLY)
@@ -60,6 +64,27 @@ services:
       - "traefik.http.routers.api-domain.middlewares=redirect-to-https@docker,cors@docker"
       - "traefik.http.routers.api-public-qr.middlewares=redirect-to-https@docker"
 
+  # PostgreSQL service (added in Phase 1 of migration)
+  postgres:
+    image: postgres:15
+    container_name: qr_generator_postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-pguser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pgpassword}
+      - POSTGRES_DB=${POSTGRES_DB:-qrdb}
+      - TZ=America/New_York
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pguser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    # Expose port only internally, not to host
+    expose:
+      - "5432"
+
   traefik:
     image: traefik:v2.10
     container_name: qr_generator_traefik
@@ -89,4 +114,6 @@ volumes:
   qr_logs:
     driver: local
   traefik_logs:
+    driver: local
+  postgres_data:
     driver: local 
