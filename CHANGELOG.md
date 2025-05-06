@@ -1,6 +1,60 @@
 # CHANGELOG
 
 
+## v0.21.0 (2025-05-06)
+
+### Chores
+
+- Removed legacy css/js from before HTMX migration
+  ([`d321ee5`](https://github.com/gsinghjay/mvp_qr_gen/commit/d321ee588eff34144502c08dcd3815484b9d75c5))
+
+### Features
+
+- Add migration for title and description columns in qr_codes table
+  ([`db1df6c`](https://github.com/gsinghjay/mvp_qr_gen/commit/db1df6c07363cc0330bbe0ad754176e4dc768370))
+
+- Add title and description fields to QR creation form
+  ([`1206681`](https://github.com/gsinghjay/mvp_qr_gen/commit/1206681856e72a357ab9cc745512686f9251588d))
+
+- Add title and description fields to QR edit form
+  ([`e9b594f`](https://github.com/gsinghjay/mvp_qr_gen/commit/e9b594ff58af1a75e76a0f06244819d71d2cf3f9))
+
+- Add title and description fields to QRCode model
+  ([`d5f88d3`](https://github.com/gsinghjay/mvp_qr_gen/commit/d5f88d3d7d2111bbe34c6dbc2ae9a3fdbd72eb41))
+
+- Add title and description to QR response models
+  ([`71a2b1a`](https://github.com/gsinghjay/mvp_qr_gen/commit/71a2b1a5ab53f816840c168b5ea62176dd691f03))
+
+- Add title column to QR list view
+  ([`8fdf533`](https://github.com/gsinghjay/mvp_qr_gen/commit/8fdf533e5945a133ec29a4f2e606501704e3230e))
+
+- Display QR title in list items
+  ([`f7453fd`](https://github.com/gsinghjay/mvp_qr_gen/commit/f7453fd952cbf9922dbff1a206d4ff20f4dc9252))
+
+- Display title and description in QR detail view
+  ([`a80628e`](https://github.com/gsinghjay/mvp_qr_gen/commit/a80628eb20d96a4199d922e61f406ad7f384c652))
+
+- Enhance search functionality to include title and description
+  ([`23f104f`](https://github.com/gsinghjay/mvp_qr_gen/commit/23f104fa83c69aff6bfecfbbd373bed7a8257797))
+
+- Update API endpoints to support title and description
+  ([`af01edf`](https://github.com/gsinghjay/mvp_qr_gen/commit/af01edf56ac5c0ed9471d7d1a9f40a5951f6ad66))
+
+- Update fragment endpoints to handle title and description fields
+  ([`95c5d88`](https://github.com/gsinghjay/mvp_qr_gen/commit/95c5d887889ebef2bc5df31ec12806fa87860756))
+
+- Update parameter schemas with title and description fields
+  ([`20ddd28`](https://github.com/gsinghjay/mvp_qr_gen/commit/20ddd282c6f07d27b4f0bf79b8dcc0d24d86ac8d))
+
+- Update QR service to handle title and description fields
+  ([`3a10c62`](https://github.com/gsinghjay/mvp_qr_gen/commit/3a10c62b220da354343d0e0cbcd0fbcc2956e3ba))
+
+### Testing
+
+- Update test script to include title and description in API requests
+  ([`dd5cc43`](https://github.com/gsinghjay/mvp_qr_gen/commit/dd5cc433da9df7574e5d713bfe09ceb17a9dc8dc))
+
+
 ## v0.20.0 (2025-05-06)
 
 ### Chores
