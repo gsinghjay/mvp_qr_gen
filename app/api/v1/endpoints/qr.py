@@ -367,7 +367,8 @@ async def update_qr(
     """
     Update QR code data by ID.
 
-    Currently only supports updating the redirect_url field for dynamic QR codes.
+    For dynamic QR codes, this can update the redirect_url.
+    For all QR codes, this can update the title and description.
 
     Args:
         qr_id: The ID of the QR code to update
@@ -383,8 +384,8 @@ async def update_qr(
         RedirectURLError: If the redirect URL is invalid
         DatabaseError: If a database error occurs
     """
-    qr = qr_service.update_dynamic_qr(qr_id, qr_update)
-    logger.info(f"Updated QR code {qr_id} with new redirect URL")
+    qr = qr_service.update_qr(qr_id, qr_update)
+    logger.info(f"Updated QR code {qr_id}")
     return qr
 
 # Delete QR Code
