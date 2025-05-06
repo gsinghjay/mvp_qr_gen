@@ -203,18 +203,18 @@ class QRCodeRepository(BaseRepository[QRCode]):
         sort_desc: bool = False,
     ) -> Tuple[List[QRCode], int]:
         """
-        List QR codes with pagination and optional filtering.
+        List QR codes with optional filtering and sorting.
         
         Args:
-            skip: Number of records to skip
+            skip: Number of records to skip (for pagination)
             limit: Maximum number of records to return
-            qr_type: Optional QR code type to filter by
-            search: Optional search term for filtering content or redirect URL
-            sort_by: Optional field to sort by
+            qr_type: Filter by QR code type (static/dynamic)
+            search: Search term for filtering content, title, description or redirect URL
+            sort_by: Field to sort by (created_at, scan_count, etc.)
             sort_desc: Sort in descending order if true
             
         Returns:
-            A tuple of (list of QR codes, total count)
+            Tuple of (list of QR code objects, total count)
             
         Raises:
             DatabaseError: If a database error occurs
@@ -234,7 +234,9 @@ class QRCodeRepository(BaseRepository[QRCode]):
                 query = query.filter(
                     or_(
                         QRCode.content.ilike(search_term),
-                        QRCode.redirect_url.ilike(search_term)
+                        QRCode.redirect_url.ilike(search_term),
+                        QRCode.title.ilike(search_term),
+                        QRCode.description.ilike(search_term)
                     )
                 )
 
