@@ -84,7 +84,7 @@ test_create_static_qr() {
     echo -e "\n${YELLOW}Testing Create Static QR Code...${NC}"
     local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
         -H "Content-Type: application/json" \
-        -d '{"content": "https://test.example.com", "qr_type": "static"}')
+        -d '{"content": "https://test.example.com", "qr_type": "static", "title": "Test Static QR", "description": "This is a test static QR code"}')
     
     STATIC_QR_ID=$(echo "$response" | jq -r '.id')
     echo "$response" | jq . > /dev/null
@@ -101,7 +101,7 @@ test_create_dynamic_qr() {
     echo -e "\n${YELLOW}Testing Create Dynamic QR Code...${NC}"
     local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
         -H "Content-Type: application/json" \
-        -d '{"content": "test-dynamic", "redirect_url": "https://technological-alchemist.vercel.app"}')
+        -d '{"content": "test-dynamic", "redirect_url": "https://technological-alchemist.vercel.app", "title": "Test Dynamic QR", "description": "This is a test dynamic QR code"}')
     
     DYNAMIC_QR_ID=$(echo "$response" | jq -r '.id')
     echo "$response" | jq . > /dev/null
@@ -198,7 +198,7 @@ test_service_dependency_injection() {
     # Test 1: Create a QR code with specific parameters to test service layer
     local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
         -H "Content-Type: application/json" \
-        -d '{"content": "https://service-test.example.com", "qr_type": "static", "fill_color": "#333333", "back_color": "#FFFFFF"}')
+        -d '{"content": "https://service-test.example.com", "qr_type": "static", "fill_color": "#333333", "back_color": "#FFFFFF", "title": "Service Test QR", "description": "Testing service layer with specific parameters"}')
     
     local service_qr_id=$(echo "$response" | jq -r '.id')
     echo "$response" | jq . > /dev/null
@@ -233,7 +233,7 @@ test_background_tasks_scan_statistics() {
     # Create a new dynamic QR code for testing
     local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
         -H "Content-Type: application/json" \
-        -d '{"content": "background-task-test", "redirect_url": "https://background-task.example.com"}')
+        -d '{"content": "background-task-test", "redirect_url": "https://background-task.example.com", "title": "Background Task QR", "description": "Testing background task processing"}')
     
     local bg_qr_id=$(echo "$response" | jq -r '.id')
     echo "$response" | jq . > /dev/null
@@ -334,7 +334,9 @@ test_qr_with_logo() {
         -d '{
             "content": "https://www.github.com/gsinghjay",
             "qr_type": "static",
-            "include_logo": true
+            "include_logo": true,
+            "title": "GitHub Logo QR",
+            "description": "Static QR code with logo pointing to GitHub"
         }')
     
     local static_id=$(echo "$static_response" | jq -r '.id')
@@ -358,7 +360,9 @@ test_qr_with_logo() {
         -d '{
             "content": "dynamic-with-logo",
             "redirect_url": "https://technological-alchemist.vercel.app/",
-            "include_logo": true
+            "include_logo": true,
+            "title": "Dynamic Logo QR",
+            "description": "Dynamic QR code with logo for redirection"
         }')
     
     local dynamic_id=$(echo "$dynamic_response" | jq -r '.id')
@@ -412,7 +416,9 @@ test_error_correction_levels() {
             -d "{
                 \"content\": \"https://error-level-test-${error_level}.example.com\",
                 \"qr_type\": \"static\",
-                \"error_level\": \"${error_level}\"
+                \"error_level\": \"${error_level}\",
+                \"title\": \"Error Level ${error_name} QR\",
+                \"description\": \"Testing QR code with ${error_name} error correction level\"
             }")
         
         local qr_id=$(echo "$response" | jq -r '.id')
@@ -458,7 +464,9 @@ test_svg_accessibility() {
         -H "Content-Type: application/json" \
         -d '{
             "content": "https://accessibility-test.example.com",
-            "qr_type": "static"
+            "qr_type": "static",
+            "title": "Accessibility Test QR",
+            "description": "Testing QR code with SVG accessibility features"
         }')
     
     local qr_id=$(echo "$response" | jq -r '.id')
