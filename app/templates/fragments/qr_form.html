@@ -21,6 +21,37 @@
       </div>
       {% endif %}
       
+      <div class="mb-3">
+        <label for="title" class="form-label">Title</label>
+        <input 
+          type="text" 
+          id="title" 
+          name="title" 
+          class="form-control" 
+          value="{{ title or "" }}"
+          placeholder="My QR Code"
+          required
+          maxlength="100"
+        >
+        <div class="form-text">
+          Give your QR code a descriptive title for easy identification
+        </div>
+      </div>
+      
+      <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea 
+          id="description" 
+          name="description" 
+          class="form-control"
+          placeholder="Optional description for this QR code"
+          maxlength="500"
+        >{{ description or "" }}</textarea>
+        <div class="form-text">
+          Add an optional description to provide more details about this QR code
+        </div>
+      </div>
+      
       {% if qr_type == "static" %}
         <div class="mb-3">
           <label for="content" class="form-label">Content</label>
