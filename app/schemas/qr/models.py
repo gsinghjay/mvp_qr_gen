@@ -3,6 +3,7 @@ QR code Pydantic models.
 """
 
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
@@ -20,6 +21,7 @@ class QRCodeBase(BaseModel):
     size: int = Field(default=10, ge=1, le=100)
     border: int = Field(default=4, ge=0, le=20)
     error_level: str = Field(default=ErrorCorrectionLevel.M.value, description="Error correction level")
+    short_id: Optional[str] = Field(None, description="Short ID for direct lookups", max_length=10)
 
     @field_validator("fill_color", "back_color")
     @classmethod
@@ -69,7 +71,8 @@ class QRCodeResponse(QRCodeBase):
                 "back_color": "#FFFFFF",
                 "size": 10,
                 "border": 4,
-                "error_level": "m"
+                "error_level": "m",
+                "short_id": "a1b2c3d4"
             }
         }
     )
