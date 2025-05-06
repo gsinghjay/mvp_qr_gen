@@ -94,20 +94,22 @@ class QRCodeService:
             QRCodeNotFoundError: If the QR code is not found
             DatabaseError: If a database error occurs
         """
-        # Build a list of possible patterns to match
-        # 1. Direct content match for static QR codes
-        # 2. /r/{short_id} pattern for relative URLs
-        # 3. https://domain.com/r/{short_id} pattern for absolute URLs with the default domain
-        # 4. Any other absolute URL pattern with /r/{short_id}
-        patterns = [
-            short_id,  # Direct content match
-            f"/r/{short_id}",  # Relative URL pattern
-            f"{settings.BASE_URL}/r/{short_id}",  # Absolute URL with our domain
-            f"%/r/{short_id}",  # LIKE pattern for any domain with our path
-        ]
+        # Look up QR code directly by short_id
+        qr = self.repository.get_by_short_id(short_id)
 
-        # Try to find a QR code matching any of these patterns
-        qr = self.repository.find_by_pattern(patterns)
+        # If not found, try legacy pattern matching as a fallback
+        if not qr:
+            # Build a list of possible patterns to match for legacy QR codes without short_id
+            patterns = [
+                short_id,  # Direct content match
+                f"/r/{short_id}",  # Relative URL pattern
+                f"{settings.BASE_URL}/r/{short_id}",  # Absolute URL with our domain
+                f"%/r/{short_id}",  # LIKE pattern for any domain with our path
+            ]
+
+            # Try to find a QR code matching any of these patterns
+            qr = self.repository.find_by_pattern(patterns)
+
         if not qr:
             logger.warning(f"QR code with short ID {short_id} not found")
             raise QRCodeNotFoundError(f"QR code with short ID {short_id} not found")
@@ -240,6 +242,7 @@ class QRCodeService:
                 border=data.border,
                 error_level=data.error_level.value,
                 created_at=datetime.now(UTC),
+                short_id=short_id,  # Store the short_id in the database
             )
 
             # Validate QR code data
@@ -253,7 +256,7 @@ class QRCodeService:
 
             qr = self.repository.create(model_data)
 
-            logger.info(f"Created dynamic QR code with ID {qr.id} and redirect path {qr.content}")
+            logger.info(f"Created dynamic QR code with ID {qr.id} and redirect path {qr.content}, short_id: {short_id}")
             return qr
         except ValidationError as e:
             # Only catch and translate validation errors
