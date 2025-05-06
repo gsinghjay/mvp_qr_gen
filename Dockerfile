@@ -37,7 +37,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
-        sqlite3 \
+        postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and required directories with proper permissions
