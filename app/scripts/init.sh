@@ -74,7 +74,8 @@ backup_database() {
         if [ -d "/app/backups" ]; then
             echo "External backups directory exists and will be used by manage_db.py"
         fi
-        # Let manage_db.py handle the backup with pg_dump
+        # Actually call the script with the --create-backup option
+        /app/scripts/manage_db.py --postgres --create-backup || echo "Warning: Backup creation might have failed, but continuing anyway"
     else
         # For SQLite, follow existing procedure
         local timestamp=$(date +%Y%m%d_%H%M%S)
@@ -165,7 +166,8 @@ if [ "${DB_TYPE}" = "sqlite" ] && [ -f "/app/data/qr_codes.db" ] && [ -d "/app/b
     cp "${test_backup_file}" "/app/backups/"
     echo "Test backup created and copied to external directory."
 elif [ "${DB_TYPE}" = "postgresql" ] && [ -d "/app/backups" ]; then
-    echo "PostgreSQL backups will be handled by manage_db.py when needed"
+    echo "Creating regular PostgreSQL backup at startup..."
+    backup_database
 fi
 
 # Start the FastAPI application based on environment
