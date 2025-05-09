@@ -32,6 +32,7 @@ class QRCode(Base):
         size (int): Size of QR code boxes
         border (int): Border size around QR code
         error_level (str): Error correction level (l, m, q, h)
+        short_id (str): Short identifier for dynamic QR codes (used in redirects)
     """
 
     __tablename__ = "qr_codes"
@@ -58,6 +59,9 @@ class QRCode(Base):
     size: int = Column(Integer, nullable=False, default=10)
     border: int = Column(Integer, nullable=False, default=4)
     error_level: str = Column(String(1), nullable=False, default="m")
+    
+    # Short ID for dynamic QR codes used in redirect URLs
+    short_id: str = Column(String(10), nullable=True, index=True, unique=True)
 
     def __init__(self, **kwargs):
         """Initialize a QR code with timezone-aware datetime fields."""
@@ -96,4 +100,5 @@ class QRCode(Base):
             "size": self.size,
             "border": self.border,
             "error_level": self.error_level,
+            "short_id": self.short_id,
         }

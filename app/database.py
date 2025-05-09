@@ -15,20 +15,27 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 logger = logging.getLogger(__name__)
 
-# Get database URL and environment from environment variables
-SQLITE_URL = os.getenv("DATABASE_URL")
+# Get database URLs and environment from environment variables
+DATABASE_URL = os.getenv("DATABASE_URL")
+PG_DATABASE_URL = os.getenv("PG_DATABASE_URL")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
-if not SQLITE_URL:
-    # If DATABASE_URL is not set, use in-memory for tests, file for development
-    SQLITE_URL = "sqlite:///:memory:" if ENVIRONMENT == "test" else "sqlite:///./data/qr_codes.db"
+# Determine which database to use
+# In Phase 2, we still use SQLite but prepare for PostgreSQL
+USE_POSTGRES = PG_DATABASE_URL is not None and os.getenv("USE_POSTGRES", "false").lower() == "true"
+CURRENT_DB_URL = PG_DATABASE_URL if USE_POSTGRES else DATABASE_URL
+
+if not CURRENT_DB_URL:
+    # If neither DATABASE_URL nor PG_DATABASE_URL is set, use in-memory for tests, file for development
+    CURRENT_DB_URL = "sqlite:///:memory:" if ENVIRONMENT == "test" else "sqlite:///./data/qr_codes.db"
 
 # Ensure data directory exists for SQLite file
-if SQLITE_URL.startswith("sqlite:///./") and ENVIRONMENT != "test":
-    data_path = Path(SQLITE_URL.replace("sqlite:///./", "")).parent
+if not USE_POSTGRES and CURRENT_DB_URL.startswith("sqlite:///./") and ENVIRONMENT != "test":
+    data_path = Path(CURRENT_DB_URL.replace("sqlite:///./", "")).parent
     data_path.mkdir(parents=True, exist_ok=True)
 
-logger.info(f"Using database URL: {SQLITE_URL}")
+logger.info(f"Using database URL: {CURRENT_DB_URL}")
+logger.info(f"Database type: {'PostgreSQL' if USE_POSTGRES else 'SQLite'}")
 
 
 def configure_sqlite_connection(dbapi_connection, connection_record):
@@ -118,24 +125,36 @@ def add_sqlite_functions(dbapi_connection, connection_record):
         # Don't re-raise, let the connection attempt proceed
 
 
-# Create engine with proper settings for SQLite
-engine = create_engine(
-    SQLITE_URL,
-    connect_args={
-        "check_same_thread": False,  # Allow cross-thread usage
-        "isolation_level": None,  # Let SQLite handle transactions
-        "timeout": 30,  # Wait up to 30 seconds for database locks
-    },
-    pool_pre_ping=True,  # Verify connections before using them
-    pool_recycle=300,  # Recycle connections every 5 minutes
-    pool_size=10,  # Maintain up to 10 connections in the pool
-    max_overflow=20,  # Allow up to 20 extra connections when needed
-    echo=os.getenv("SQL_ECHO", "false").lower() == "true",  # Log SQL queries if enabled
-)
-
-# Configure SQLite connection
-event.listen(engine, "connect", configure_sqlite_connection)
-event.listen(engine, "connect", add_sqlite_functions)
+# Create engine with proper settings based on database type
+if USE_POSTGRES:
+    # PostgreSQL settings
+    engine = create_engine(
+        CURRENT_DB_URL,
+        pool_pre_ping=True,  # Verify connections before using them
+        pool_recycle=300,  # Recycle connections every 5 minutes
+        pool_size=10,  # Maintain up to 10 connections in the pool
+        max_overflow=20,  # Allow up to 20 extra connections when needed
+        echo=os.getenv("SQL_ECHO", "false").lower() == "true",  # Log SQL queries if enabled
+    )
+else:
+    # SQLite settings (maintaining backward compatibility)
+    engine = create_engine(
+        CURRENT_DB_URL,
+        connect_args={
+            "check_same_thread": False,  # Allow cross-thread usage
+            "isolation_level": None,  # Let SQLite handle transactions
+            "timeout": 30,  # Wait up to 30 seconds for database locks
+        },
+        pool_pre_ping=True,  # Verify connections before using them
+        pool_recycle=300,  # Recycle connections every 5 minutes
+        pool_size=10,  # Maintain up to 10 connections in the pool
+        max_overflow=20,  # Allow up to 20 extra connections when needed
+        echo=os.getenv("SQL_ECHO", "false").lower() == "true",  # Log SQL queries if enabled
+    )
+    
+    # Configure SQLite connection (only if using SQLite)
+    event.listen(engine, "connect", configure_sqlite_connection)
+    event.listen(engine, "connect", add_sqlite_functions)
 
 # Create sessionmaker with timezone-aware settings
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
@@ -159,10 +178,15 @@ def with_retry(max_retries=3, retry_delay=0.1):
                 try:
                     return func(*args, **kwargs)
                 except OperationalError as e:
-                    # Only retry on database lock errors
-                    if "database is locked" in str(e) and retries < max_retries - 1:
+                    # Only retry on database lock errors (SQLite) or connection errors (PostgreSQL)
+                    retryable_error = (
+                        ("database is locked" in str(e) and not USE_POSTGRES) or  # SQLite lock
+                        ("could not connect to server" in str(e) and USE_POSTGRES)  # PostgreSQL connection
+                    )
+                    
+                    if retryable_error and retries < max_retries - 1:
                         retries += 1
-                        logger.warning(f"Database locked, retrying ({retries}/{max_retries}): {e}")
+                        logger.warning(f"Database error, retrying ({retries}/{max_retries}): {e}")
                         time.sleep(retry_delay * (2**retries))  # Exponential backoff
                     else:
                         raise
@@ -224,7 +248,7 @@ def init_db():
     """
     try:
         # Ensure the data directory exists
-        db_path = SQLITE_URL.replace("sqlite:///", "")
+        db_path = CURRENT_DB_URL.replace("sqlite:///", "")
         if db_path.startswith("."):
             db_path = db_path[1:]  # Remove leading dot
         os.makedirs(os.path.dirname(db_path), exist_ok=True)

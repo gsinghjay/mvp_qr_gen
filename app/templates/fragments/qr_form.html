@@ -6,8 +6,9 @@
   <div class="p-3">
     <form
       hx-post="/api/v1/fragments/qr-create"
-      hx-target="#qr-detail-modal"
+      hx-target="#qr-detail-modal .modal-content"
       hx-swap="innerHTML"
+      hx-on::after-request="if(event.detail.successful) { const modalElement = document.getElementById('qr-detail-modal'); const modal = new bootstrap.Modal(modalElement); modal.show(); }"
     >
       <input type="hidden" name="qr_type" value="{{ qr_type }}">
       
@@ -135,7 +136,10 @@
       
       <div class="d-flex justify-content-end gap-2">
         <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary">Create QR Code</button>
+        <button type="submit" class="btn btn-primary">
+          <span class="htmx-indicator spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          Create QR Code
+        </button>
       </div>
     </form>
   </div>

@@ -57,6 +57,25 @@ class QRCodeRepository(BaseRepository[QRCode]):
             logger.error(f"Database error retrieving QR code by content: {str(e)}")
             raise DatabaseError(f"Database error retrieving QR code by content: {str(e)}")
 
+    def get_by_short_id(self, short_id: str) -> Optional[QRCode]:
+        """
+        Get a QR code by its short_id.
+        
+        Args:
+            short_id: The short_id of the QR code
+            
+        Returns:
+            The QR code if found, None otherwise
+            
+        Raises:
+            DatabaseError: If a database error occurs
+        """
+        try:
+            return self.db.query(QRCode).filter(QRCode.short_id == short_id).first()
+        except SQLAlchemyError as e:
+            logger.error(f"Database error retrieving QR code by short_id: {str(e)}")
+            raise DatabaseError(f"Database error retrieving QR code by short_id: {str(e)}")
+
     @with_retry(max_retries=3, retry_delay=0.2)
     def update_qr(self, qr_id: str, update_data: Dict[str, Any]) -> Optional[QRCode]:
         """
@@ -267,40 +286,6 @@ class QRCodeRepository(BaseRepository[QRCode]):
             logger.error(f"Database error listing QR codes: {str(e)}")
             raise DatabaseError(f"Database error while listing QR codes: {str(e)}")
 
-    def find_by_pattern(self, patterns: List[str]) -> Optional[QRCode]:
-        """
-        Find a QR code by matching any of the provided content patterns.
-        
-        This method is useful for finding QR codes by their content, supporting various
-        formats and backward compatibility for QR code redirection.
-        
-        Args:
-            patterns: List of patterns to match against QR code content
-            
-        Returns:
-            The QR code if found, None otherwise
-            
-        Raises:
-            DatabaseError: If a database error occurs
-        """
-        try:
-            or_conditions = []
-            
-            # Create OR conditions for exact matches
-            for pattern in patterns:
-                if pattern.startswith("%"):
-                    # This is a LIKE pattern
-                    or_conditions.append(QRCode.content.like(pattern))
-                else:
-                    # This is an exact match
-                    or_conditions.append(QRCode.content == pattern)
-                    
-            # Execute the query with combined OR conditions
-            return self.db.query(QRCode).filter(or_(*or_conditions)).first()
-        except SQLAlchemyError as e:
-            logger.error(f"Database error finding QR code by pattern: {str(e)}")
-            raise DatabaseError(f"Database error finding QR code by pattern: {str(e)}")
-    
     def count(self) -> int:
         """
         Get the total count of QR codes in the database.
