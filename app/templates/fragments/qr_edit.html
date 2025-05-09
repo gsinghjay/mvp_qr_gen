@@ -3,11 +3,12 @@
   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
 
-<div class="modal-body">
-  <form
-    hx-post="/api/v1/fragments/qr-update/{{ qr.id }}"
-    hx-target="#qr-detail-modal .modal-content"
-  >
+<form
+  hx-post="/api/v1/fragments/qr-update/{{ qr.id }}"
+  hx-target="#qr-detail-modal .modal-content"
+  hx-indicator="#loading-indicator"
+>
+  <div class="modal-body">
     {% if error_messages %}
     <div class="alert alert-danger">
       <ul class="mb-0">
@@ -66,7 +67,7 @@
     {% endif %}
     
     <div class="text-center mt-4">
-      <img src="/api/v1/qr/{{ qr.id }}/image?format=png&size=10" alt="QR Code" class="img-fluid border" style="width: 200px; height: 200px; object-fit: contain;">
+      <img src="/api/v1/qr/{{ qr.id }}/image?image_format=png&size=10" alt="QR Code" class="img-fluid border" style="width: 200px; height: 200px; object-fit: contain;">
       <div class="form-text">
         <i class="bi bi-info-circle"></i>
         The QR code appearance won't change, but the metadata will be updated.
@@ -75,6 +76,9 @@
   </div>
   
   <div class="modal-footer">
+    <div id="loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary me-3" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
     <button type="submit" class="btn btn-primary">
       <i class="bi bi-check2 me-1"></i> Save Changes
