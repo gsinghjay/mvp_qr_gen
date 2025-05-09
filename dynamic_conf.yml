@@ -82,7 +82,7 @@ http:
 
     # Block all paths on new IP and domain (auth domain)
     auth-ip-block-router:
-      rule: "Host(`130.156.44.53`) || Host(`web.auth.hccc.edu`)"
+      rule: "(Host(`130.156.44.53`) || Host(`web.auth.hccc.edu`)) && !PathPrefix(`/static/access-restricted.html`) && !PathPrefix(`/static/assets/`)"
       service: api-service
       entryPoints:
         - web
