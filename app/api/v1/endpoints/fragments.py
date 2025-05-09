@@ -344,9 +344,6 @@ async def get_qr_edit_fragment(
     """
     try:
         qr = qr_service.get_qr_by_id(qr_id)
-        if qr.qr_type != "dynamic":
-            raise HTTPException(status_code=400, detail="Only dynamic QR codes can be edited")
-        
         return templates.TemplateResponse(
             "fragments/qr_edit.html",
             {
@@ -380,6 +377,8 @@ async def update_qr_code(
     Returns:
         HTMLResponse: The rendered QR detail fragment.
     """
+    logger.info(f"Updating QR code {qr_id} - Title: '{title}', Description: '{description}', Redirect URL: '{redirect_url}'")
+    
     try:
         # Create update parameters
         params = QRUpdateParameters(
@@ -390,6 +389,7 @@ async def update_qr_code(
         
         # Update the QR code
         qr = qr_service.update_qr(qr_id, params)
+        logger.info(f"Successfully updated QR code {qr_id}")
         
         # Format dates for better readability
         created_at_formatted = qr.created_at.strftime("%B %d, %Y at %H:%M")
