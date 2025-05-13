@@ -5,6 +5,8 @@ This module defines Pydantic models for query parameters used in QR code endpoin
 These models provide consistent validation and documentation for API parameters.
 """
 
+from typing import List, Optional, Union
+
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 from ..common import ImageFormat, QRType, ErrorCorrectionLevel
@@ -41,15 +43,20 @@ class QRImageParameters(BaseModel):
         le=100,
         description="The quality of the image (1-100, for lossy formats)",
     )
-    size: int = Field(default=10, ge=1, le=100, description="QR code size (1-100)")
+    size: int = Field(
+        default=10, 
+        ge=1, 
+        le=500, 
+        description="QR code size (1-500) - relative unit that gets multiplied by 25 to determine pixel size; ignored if physical dimensions are provided"
+    )
     border: int = Field(default=4, ge=0, le=20, description="QR code border width (0-20)")
     fill_color: str | None = Field(
         default=None,
         pattern=r"^#[0-9A-Fa-f]{6}$",
         description="QR code fill color in hex format (#RRGGBB)",
     )
-    back_color: str | None = Field(
-        default=None,
+    back_color: str = Field(
+        default="#FFFFFF",
         pattern=r"^#[0-9A-Fa-f]{6}$",
         description="QR code background color in hex format (#RRGGBB)",
     )
@@ -71,6 +78,40 @@ class QRImageParameters(BaseModel):
         description="Description for SVG format (improves accessibility)",
         max_length=500
     )
+    # New fields for physical dimensions and DPI
+    physical_size: float | None = Field(
+        default=None,
+        ge=0.1,
+        le=100,
+        description="Physical size of the QR code in physical_unit (0.1-100)"
+    )
+    physical_unit: str | None = Field(
+        default=None,
+        pattern=r"^(in|cm|mm)$",
+        description="Physical unit for size (in, cm, mm)"
+    )
+    dpi: int | None = Field(
+        default=None,
+        ge=72,
+        le=1200,
+        description="DPI (dots per inch) for physical output (72-1200)"
+    )
+
+    @model_validator(mode='after')
+    def validate_physical_dimensions(self) -> 'QRImageParameters':
+        """Validate that physical dimensions are properly specified."""
+        # If any physical dimension parameter is provided, all must be provided
+        physical_params = [self.physical_size, self.physical_unit, self.dpi]
+        
+        if any(param is not None for param in physical_params):
+            if self.physical_size is None:
+                raise ValueError("physical_size must be specified when any physical dimension parameter is provided")
+            if self.physical_unit is None:
+                raise ValueError("physical_unit must be specified when any physical dimension parameter is provided")
+            if self.dpi is None:
+                raise ValueError("dpi must be specified when any physical dimension parameter is provided")
+        
+        return self
 
 
 class QRCreateParameters(BaseModel):
@@ -96,7 +137,12 @@ class QRCreateParameters(BaseModel):
         pattern=r"^#[0-9A-Fa-f]{6}$",
         description="QR code background color in hex format (#RRGGBB)",
     )
-    size: int = Field(default=10, ge=1, le=100, description="QR code size (1-100)")
+    size: int = Field(
+        default=10, 
+        ge=1, 
+        le=500, 
+        description="QR code size (1-500) - relative unit that gets multiplied by 25 to determine pixel size"
+    )
     border: int = Field(default=4, ge=0, le=20, description="QR code border width (0-20)")
     error_level: ErrorCorrectionLevel = Field(
         default=ErrorCorrectionLevel.M,
