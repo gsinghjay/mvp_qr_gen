@@ -18,7 +18,7 @@ class QRCodeBase(BaseModel):
     description: str | None = Field(None, max_length=500)
     fill_color: str = Field(default="#000000", pattern=r"^#[0-9A-Fa-f]{6}$")
     back_color: str = Field(default="#FFFFFF", pattern=r"^#[0-9A-Fa-f]{6}$")
-    size: int = Field(default=10, ge=1, le=100)
+    size: int = Field(default=10, ge=1, le=500)
     border: int = Field(default=4, ge=0, le=20)
     error_level: str = Field(default=ErrorCorrectionLevel.M.value, description="Error correction level")
     short_id: Optional[str] = Field(None, description="Short ID for direct lookups", max_length=10)
