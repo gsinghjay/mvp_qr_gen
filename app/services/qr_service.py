@@ -491,6 +491,9 @@ class QRCodeService:
         include_logo: bool = False,
         svg_title: str | None = None,
         svg_description: str | None = None,
+        physical_size: float | None = None,
+        physical_unit: str | None = None,
+        dpi: int | None = None,
     ) -> StreamingResponse:
         """
         Generate a QR code with the given parameters.
@@ -507,6 +510,9 @@ class QRCodeService:
             include_logo: Whether to include the default logo
             svg_title: Optional title for SVG format (improves accessibility)
             svg_description: Optional description for SVG format (improves accessibility)
+            physical_size: Physical size of the QR code in the specified unit
+            physical_unit: Physical unit for size (in, cm, mm)
+            dpi: DPI (dots per inch) for physical output
 
         Returns:
             StreamingResponse: FastAPI response containing the QR code image
@@ -514,9 +520,22 @@ class QRCodeService:
         Raises:
             HTTPException: If the image format is not supported or conversion fails
         """
-        # Calculate the approximate size based on size parameter
-        # For segno, we use the total image size rather than box_size
-        pixel_size = size * 25  # Rough estimate based on typical QR code size
+        # If physical dimensions are specified, use them directly
+        if physical_size is not None and physical_unit is not None and dpi is not None:
+            # Calculate pixel size from physical dimensions and DPI to set final output size
+            if physical_unit == "in":
+                pixel_size = int(physical_size * dpi)
+            elif physical_unit == "cm":
+                pixel_size = int(physical_size * dpi / 2.54)  # 1 inch = 2.54 cm
+            elif physical_unit == "mm":
+                pixel_size = int(physical_size * dpi / 25.4)  # 1 inch = 25.4 mm
+            else:
+                # Default to size parameter if physical unit is not recognized
+                pixel_size = size * 25  # Rough estimate based on typical QR code size
+        else:
+            # Calculate the approximate size based on size parameter
+            # For segno, we use the total image size rather than box_size
+            pixel_size = size * 25  # Rough estimate based on typical QR code size
         
         return generate_qr_response(
             content=data,
@@ -529,7 +548,10 @@ class QRCodeService:
             logo_path=True if include_logo else None,  # Pass logo_path based on include_logo
             error_level=error_level,
             svg_title=svg_title,
-            svg_description=svg_description
+            svg_description=svg_description,
+            physical_size=physical_size,
+            physical_unit=physical_unit,
+            dpi=dpi
         )
 
     def delete_qr(self, qr_id: str) -> None:
