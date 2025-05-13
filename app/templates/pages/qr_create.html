@@ -81,15 +81,6 @@
     </div>
 </main>
 
-<!-- QR detail modal for showing the created QR code -->
-<div id="qr-detail-modal" class="modal fade" tabindex="-1" aria-labelledby="qrDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
-        <div class="modal-content">
-            <!-- Content will be loaded dynamically -->
-        </div>
-    </div>
-</div>
-
 <!-- Toast notification for successful creation -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
     <div id="qr-success-toast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
@@ -129,10 +120,10 @@
         
         // Function to close modal for the Cancel button
         window.closeModal = function() {
-            // Get the parent element that has the modal open
-            const modalContainer = document.getElementById('qr-form-container');
-            if (modalContainer) {
-                modalContainer.innerHTML = '<div class="text-center p-4">Form closed</div>';
+            // In Option B, just reset the form
+            const staticRadio = document.getElementById('static-qr');
+            if (staticRadio) {
+                staticRadio.click();
             }
         };
     });
