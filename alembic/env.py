@@ -9,7 +9,7 @@ from alembic import context
 # Add the parent directory to sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.database import CURRENT_DB_URL, USE_POSTGRES
+from app.database import CURRENT_DB_URL
 from app.models.qr import Base
 
 # this is the Alembic Config object, which provides
@@ -56,10 +56,6 @@ def run_migrations_offline() -> None:
         "compare_server_default": True,  # Enable server default comparison
     }
     
-    # Add render_as_batch for SQLite only
-    if not USE_POSTGRES:
-        context_config["render_as_batch"] = True
-        
     context.configure(**context_config)
 
     with context.begin_transaction():
@@ -87,10 +83,6 @@ def run_migrations_online() -> None:
             "compare_server_default": True,  # Enable server default comparison
         }
         
-        # Add render_as_batch for SQLite only
-        if not USE_POSTGRES:
-            context_config["render_as_batch"] = True
-            
         context.configure(**context_config)
 
         with context.begin_transaction():
