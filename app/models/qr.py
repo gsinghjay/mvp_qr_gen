@@ -47,7 +47,7 @@ class QRCode(Base):
         UTCDateTime,
         nullable=False,
         default=lambda: datetime.now(UTC),
-        server_default=func.datetime(func.utcnow()),
+        server_default=func.now(),  # Use PostgreSQL's now() function
         index=True,
     )
     scan_count: int = Column(Integer, nullable=False, default=0)
