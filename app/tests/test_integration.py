@@ -14,16 +14,19 @@ from ..schemas.qr.models import QRType
 from ..services.qr_service import QRCodeService
 from .conftest import create_test_qr_code
 from .utils import validate_qr_code_data
+from .factories import QRCodeFactory
 
 
 def test_get_qr_service_dependency(test_db):
     """Test that the QRCodeService dependency can be injected properly."""
+    from ..repositories.qr_repository import QRCodeRepository
 
     # Override the dependency for testing
     def get_test_qr_service():
         """Test QR service provider"""
-        # Use the test database session directly
-        yield QRCodeService(test_db)
+        # Create repository with test database session
+        repository = QRCodeRepository(test_db)
+        yield QRCodeService(repository)
 
     # Store original dependency
     original_dependency = app.dependency_overrides.get(get_qr_service)
@@ -39,9 +42,10 @@ def test_get_qr_service_dependency(test_db):
         "/api/v1/qr/static",
         json={
             "content": "https://example.com",
-            "qr_type": "static",
             "fill_color": "#000000",
             "back_color": "#FFFFFF",
+            "title": "Test QR Code",
+            "error_level": "m",
         },
     )
 
@@ -55,66 +59,123 @@ def test_get_qr_service_dependency(test_db):
         del app.dependency_overrides[get_qr_service]
 
 
-def test_static_qr_create_integration():
+def test_static_qr_create_integration(test_db):
     """Test creating a static QR code through the API."""
+    from ..repositories.qr_repository import QRCodeRepository
+
+    # Override the dependency for testing
+    def get_test_qr_service():
+        """Test QR service provider"""
+        # Create repository with test database session
+        repository = QRCodeRepository(test_db)
+        yield QRCodeService(repository)
+
+    # Store original dependency
+    original_dependency = app.dependency_overrides.get(get_qr_service)
+
+    # Override with test version
+    app.dependency_overrides[get_qr_service] = get_test_qr_service
+
     # Create a test client
     client = TestClient(app)
 
-    # Create a static QR code
-    response = client.post(
-        "/api/v1/qr/static",
-        json={"content": "https://example.com", "fill_color": "#000000", "back_color": "#FFFFFF"},
-    )
+    try:
+        # Create a static QR code
+        response = client.post(
+            "/api/v1/qr/static",
+            json={
+                "content": "https://example.com", 
+                "fill_color": "#000000", 
+                "back_color": "#FFFFFF",
+                "title": "Test Static QR",
+                "error_level": "m",
+            },
+        )
 
-    # Verify the response
-    assert response.status_code == 201  # API returns 201 Created for successful creation
-    data = response.json()
-    assert validate_qr_code_data(
-        data,
-        {
-            "qr_type": "static",
-            "content": "https://example.com",
-            "fill_color": "#000000",
-            "back_color": "#FFFFFF",
-        },
-    )
+        # Print response for debugging
+        print(f"Response status: {response.status_code}")
+        print(f"Response body: {response.text}")
+
+        # Verify the response
+        assert response.status_code == 201  # API returns 201 Created for successful creation
+        data = response.json()
+        assert validate_qr_code_data(
+            data,
+            {
+                "qr_type": "static",
+                "content": "https://example.com",
+                "fill_color": "#000000",
+                "back_color": "#FFFFFF",
+                "title": "Test Static QR",
+            },
+        )
+    finally:
+        # Restore original dependency
+        if original_dependency:
+            app.dependency_overrides[get_qr_service] = original_dependency
+        else:
+            del app.dependency_overrides[get_qr_service]
 
 
-def test_dynamic_qr_create_integration():
+def test_dynamic_qr_create_integration(test_db):
     """Test creating a dynamic QR code through the API."""
+    from ..repositories.qr_repository import QRCodeRepository
+
+    # Override the dependency for testing
+    def get_test_qr_service():
+        """Test QR service provider"""
+        # Create repository with test database session
+        repository = QRCodeRepository(test_db)
+        yield QRCodeService(repository)
+
+    # Store original dependency
+    original_dependency = app.dependency_overrides.get(get_qr_service)
+
+    # Override with test version
+    app.dependency_overrides[get_qr_service] = get_test_qr_service
+
     # Create a test client
     client = TestClient(app)
 
-    # Create a dynamic QR code
-    response = client.post(
-        "/api/v1/qr/dynamic",
-        json={
-            "content": "https://example.com",  # Content is required for dynamic QR codes
-            "redirect_url": "https://example.com",
-            "fill_color": "#000000",
-            "back_color": "#FFFFFF",
-        },
-    )
+    try:
+        # Create a dynamic QR code
+        response = client.post(
+            "/api/v1/qr/dynamic",
+            json={
+                "content": "https://example.com",  # Content is required for dynamic QR codes
+                "redirect_url": "https://example.com",
+                "fill_color": "#000000",
+                "back_color": "#FFFFFF",
+                "title": "Test Dynamic QR",
+                "error_level": "m",
+            },
+        )
 
-    # Verify the response
-    assert response.status_code == 201  # API returns 201 Created for successful creation
-    data = response.json()
-    assert validate_qr_code_data(
-        data,
-        {
-            "qr_type": "dynamic",
-            "redirect_url": "https://example.com/",  # API adds trailing slash
-            "fill_color": "#000000",
-            "back_color": "#FFFFFF",
-        },
-    )
+        # Verify the response
+        assert response.status_code == 201  # API returns 201 Created for successful creation
+        data = response.json()
+        assert validate_qr_code_data(
+            data,
+            {
+                "qr_type": "dynamic",
+                "redirect_url": "https://example.com/",  # API adds trailing slash
+                "fill_color": "#000000",
+                "back_color": "#FFFFFF",
+                "title": "Test Dynamic QR",
+            },
+        )
+    finally:
+        # Restore original dependency
+        if original_dependency:
+            app.dependency_overrides[get_qr_service] = original_dependency
+        else:
+            del app.dependency_overrides[get_qr_service]
 
 
-def test_test_data_generator(test_db):
+def test_test_data_generator(test_db, qr_code_factory: QRCodeFactory):
     """Test that the test data generator creates valid QR codes."""
-    # Create a test QR code
-    test_qr = create_test_qr_code(
-        db=test_db,
+    # Create a test QR code using the factory
+    test_qr = qr_code_factory.create_with_params(
         qr_type=QRType.STATIC,
         content="https://example.com",
         fill_color="#000000",
