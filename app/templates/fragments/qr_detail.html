@@ -137,9 +137,77 @@
   <div class="alert alert-primary small">
     <i class="bi bi-graph-up me-2"></i> <strong>Coming Soon:</strong> A dedicated statistics page with enhanced metrics including device types, geographic data, and scan patterns.
   </div>
+
+  <!-- Physical Dimensions Card (if provided) -->
+  {% if physical_size is defined and physical_unit is defined and dpi is defined %}
+  <div class="card mb-3">
+    <div class="card-header bg-light">
+      <h6 class="mb-0">Physical Dimensions</h6>
+    </div>
+    <div class="card-body">
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">Size:</div>
+        <div class="col-8">{{ physical_size }} {{ physical_unit }}</div>
+      </div>
+      <div class="row mb-2">
+        <div class="col-4 fw-bold">DPI:</div>
+        <div class="col-8">{{ dpi }}</div>
+      </div>
+      <div class="alert alert-info mb-0 small">
+        <i class="bi bi-info-circle me-2"></i> These physical dimensions will be applied when downloading or viewing the QR code.
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 
 <div class="modal-footer">
+  <!-- Download Options Section -->
+  <div class="row mb-3 w-100">
+    <div class="col-lg-6">
+      <div class="d-flex align-items-center mb-2">
+        <span class="fw-bold me-3">Download Options:</span>
+      </div>
+      <div class="form-check mb-2">
+        <input type="checkbox" class="form-check-input" id="includeLogo" onchange="updateImageAndDownloadLinks()">
+        <label class="form-check-label" for="includeLogo">Include Logo</label>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="mb-2">
+        <label class="form-label fw-bold">Physical Dimensions (Optional)</label>
+      </div>
+      <div class="row g-2">
+        <div class="col-4">
+          <input type="number" class="form-control form-control-sm" id="physicalSize" placeholder="Size" min="0.1" max="100" step="0.1" onchange="updateImageAndDownloadLinks()">
+        </div>
+        <div class="col-4">
+          <select class="form-select form-select-sm" id="physicalUnit" onchange="updateImageAndDownloadLinks()">
+            <option value="">Unit</option>
+            <option value="in">Inches (in)</option>
+            <option value="cm">Centimeters (cm)</option>
+            <option value="mm">Millimeters (mm)</option>
+          </select>
+        </div>
+        <div class="col-4">
+          <input type="number" class="form-control form-control-sm" id="dpi" placeholder="DPI" min="72" max="1200" step="1" onchange="updateImageAndDownloadLinks()">
+        </div>
+      </div>
+      <div class="text-muted small mt-1">
+        All fields required if any is used
+      </div>
+      <div class="mt-2">
+        <span class="small me-1">Presets:</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary me-1" 
+                onclick="applyPreset(2, 'in', 300)">Business Card</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary me-1" 
+                onclick="applyPreset(5, 'cm', 300)">Small</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" 
+                onclick="applyPreset(12, 'in', 300)">Poster</button>
+      </div>
+    </div>
+  </div>
+
   <div class="btn-group me-auto">
     <a href="/api/v1/qr/{{ qr.id }}/image?image_format=png&size=10" id="pngDownload" download="qr-{{ qr.id }}.png" class="btn btn-secondary">
       <i class="bi bi-file-image me-1"></i> PNG
@@ -171,27 +239,82 @@
 </div>
 
 <script>
-  // Update image and download links when logo option changes
-  document.getElementById('includeLogo').addEventListener('change', function() {
-    const logoParam = this.checked ? '&include_logo=true' : '';
-    // When including a logo, always use the highest error correction level
-    const errorParam = this.checked ? '&error_level=h' : '';
-    // Use a larger size when including a logo for better visibility
-    const sizeParam = this.checked ? '&size=20' : '&size=10';
+  // Update image and download links when options change
+  function updateImageAndDownloadLinks() {
+    const logoChecked = document.getElementById('includeLogo').checked;
+    const physicalSize = document.getElementById('physicalSize').value.trim();
+    const physicalUnit = document.getElementById('physicalUnit').value;
+    const dpi = document.getElementById('dpi').value.trim();
+    
+    // Base parameters
+    const logoParam = logoChecked ? '&include_logo=true' : '';
+    const errorParam = logoChecked ? '&error_level=h' : '';
+    const sizeParam = logoChecked ? '&size=20' : '&size=10';
+    
+    // Check if all physical dimension fields are filled
+    let physicalParams = '';
+    if (physicalSize && physicalUnit && dpi) {
+      physicalParams = `&physical_size=${physicalSize}&physical_unit=${physicalUnit}&dpi=${dpi}`;
+    }
+    
+    // Create base URL for each format
+    const basePngUrl = `/api/v1/qr/{{ qr.id }}/image?image_format=png${sizeParam}${logoParam}${errorParam}${physicalParams}`;
+    const baseSvgUrl = `/api/v1/qr/{{ qr.id }}/image?image_format=svg${sizeParam}${logoParam}${errorParam}${physicalParams}`;
+    const baseJpgUrl = `/api/v1/qr/{{ qr.id }}/image?image_format=jpeg${sizeParam}${logoParam}${errorParam}${physicalParams}`;
+    const baseWebpUrl = `/api/v1/qr/{{ qr.id }}/image?image_format=webp${sizeParam}${logoParam}${errorParam}${physicalParams}`;
+    
+    // Update image source
+    document.getElementById('qrImage').src = basePngUrl;
     
     // Update error level display
-    document.getElementById('errorLevelDisplay').textContent = this.checked ? 'H (High - for logo)' : '{{ error_level_display }}';
+    document.getElementById('errorLevelDisplay').textContent = logoChecked ? 'H (High - for logo)' : '{{ error_level_display }}';
     
-    // Update the image source with logo, error level and size parameters
-    document.getElementById('qrImage').src = `/api/v1/qr/{{ qr.id }}/image?image_format=png${sizeParam}${logoParam}${errorParam}`;
+    // Update download links
+    document.getElementById('pngDownload').href = basePngUrl;
+    document.getElementById('svgDownload').href = baseSvgUrl;
+    document.getElementById('jpgDownload').href = baseJpgUrl;
+    document.getElementById('webpDownload').href = baseWebpUrl;
     
-    // Update download links with all parameters
-    document.getElementById('pngDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=png${sizeParam}${logoParam}${errorParam}`;
-    document.getElementById('svgDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=svg${sizeParam}${logoParam}${errorParam}`;
-    document.getElementById('jpgDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=jpeg${sizeParam}${logoParam}${errorParam}`;
-    document.getElementById('webpDownload').href = `/api/v1/qr/{{ qr.id }}/image?image_format=webp${sizeParam}${logoParam}${errorParam}`;
+    // Create descriptive filenames based on options
+    let filenameBase = `qr-{{ qr.id }}`;
+    if (physicalSize && physicalUnit && dpi) {
+      filenameBase += `-${physicalSize}${physicalUnit}-${dpi}dpi`;
+    }
+    if (logoChecked) {
+      filenameBase += '-logo';
+    }
+    
+    // Update download filenames
+    document.getElementById('pngDownload').download = `${filenameBase}.png`;
+    document.getElementById('svgDownload').download = `${filenameBase}.svg`;
+    document.getElementById('jpgDownload').download = `${filenameBase}.jpg`;
+    document.getElementById('webpDownload').download = `${filenameBase}.webp`;
     
     // Show/hide the format note based on logo selection
-    document.getElementById('formatNote').style.display = this.checked ? 'block' : 'none';
+    document.getElementById('formatNote').style.display = logoChecked ? 'block' : 'none';
+  }
+  
+  // Initialize on load
+  document.addEventListener('DOMContentLoaded', function() {
+    // Set initial form state
+    document.getElementById('includeLogo').checked = false;
+    
+    // Try to pre-populate physical dimensions if they were already set
+    {% if physical_size is defined and physical_unit is defined and dpi is defined %}
+    document.getElementById('physicalSize').value = '{{ physical_size }}';
+    document.getElementById('physicalUnit').value = '{{ physical_unit }}';
+    document.getElementById('dpi').value = '{{ dpi }}';
+    {% endif %}
+    
+    // Update links based on initial state
+    updateImageAndDownloadLinks();
   });
+
+  // Optional: Add presets for common sizes
+  function applyPreset(size, unit, dpi) {
+    document.getElementById('physicalSize').value = size;
+    document.getElementById('physicalUnit').value = unit;
+    document.getElementById('dpi').value = dpi;
+    updateImageAndDownloadLinks();
+  }
 </script> 
