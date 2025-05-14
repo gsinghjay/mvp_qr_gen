@@ -79,10 +79,23 @@ async def redirect_qr(
         # Get client information for analytics
         client_ip = request.client.host if request.client else "unknown"
         user_agent = request.headers.get("user-agent", "unknown")
+        
+        # Extract the scan_ref parameter from the query string
+        scan_ref = request.query_params.get("scan_ref")
+        is_genuine_scan = scan_ref == "qr"
+        
+        # Log whether this is a genuine scan or direct access
+        scan_type = "genuine QR scan" if is_genuine_scan else "direct URL access"
+        logger.info(f"Processing {scan_type} for QR {qr.id} with short_id {short_id}")
 
-        # Add the background task to update scan statistics with client info
+        # Add the background task to update scan statistics with client info and genuine scan signal
         background_tasks.add_task(
-            qr_service.update_scan_statistics, qr.id, timestamp, client_ip, user_agent
+            qr_service.update_scan_statistics, 
+            qr.id, 
+            timestamp, 
+            client_ip, 
+            user_agent,
+            is_genuine_scan
         )
 
         # Log the scan event
@@ -93,6 +106,8 @@ async def redirect_qr(
                 "client_ip": client_ip,
                 "user_agent": user_agent,
                 "timestamp": timestamp.isoformat(),
+                "is_genuine_scan": is_genuine_scan,
+                "scan_ref": scan_ref,
             },
         )
 
