@@ -56,6 +56,9 @@ class QRCodeResponse(QRCodeBase):
     created_at: datetime
     scan_count: int
     last_scan_at: datetime | None = None
+    genuine_scan_count: int
+    first_genuine_scan_at: datetime | None = None
+    last_genuine_scan_at: datetime | None = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -67,6 +70,9 @@ class QRCodeResponse(QRCodeBase):
                 "created_at": "2023-01-01T00:00:00Z",
                 "scan_count": 42,
                 "last_scan_at": "2023-01-02T12:34:56Z",
+                "genuine_scan_count": 30,
+                "first_genuine_scan_at": "2023-01-01T12:00:00Z",
+                "last_genuine_scan_at": "2023-01-02T12:34:56Z",
                 "fill_color": "#000000",
                 "back_color": "#FFFFFF",
                 "size": 10,
