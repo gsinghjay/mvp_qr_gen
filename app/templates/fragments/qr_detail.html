@@ -1,320 +1,514 @@
-<div class="modal-header">
-  <h5 class="modal-title">QR Code Details</h5>
-  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<style>
+  .top-right-badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+
+  .qr-preview-container {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .qr-preview-container img {
+    border: 1px solid #e9e9e9;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .download-size-controls .form-label {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+
+  .size-preset-btn {
+    font-size: 0.8rem;
+    padding: 0.1rem 0.5rem;
+  }
+
+  #generatedURL {
+    word-break: break-all;
+  }
+
+  #physicalDimensionsForm label {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+  }
+
+  #downloadLinks .dropdown-item {
+    font-size: 0.9rem;
+    padding: 0.25rem 1rem;
+  }
+</style>
+
+<div class="modal-header bg-primary text-white">
+  <h5 class="modal-title" id="qrDetailModalLabel">QR Code Details</h5>
+  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
 
-{% if success_message %}
-<div class="alert alert-success m-3">{{ success_message }}</div>
-{% endif %}
-
 <div class="modal-body">
-  <!-- QR Image Section -->
-  <div class="text-center mb-3">
-    <div class="form-check form-switch d-flex justify-content-center align-items-center mb-2">
-      <input class="form-check-input me-2" type="checkbox" id="includeLogo">
-      <label class="form-check-label" for="includeLogo">Include Logo</label>
-    </div>
-    <img id="qrImage" src="/api/v1/qr/{{ qr.id }}/image?image_format=png&size=10" alt="QR Code" class="img-fluid border" style="max-width: 250px;">
+  <!-- Success message if provided -->
+  {% if success_message %}
+  <div class="alert alert-success alert-dismissible fade show" role="alert">
+    {{ success_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
+  {% endif %}
 
-  <!-- Title & Description Card -->
-  <div class="card mb-3">
-    <div class="card-header bg-light">
-      <h6 class="mb-0">Title & Description</h6>
-    </div>
-    <div class="card-body">
-      <div class="row mb-2">
-        <div class="col-4 fw-bold">Title:</div>
-        <div class="col-8">{{ qr.title or "Untitled QR Code" }}</div>
+  <div class="row">
+    <div class="col-md-5">
+      <!-- QR Preview Card -->
+      <div class="card mb-3">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">Preview</h6>
+          <span class="badge rounded-pill text-bg-{{ 'primary' if qr.qr_type == 'dynamic' else 'secondary' }}">
+            {{ qr.qr_type|title }}
+          </span>
+        </div>
+        <div class="card-body text-center p-2">
+          <!-- Add preview logo checkbox -->
+          <div class="form-check form-switch d-flex justify-content-center align-items-center mb-2">
+            <input class="form-check-input me-2" type="checkbox" id="previewIncludeLogo" checked>
+            <label class="form-check-label" for="previewIncludeLogo">Show logo in preview</label>
+          </div>
+          <div class="qr-preview-container mb-2">
+            <img id="qrPreviewImage" src="/api/v1/qr/{{ qr.id }}/image?format=png&size=20&include_logo=true&error_level=h" alt="QR Code" class="img-fluid" />
+          </div>
+        </div>
       </div>
-      {% if qr.description %}
-      <div class="row mb-2">
-        <div class="col-4 fw-bold">Description:</div>
-        <div class="col-8">{{ qr.description }}</div>
+
+      <!-- Download Options Card -->
+      <div class="card mb-3">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">Download Options</h6>
+        </div>
+        <div class="card-body">
+          <form id="physicalDimensionsForm" class="mb-3">
+            <div class="row g-2">
+              <div class="col-6 mb-2">
+                <label for="downloadSize" class="form-label">Physical Size:</label>
+                <div class="input-group input-group-sm">
+                  <input type="number" class="form-control" id="downloadSize" value="2" min="0.1" max="50" step="0.1">
+                  <select class="form-select" id="downloadUnit">
+                    <option value="in" selected>inches</option>
+                    <option value="cm">cm</option>
+                    <option value="mm">mm</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-6 mb-2">
+                <label for="downloadDPI" class="form-label">DPI:</label>
+                <input type="number" class="form-control form-control-sm" id="downloadDPI" value="300" min="72" max="1200">
+              </div>
+            </div>
+            
+            <div class="size-presets mb-3">
+              <label class="form-label">Size Presets:</label>
+              <div>
+                <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="1" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Business Card</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="3" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Small</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn" data-size="12" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Poster</button>
+              </div>
+            </div>
+            
+            <!-- Add logo checkbox -->
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="downloadIncludeLogo">
+              <label class="form-check-label" for="downloadIncludeLogo">Include Organization Logo</label>
+              <div class="form-text">
+                Adds the organization logo to the center of the QR code for better branding.
+              </div>
+            </div>
+            <!-- SVG format note - shown only when logo is enabled -->
+            <div id="formatNote" class="form-text text-warning mb-3" style="display: none;">
+              <i class="bi bi-info-circle me-1"></i> SVG format has limited support for logo embedding. For best results with logos, use PNG or JPEG formats.
+            </div>
+          </form>
+          
+          <!-- Download Button -->
+          <div class="dropdown">
+            <button class="btn btn-primary dropdown-toggle w-100" type="button" id="downloadDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-download me-1"></i> Download
+            </button>
+            <ul class="dropdown-menu w-100" id="downloadLinks" aria-labelledby="downloadDropdown">
+              <li><a class="dropdown-item download-link" href="/api/v1/qr/{{ qr.id }}/image?format=png" data-format="png" download="qr-{{ qr.id }}.png">PNG Image</a></li>
+              <li><a class="dropdown-item download-link" href="/api/v1/qr/{{ qr.id }}/image?format=svg" data-format="svg" download="qr-{{ qr.id }}.svg">SVG Vector</a></li>
+              <li><a class="dropdown-item download-link" href="/api/v1/qr/{{ qr.id }}/image?format=jpg" data-format="jpg" download="qr-{{ qr.id }}.jpg">JPEG Image</a></li>
+              <li><a class="dropdown-item download-link" href="/api/v1/qr/{{ qr.id }}/image?format=webp" data-format="webp" download="qr-{{ qr.id }}.webp">WebP Image</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-7">
+      <!-- Basic Info Card -->
+      <div class="card mb-3">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">Basic Information</h6>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="col-4 fw-bold">ID:</div>
+            <div class="col-8">{{ qr.id }}</div>
+          </div>
+          <div class="row mb-2">
+            <div class="col-4 fw-bold">Type:</div>
+            <div class="col-8">{{ qr.qr_type|title }}</div>
+          </div>
+          <div class="row mb-2">
+            <div class="col-4 fw-bold">Created:</div>
+            <div class="col-8">{{ created_at_formatted }}</div>
+          </div>
+          <div class="row mb-2">
+            <div class="col-4 fw-bold">Error Level:</div>
+            <div class="col-8" id="errorLevelDisplay">{{ error_level_display }}</div>
+          </div>
+          {% if qr.qr_type == "dynamic" and short_url %}
+          <div class="row mb-2">
+            <div class="col-4 fw-bold">Short URL:</div>
+            <div class="col-8">
+              <a href="/r/{{ short_id }}" target="_blank">{{ short_url }}</a>
+              <button 
+                class="btn btn-sm btn-outline-secondary ms-2" 
+                hx-get="/api/v1/fragments/copy?text={{ short_url|urlencode }}"
+                hx-swap="none"
+                hx-trigger="click"
+                onclick="navigator.clipboard.writeText('{{ short_url }}'); this.innerHTML = '<i class=\'bi bi-check\'></i> Copied'; setTimeout(() => this.innerHTML = '<i class=\'bi bi-clipboard\'></i> Copy', 2000);">
+                <i class="bi bi-clipboard"></i> Copy
+              </button>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Content Section for Static QR Codes -->
+      {% if qr.qr_type == "static" %}
+      <div class="card mb-3">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">Content</h6>
+        </div>
+        <div class="card-body">
+          <p class="text-break mb-0">
+            {% if qr.content.startswith('http') %}
+              <a href="{{ qr.content }}" target="_blank">{{ qr.content }}</a>
+            {% else %}
+              {{ qr.content }}
+            {% endif %}
+          </p>
+        </div>
       </div>
       {% endif %}
-    </div>
-  </div>
-  
-  <!-- Basic Information Card -->
-  <div class="card mb-3">
-    <div class="card-header bg-light">
-      <h6 class="mb-0">Basic Information</h6>
-    </div>
-    <div class="card-body">
-      <div class="row mb-2">
-        <div class="col-4 fw-bold">ID:</div>
-        <div class="col-8">{{ qr.id }}</div>
+      
+      <!-- Redirect URL for Dynamic QR Codes -->
+      {% if qr.qr_type == "dynamic" %}
+      <div class="card mb-3">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">Destination URL</h6>
+        </div>
+        <div class="card-body">
+          <p class="text-break mb-0">
+            <a href="{{ qr.redirect_url }}" target="_blank">{{ qr.redirect_url }}</a>
+          </p>
+        </div>
       </div>
-      <div class="row mb-2">
-        <div class="col-4 fw-bold">Type:</div>
-        <div class="col-8">{{ qr.qr_type|title }}</div>
+      {% endif %}
+      
+      <!-- Usage Statistics Card -->
+      {% if qr.qr_type == "dynamic" %}
+      <div class="card mb-3">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">Usage Statistics</h6>
+        </div>
+        <div class="card-body">
+          {% if has_scan_data %}
+          <div class="row mb-2">
+            <div class="col-5 fw-bold">Total Access Count:</div>
+            <div class="col-7">{{ qr.scan_count }}</div>
+          </div>
+          <div class="row mb-2">
+            <div class="col-5 fw-bold">Genuine QR Scans:</div>
+            <div class="col-7">
+              {{ qr.genuine_scan_count }} 
+              <span class="text-muted small">
+                ({{ (qr.genuine_scan_count / qr.scan_count * 100)|round|int }}% of total)
+              </span>
+            </div>
+          </div>
+          
+          {% if qr.first_genuine_scan_at %}
+          <div class="row mb-2">
+            <div class="col-5 fw-bold">First QR Scan:</div>
+            <div class="col-7">
+              {% if qr.first_genuine_scan_at %}
+                {{ qr.first_genuine_scan_at.strftime("%B %d, %Y at %H:%M") }}
+              {% else %}
+                N/A
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+          
+          <div class="row mb-2">
+            <div class="col-5 fw-bold">Last Access:</div>
+            <div class="col-7">{{ last_scan_formatted }}</div>
+          </div>
+          
+          {% if qr.last_genuine_scan_at %}
+          <div class="row mb-2">
+            <div class="col-5 fw-bold">Last QR Scan:</div>
+            <div class="col-7">
+              {% if qr.last_genuine_scan_at %}
+                {{ qr.last_genuine_scan_at.strftime("%B %d, %Y at %H:%M") }}
+              {% else %}
+                N/A
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+          
+          <div class="alert alert-info mb-0 mt-3 small">
+            <i class="bi bi-info-circle me-2"></i> 
+            <strong>Enhanced Tracking Active:</strong> Detailed statistics including device, browser, and OS are now being collected. Visit the dedicated statistics page for comprehensive analytics.
+          </div>
+          {% else %}
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i> This QR code has not been scanned yet.
+            <div class="mt-2 small">More detailed statistics will appear here after the first scan.</div>
+          </div>
+          {% endif %}
+        </div>
       </div>
-      <div class="row mb-2">
-        <div class="col-4 fw-bold">Created:</div>
-        <div class="col-8">{{ created_at_formatted }}</div>
+      {% endif %}
+      
+      <!-- Coming Soon Notification -->
+      <div class="alert alert-primary small">
+        <i class="bi bi-graph-up me-2"></i> <strong>Coming Soon:</strong> A dedicated statistics page with enhanced metrics including device types, geographic data, and scan patterns.
       </div>
-      <div class="row mb-2">
-        <div class="col-4 fw-bold">Error Level:</div>
-        <div class="col-8" id="errorLevelDisplay">{{ error_level_display }}</div>
-      </div>
-      {% if qr.qr_type == "dynamic" and short_url %}
-      <div class="row mb-2">
-        <div class="col-4 fw-bold">Short URL:</div>
-        <div class="col-8">
-          <a href="/r/{{ short_id }}" target="_blank">{{ short_url }}</a>
-          <button class="btn btn-sm btn-outline-secondary ms-2" onclick="navigator.clipboard.writeText('{{ short_url }}')">
-            <i class="bi bi-clipboard"></i> Copy
-          </button>
+
+      <!-- Physical Dimensions Card (if provided) -->
+      {% if physical_size is defined and physical_unit is defined and dpi is defined %}
+      <div class="card mb-3">
+        <div class="card-header bg-light">
+          <h6 class="mb-0">Physical Dimensions</h6>
+        </div>
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="col-4 fw-bold">Size:</div>
+            <div class="col-8">{{ physical_size }} {{ physical_unit }}</div>
+          </div>
+          <div class="row mb-2">
+            <div class="col-4 fw-bold">DPI:</div>
+            <div class="col-8">{{ dpi }}</div>
+          </div>
+          <div class="row mb-2">
+            <div class="col-4 fw-bold">Pixel Dimensions:</div>
+            <div class="col-8">
+              {% if physical_unit == "in" %}
+                {{ (physical_size|float * dpi|int)|int }}px × {{ (physical_size|float * dpi|int)|int }}px
+              {% elif physical_unit == "cm" %}
+                {{ (physical_size|float * dpi|int / 2.54)|int }}px × {{ (physical_size|float * dpi|int / 2.54)|int }}px
+              {% elif physical_unit == "mm" %}
+                {{ (physical_size|float * dpi|int / 25.4)|int }}px × {{ (physical_size|float * dpi|int / 25.4)|int }}px
+              {% endif %}
+            </div>
+          </div>
         </div>
       </div>
       {% endif %}
     </div>
   </div>
-  
-  <!-- Content Section for Static QR Codes -->
-  {% if qr.qr_type == "static" %}
-  <div class="card mb-3">
-    <div class="card-header bg-light">
-      <h6 class="mb-0">Content</h6>
-    </div>
-    <div class="card-body">
-      <p class="text-break mb-0">
-        {% if qr.content.startswith('http') %}
-          <a href="{{ qr.content }}" target="_blank">{{ qr.content }}</a>
-        {% else %}
-          {{ qr.content }}
-        {% endif %}
-      </p>
-    </div>
-  </div>
-  {% endif %}
-  
-  <!-- Redirect URL for Dynamic QR Codes -->
-  {% if qr.qr_type == "dynamic" %}
-  <div class="card mb-3">
-    <div class="card-header bg-light">
-      <h6 class="mb-0">Destination URL</h6>
-    </div>
-    <div class="card-body">
-      <p class="text-break mb-0">
-        <a href="{{ qr.redirect_url }}" target="_blank">{{ qr.redirect_url }}</a>
-      </p>
-    </div>
-  </div>
-  {% endif %}
-  
-  <!-- Usage Statistics Card -->
-  {% if qr.qr_type == "dynamic" %}
-  <div class="card mb-3">
-    <div class="card-header bg-light">
-      <h6 class="mb-0">Usage Statistics</h6>
-    </div>
-    <div class="card-body">
-      {% if has_scan_data %}
-      <div class="row mb-2">
-        <div class="col-4 fw-bold">Scan Count:</div>
-        <div class="col-8">{{ qr.scan_count }}</div>
-      </div>
-      <div class="row mb-2">
-        <div class="col-4 fw-bold">Last Scanned:</div>
-        <div class="col-8">{{ last_scan_formatted }}</div>
-      </div>
-      <div class="alert alert-info mb-0 mt-3 small">
-        <i class="bi bi-info-circle me-2"></i> More detailed statistics including device types and geographic data will be available soon in the upcoming dedicated statistics page.
-      </div>
-      {% else %}
-      <div class="alert alert-info mb-0">
-        <i class="bi bi-info-circle me-2"></i> This QR code has not been scanned yet.
-        <div class="mt-2 small">More detailed statistics will appear here after the first scan.</div>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-  
-  <!-- Coming Soon Notification -->
-  <div class="alert alert-primary small">
-    <i class="bi bi-graph-up me-2"></i> <strong>Coming Soon:</strong> A dedicated statistics page with enhanced metrics including device types, geographic data, and scan patterns.
-  </div>
-
-  <!-- Physical Dimensions Card (if provided) -->
-  {% if physical_size is defined and physical_unit is defined and dpi is defined %}
-  <div class="card mb-3">
-    <div class="card-header bg-light">
-      <h6 class="mb-0">Physical Dimensions</h6>
-    </div>
-    <div class="card-body">
-      <div class="row mb-2">
-        <div class="col-4 fw-bold">Size:</div>
-        <div class="col-8">{{ physical_size }} {{ physical_unit }}</div>
-      </div>
-      <div class="row mb-2">
-        <div class="col-4 fw-bold">DPI:</div>
-        <div class="col-8">{{ dpi }}</div>
-      </div>
-      <div class="alert alert-info mb-0 small">
-        <i class="bi bi-info-circle me-2"></i> These physical dimensions will be applied when downloading or viewing the QR code.
-      </div>
-    </div>
-  </div>
-  {% endif %}
 </div>
 
 <div class="modal-footer">
-  <!-- Download Options Section -->
-  <div class="row mb-3 w-100">
-    <div class="col-lg-6">
-      <div class="d-flex align-items-center mb-2">
-        <span class="fw-bold me-3">Download Options:</span>
-      </div>
-      <div class="form-check mb-2">
-        <input type="checkbox" class="form-check-input" id="includeLogo" onchange="updateImageAndDownloadLinks()">
-        <label class="form-check-label" for="includeLogo">Include Logo</label>
-      </div>
-    </div>
-    <div class="col-lg-6">
-      <div class="mb-2">
-        <label class="form-label fw-bold">Physical Dimensions (Optional)</label>
-      </div>
-      <div class="row g-2">
-        <div class="col-4">
-          <input type="number" class="form-control form-control-sm" id="physicalSize" placeholder="Size" min="0.1" max="100" step="0.1" onchange="updateImageAndDownloadLinks()">
-        </div>
-        <div class="col-4">
-          <select class="form-select form-select-sm" id="physicalUnit" onchange="updateImageAndDownloadLinks()">
-            <option value="">Unit</option>
-            <option value="in">Inches (in)</option>
-            <option value="cm">Centimeters (cm)</option>
-            <option value="mm">Millimeters (mm)</option>
-          </select>
-        </div>
-        <div class="col-4">
-          <input type="number" class="form-control form-control-sm" id="dpi" placeholder="DPI" min="72" max="1200" step="1" onchange="updateImageAndDownloadLinks()">
-        </div>
-      </div>
-      <div class="text-muted small mt-1">
-        All fields required if any is used
-      </div>
-      <div class="mt-2">
-        <span class="small me-1">Presets:</span>
-        <button type="button" class="btn btn-sm btn-outline-secondary me-1" 
-                onclick="applyPreset(2, 'in', 300)">Business Card</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary me-1" 
-                onclick="applyPreset(5, 'cm', 300)">Small</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" 
-                onclick="applyPreset(12, 'in', 300)">Poster</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="btn-group me-auto">
-    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=png&size=10" id="pngDownload" download="qr-{{ qr.id }}.png" class="btn btn-secondary">
-      <i class="bi bi-file-image me-1"></i> PNG
-    </a>
-    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=svg&size=10" id="svgDownload" download="qr-{{ qr.id }}.svg" class="btn btn-secondary">
-      <i class="bi bi-filetype-svg me-1"></i> SVG
-    </a>
-    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=jpeg&size=10" id="jpgDownload" download="qr-{{ qr.id }}.jpg" class="btn btn-secondary">
-      <i class="bi bi-file-image me-1"></i> JPG
-    </a>
-    <a href="/api/v1/qr/{{ qr.id }}/image?image_format=webp&size=10" id="webpDownload" download="qr-{{ qr.id }}.webp" class="btn btn-secondary">
-      <i class="bi bi-file-image me-1"></i> WebP
-    </a>
-  </div>
-  
-  <button
+  <!-- Edit Button (Dynamic QR Codes only) -->
+  {% if qr.qr_type == "dynamic" %}
+  <button 
+    type="button" 
+    class="btn btn-outline-secondary"
     hx-get="/api/v1/fragments/qr-edit/{{ qr.id }}"
     hx-target="#qr-detail-modal .modal-content"
-    class="btn btn-primary"
-  >
-    <i class="bi bi-pencil me-1"></i> Edit QR Code
+    hx-indicator="#loading-indicator">
+    <i class="bi bi-pencil me-1"></i> Edit
   </button>
+  {% endif %}
   
-  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+  <!-- Close Button -->
+  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+
+  <!-- Loading indicator for HTMX requests -->
+  <div id="loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary" style="margin-right: 10px;" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
 </div>
 
-<div id="formatNote" class="small text-muted mt-2 text-center" style="display: none;">
-  Note: SVG format does not support logo embedding. Use PNG, JPG, or WebP formats for QR codes with logos.
-</div>
-
+<!-- JavaScript for Size Presets and Dynamic Download URLs -->
 <script>
-  // Update image and download links when options change
-  function updateImageAndDownloadLinks() {
-    const logoChecked = document.getElementById('includeLogo').checked;
-    const physicalSize = document.getElementById('physicalSize').value.trim();
-    const physicalUnit = document.getElementById('physicalUnit').value;
-    const dpi = document.getElementById('dpi').value.trim();
-    
-    // Base parameters
-    const logoParam = logoChecked ? '&include_logo=true' : '';
-    const errorParam = logoChecked ? '&error_level=h' : '';
-    const sizeParam = logoChecked ? '&size=20' : '&size=10';
-    
-    // Check if all physical dimension fields are filled
-    let physicalParams = '';
-    if (physicalSize && physicalUnit && dpi) {
-      physicalParams = `&physical_size=${physicalSize}&physical_unit=${physicalUnit}&dpi=${dpi}`;
-    }
-    
-    // Create base URL for each format
-    const basePngUrl = `/api/v1/qr/{{ qr.id }}/image?image_format=png${sizeParam}${logoParam}${errorParam}${physicalParams}`;
-    const baseSvgUrl = `/api/v1/qr/{{ qr.id }}/image?image_format=svg${sizeParam}${logoParam}${errorParam}${physicalParams}`;
-    const baseJpgUrl = `/api/v1/qr/{{ qr.id }}/image?image_format=jpeg${sizeParam}${logoParam}${errorParam}${physicalParams}`;
-    const baseWebpUrl = `/api/v1/qr/{{ qr.id }}/image?image_format=webp${sizeParam}${logoParam}${errorParam}${physicalParams}`;
-    
-    // Update image source
-    document.getElementById('qrImage').src = basePngUrl;
-    
-    // Update error level display
-    document.getElementById('errorLevelDisplay').textContent = logoChecked ? 'H (High - for logo)' : '{{ error_level_display }}';
-    
-    // Update download links
-    document.getElementById('pngDownload').href = basePngUrl;
-    document.getElementById('svgDownload').href = baseSvgUrl;
-    document.getElementById('jpgDownload').href = baseJpgUrl;
-    document.getElementById('webpDownload').href = baseWebpUrl;
-    
-    // Create descriptive filenames based on options
-    let filenameBase = `qr-{{ qr.id }}`;
-    if (physicalSize && physicalUnit && dpi) {
-      filenameBase += `-${physicalSize}${physicalUnit}-${dpi}dpi`;
-    }
-    if (logoChecked) {
-      filenameBase += '-logo';
-    }
-    
-    // Update download filenames
-    document.getElementById('pngDownload').download = `${filenameBase}.png`;
-    document.getElementById('svgDownload').download = `${filenameBase}.svg`;
-    document.getElementById('jpgDownload').download = `${filenameBase}.jpg`;
-    document.getElementById('webpDownload').download = `${filenameBase}.webp`;
-    
-    // Show/hide the format note based on logo selection
-    document.getElementById('formatNote').style.display = logoChecked ? 'block' : 'none';
+// Immediately execute to ensure the script runs
+(function() {
+  console.log('QR Detail script loading...');
+  
+  // Make sure DOM is loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeQRDetail);
+  } else {
+    // DOM already loaded, run directly
+    initializeQRDetail();
   }
   
-  // Initialize on load
-  document.addEventListener('DOMContentLoaded', function() {
-    // Set initial form state
-    document.getElementById('includeLogo').checked = false;
+  function initializeQRDetail() {
+    console.log('Initializing QR detail functionality');
     
-    // Try to pre-populate physical dimensions if they were already set
-    {% if physical_size is defined and physical_unit is defined and dpi is defined %}
-    document.getElementById('physicalSize').value = '{{ physical_size }}';
-    document.getElementById('physicalUnit').value = '{{ physical_unit }}';
-    document.getElementById('dpi').value = '{{ dpi }}';
-    {% endif %}
+    // Get references to key elements
+    const previewLogoCheckbox = document.getElementById('previewIncludeLogo');
+    const downloadLogoCheckbox = document.getElementById('downloadIncludeLogo');
+    const previewImage = document.getElementById('qrPreviewImage');
+    const formatNote = document.getElementById('formatNote');
+    const errorLevelDisplay = document.getElementById('errorLevelDisplay');
     
-    // Update links based on initial state
-    updateImageAndDownloadLinks();
-  });
-
-  // Optional: Add presets for common sizes
-  function applyPreset(size, unit, dpi) {
-    document.getElementById('physicalSize').value = size;
-    document.getElementById('physicalUnit').value = unit;
-    document.getElementById('dpi').value = dpi;
-    updateImageAndDownloadLinks();
+    console.log('Preview logo checkbox:', previewLogoCheckbox ? 'Found' : 'Missing');
+    console.log('Download logo checkbox:', downloadLogoCheckbox ? 'Found' : 'Missing');
+    console.log('Preview image:', previewImage ? 'Found' : 'Missing');
+    
+    // Initial updates
+    updatePreviewImage(); 
+    updateDownloadLinks();
+    
+    // Initial format note visibility
+    if (formatNote) {
+      formatNote.style.display = downloadLogoCheckbox && downloadLogoCheckbox.checked ? 'block' : 'none';
+    }
+    
+    // Set up event listeners for form controls
+    if (downloadLogoCheckbox) {
+      downloadLogoCheckbox.addEventListener('change', function() {
+        console.log('Download logo checkbox changed:', this.checked);
+        updateDownloadLinks();
+        if (formatNote) {
+          formatNote.style.display = this.checked ? 'block' : 'none';
+        }
+      });
+    }
+    
+    if (previewLogoCheckbox) {
+      previewLogoCheckbox.addEventListener('change', function() {
+        console.log('Preview logo checkbox changed:', this.checked);
+        updatePreviewImage();
+      });
+    }
+    
+    // Other form control listeners
+    document.querySelectorAll('#downloadSize, #downloadUnit, #downloadDPI').forEach(el => {
+      if (el) {
+        el.addEventListener('change', updateDownloadLinks);
+      }
+    });
+    
+    // Set up preset buttons
+    document.querySelectorAll('.size-preset-btn').forEach(button => {
+      if (button) {
+        button.onclick = function(event) {
+          event.preventDefault();
+          applyPreset(this);
+        };
+      }
+    });
   }
-</script> 
+  
+  // Apply size preset values
+  function applyPreset(button) {
+    console.log('Applying preset:', button.textContent);
+    const size = button.getAttribute('data-size');
+    const unit = button.getAttribute('data-unit');
+    const dpi = button.getAttribute('data-dpi');
+    
+    const sizeInput = document.getElementById('downloadSize');
+    const unitSelect = document.getElementById('downloadUnit');
+    const dpiInput = document.getElementById('downloadDPI');
+    
+    if (sizeInput) sizeInput.value = size;
+    if (unitSelect) unitSelect.value = unit;
+    if (dpiInput) dpiInput.value = dpi;
+    
+    updateDownloadLinks();
+  }
+  
+  function updateDownloadLinks() {
+    const sizeInput = document.getElementById('downloadSize');
+    const unitSelect = document.getElementById('downloadUnit');
+    const dpiInput = document.getElementById('downloadDPI');
+    const logoCheckbox = document.getElementById('downloadIncludeLogo');
+    
+    if (!sizeInput || !unitSelect || !dpiInput || !logoCheckbox) {
+      console.error('Missing download form elements');
+      return;
+    }
+    
+    const size = sizeInput.value;
+    const unit = unitSelect.value;
+    const dpi = dpiInput.value;
+    const includeLogo = logoCheckbox.checked;
+    
+    console.log('Updating download links with:');
+    console.log('- Size:', size, unit);
+    console.log('- DPI:', dpi);
+    console.log('- Include Logo:', includeLogo);
+    
+    document.querySelectorAll('.download-link').forEach(link => {
+      if (link) {
+        const format = link.getAttribute('data-format');
+        const baseUrl = `/api/v1/qr/{{ qr.id }}/image?format=${format}`;
+        const physicalParams = `&physical_size=${size}&physical_unit=${unit}&dpi=${dpi}`;
+        // Only add logo parameter if checkbox is checked
+        const logoParam = includeLogo ? '&include_logo=true' : '';
+        // Add error_level=h when including logo for better reliability
+        const errorParam = includeLogo ? '&error_level=h' : '';
+        const fullUrl = baseUrl + physicalParams + logoParam + errorParam;
+        console.log(`Setting ${format} download URL to:`, fullUrl);
+        link.setAttribute('href', fullUrl);
+        
+        // Create a descriptive filename based on physical size and logo
+        let filename = `qr-{{ qr.id }}`;
+        if (size && unit) {
+          filename += `-${size}${unit}`;
+        }
+        if (includeLogo) {
+          filename += '-logo';
+        }
+        filename += `.${format}`;
+        link.setAttribute('download', filename);
+      }
+    });
+  }
+  
+  function updatePreviewImage() {
+    const logoCheckbox = document.getElementById('previewIncludeLogo');
+    const previewImg = document.getElementById('qrPreviewImage');
+    const errorLevelDisplay = document.getElementById('errorLevelDisplay');
+    
+    if (!logoCheckbox || !previewImg) {
+      console.error('Missing preview elements');
+      return;
+    }
+    
+    const includeLogo = logoCheckbox.checked;
+    console.log('Updating preview image with logo:', includeLogo);
+    
+    const basePreviewUrl = `/api/v1/qr/{{ qr.id }}/image?format=png&size=20`;
+    const logoParam = includeLogo ? '&include_logo=true' : '';
+    // Set error level to H when including logo
+    const errorParam = includeLogo ? '&error_level=h' : '';
+    const fullUrl = basePreviewUrl + logoParam + errorParam;
+    
+    console.log('Setting preview image URL to:', fullUrl);
+    previewImg.src = fullUrl;
+    
+    // Update error level display in the info panel if it exists
+    if (errorLevelDisplay) {
+      errorLevelDisplay.textContent = includeLogo ? 'H (High - for logo)' : '{{ error_level_display }}';
+    }
+  }
+})();
+</script>
