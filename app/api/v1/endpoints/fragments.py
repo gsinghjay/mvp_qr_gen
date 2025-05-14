@@ -295,7 +295,9 @@ async def get_qr_detail_fragment(
         short_id = None
         short_url = None
         if qr.qr_type == "dynamic" and '/r/' in qr.content:
-            short_id = qr.content.split('/r/')[-1]
+            # Handle both cases with and without query parameters
+            path_part = qr.content.split('/r/')[-1]
+            short_id = path_part.split('?')[0] if '?' in path_part else path_part
             short_url = f"{settings.BASE_URL}/r/{short_id}"
         
         # Format error level for display (uppercase)
@@ -414,7 +416,9 @@ async def update_qr_code(
         short_id = None
         short_url = None
         if qr.qr_type == "dynamic" and '/r/' in qr.content:
-            short_id = qr.content.split('/r/')[-1]
+            # Handle both cases with and without query parameters
+            path_part = qr.content.split('/r/')[-1]
+            short_id = path_part.split('?')[0] if '?' in path_part else path_part
             short_url = f"{settings.BASE_URL}/r/{short_id}"
         
         # Format error level for display (uppercase)
