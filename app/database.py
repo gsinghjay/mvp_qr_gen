@@ -9,133 +9,59 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
-# Get database URL and environment from environment variables
-SQLITE_URL = os.getenv("DATABASE_URL")
+# Get PostgreSQL database URL from environment variables
+PG_DATABASE_URL = os.getenv("PG_DATABASE_URL")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
-if not SQLITE_URL:
-    # If DATABASE_URL is not set, use in-memory for tests, file for development
-    SQLITE_URL = "sqlite:///:memory:" if ENVIRONMENT == "test" else "sqlite:///./data/qr_codes.db"
+# Check for required database URL
+if not PG_DATABASE_URL:
+    raise ValueError("PG_DATABASE_URL environment variable must be set")
 
-# Ensure data directory exists for SQLite file
-if SQLITE_URL.startswith("sqlite:///./") and ENVIRONMENT != "test":
-    data_path = Path(SQLITE_URL.replace("sqlite:///./", "")).parent
-    data_path.mkdir(parents=True, exist_ok=True)
+# Check if the application is in testing mode
+def is_testing_mode() -> bool:
+    """
+    Determine if the application is running in testing mode.
+    
+    Returns:
+        bool: True if in testing mode, False otherwise
+    """
+    return os.getenv("TESTING_MODE", "").lower() == "true" or ENVIRONMENT.lower() == "test"
 
-logger.info(f"Using database URL: {SQLITE_URL}")
+# Determine the current database URL to use based on environment
+def get_database_url() -> str:
+    """
+    Get the appropriate database URL based on the current environment.
+    
+    Returns:
+        str: The database URL to use
+    """
+    if is_testing_mode() and settings.TEST_DATABASE_URL:
+        logger.info("Using test database URL for testing mode")
+        return settings.TEST_DATABASE_URL
+    
+    logger.info(f"Using PostgreSQL database URL: {PG_DATABASE_URL}")
+    return PG_DATABASE_URL
 
+# Get the current database URL
+CURRENT_DB_URL = get_database_url()
 
-def configure_sqlite_connection(dbapi_connection, connection_record):
-    """Configure SQLite connection with appropriate PRAGMAs."""
-    try:
-        cursor = dbapi_connection.cursor()
-
-        # Essential settings
-        cursor.execute("PRAGMA foreign_keys=ON")
-
-        # Performance optimizations
-        cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for better concurrency
-        cursor.execute("PRAGMA synchronous=NORMAL")  # Balance between safety and performance
-
-        # Additional optimizations
-        cursor.execute("PRAGMA temp_store=MEMORY")  # Store temporary tables in memory
-        cursor.execute("PRAGMA mmap_size=30000000")  # Use memory-mapped I/O (30MB)
-        cursor.execute("PRAGMA cache_size=-6000")  # Use 6MB page cache (negative = kilobytes)
-
-        # Production-specific settings
-        if ENVIRONMENT == "production":
-            cursor.execute("PRAGMA busy_timeout=30000")  # Wait up to 30 seconds for locks
-            cursor.execute("PRAGMA wal_autocheckpoint=1000")  # Checkpoint WAL after 1000 pages
-        else:
-            cursor.execute("PRAGMA busy_timeout=5000")  # Wait up to 5 seconds for locks
-
-        cursor.close()
-    except Exception as e:
-        logger.error(f"Error configuring SQLite connection: {e}")
-        # Don't re-raise, let the connection attempt proceed
-
-
-def add_sqlite_functions(dbapi_connection, connection_record):
-    """Add custom functions to SQLite."""
-    try:
-
-        def utcnow():
-            """Return current UTC datetime with timezone info."""
-            return datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S.%f%z")
-
-        def parse_datetime(dt_str):
-            """Parse datetime string to UTC timezone-aware datetime."""
-            if dt_str is None:
-                return None
-            try:
-                # Handle 'Z' suffix by replacing with '+00:00'
-                if isinstance(dt_str, str):
-                    if dt_str.endswith("Z"):
-                        dt_str = dt_str[:-1] + "+00:00"
-                    dt = datetime.fromisoformat(dt_str)
-                # If it's already a datetime, ensure it's timezone-aware
-                elif isinstance(dt_str, datetime):
-                    dt = dt_str if dt_str.tzinfo else dt_str.replace(tzinfo=UTC)
-                else:
-                    return None
-
-                # Ensure timezone awareness and convert to UTC
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=UTC)
-                return dt.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S.%f%z")
-            except (ValueError, TypeError):
-                return None
-
-        def datetime_to_utc(dt_str):
-            """Convert datetime to UTC timezone-aware datetime."""
-            if dt_str is None:
-                return None
-            try:
-                if isinstance(dt_str, str):
-                    dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-                elif isinstance(dt_str, datetime):
-                    dt = dt_str
-                else:
-                    return None
-
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=UTC)
-                return dt.astimezone(UTC)
-            except (ValueError, TypeError):
-                return None
-
-        dbapi_connection.create_function("utcnow", 0, utcnow)
-        dbapi_connection.create_function("datetime", 1, parse_datetime)
-        dbapi_connection.create_function("datetime_to_utc", 1, datetime_to_utc)
-    except Exception as e:
-        logger.error(f"Error adding SQLite functions: {e}")
-        # Don't re-raise, let the connection attempt proceed
-
-
-# Create engine with proper settings for SQLite
+# Create engine with PostgreSQL settings
 engine = create_engine(
-    SQLITE_URL,
-    connect_args={
-        "check_same_thread": False,  # Allow cross-thread usage
-        "isolation_level": None,  # Let SQLite handle transactions
-        "timeout": 30,  # Wait up to 30 seconds for database locks
-    },
+    CURRENT_DB_URL,
     pool_pre_ping=True,  # Verify connections before using them
     pool_recycle=300,  # Recycle connections every 5 minutes
     pool_size=10,  # Maintain up to 10 connections in the pool
     max_overflow=20,  # Allow up to 20 extra connections when needed
     echo=os.getenv("SQL_ECHO", "false").lower() == "true",  # Log SQL queries if enabled
 )
-
-# Configure SQLite connection
-event.listen(engine, "connect", configure_sqlite_connection)
-event.listen(engine, "connect", add_sqlite_functions)
 
 # Create sessionmaker with timezone-aware settings
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, class_=Session)
@@ -159,10 +85,12 @@ def with_retry(max_retries=3, retry_delay=0.1):
                 try:
                     return func(*args, **kwargs)
                 except OperationalError as e:
-                    # Only retry on database lock errors
-                    if "database is locked" in str(e) and retries < max_retries - 1:
+                    # Only retry on PostgreSQL connection errors
+                    retryable_error = "could not connect to server" in str(e)
+                    
+                    if retryable_error and retries < max_retries - 1:
                         retries += 1
-                        logger.warning(f"Database locked, retrying ({retries}/{max_retries}): {e}")
+                        logger.warning(f"Database error, retrying ({retries}/{max_retries}): {e}")
                         time.sleep(retry_delay * (2**retries))  # Exponential backoff
                     else:
                         raise
@@ -223,12 +151,6 @@ def init_db():
     Creates tables if they don't exist.
     """
     try:
-        # Ensure the data directory exists
-        db_path = SQLITE_URL.replace("sqlite:///", "")
-        if db_path.startswith("."):
-            db_path = db_path[1:]  # Remove leading dot
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
-
         # Create all tables
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables initialized successfully")

@@ -3,6 +3,7 @@ QR code Pydantic models.
 """
 
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
@@ -17,9 +18,10 @@ class QRCodeBase(BaseModel):
     description: str | None = Field(None, max_length=500)
     fill_color: str = Field(default="#000000", pattern=r"^#[0-9A-Fa-f]{6}$")
     back_color: str = Field(default="#FFFFFF", pattern=r"^#[0-9A-Fa-f]{6}$")
-    size: int = Field(default=10, ge=1, le=100)
+    size: int = Field(default=10, ge=1, le=500)
     border: int = Field(default=4, ge=0, le=20)
     error_level: str = Field(default=ErrorCorrectionLevel.M.value, description="Error correction level")
+    short_id: Optional[str] = Field(None, description="Short ID for direct lookups", max_length=10)
 
     @field_validator("fill_color", "back_color")
     @classmethod
@@ -54,6 +56,9 @@ class QRCodeResponse(QRCodeBase):
     created_at: datetime
     scan_count: int
     last_scan_at: datetime | None = None
+    genuine_scan_count: int
+    first_genuine_scan_at: datetime | None = None
+    last_genuine_scan_at: datetime | None = None
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -65,11 +70,15 @@ class QRCodeResponse(QRCodeBase):
                 "created_at": "2023-01-01T00:00:00Z",
                 "scan_count": 42,
                 "last_scan_at": "2023-01-02T12:34:56Z",
+                "genuine_scan_count": 30,
+                "first_genuine_scan_at": "2023-01-01T12:00:00Z",
+                "last_genuine_scan_at": "2023-01-02T12:34:56Z",
                 "fill_color": "#000000",
                 "back_color": "#FFFFFF",
                 "size": 10,
                 "border": 4,
-                "error_level": "m"
+                "error_level": "m",
+                "short_id": "a1b2c3d4"
             }
         }
     )

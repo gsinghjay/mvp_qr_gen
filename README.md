@@ -1,6 +1,6 @@
 # QR Code Generator
 
-A robust QR code generation and management API built with FastAPI and SQLite. Features include static/dynamic QR codes, scan tracking, customizable appearance, and network-level security through Traefik.
+A robust QR code generation and management API built with FastAPI and PostgreSQL. Features include static/dynamic QR codes, scan tracking, customizable appearance, and network-level security through Traefik.
 
 ## Features
 
@@ -14,7 +14,7 @@ A robust QR code generation and management API built with FastAPI and SQLite. Fe
 -   **Web Interface**: Manage QR codes through an intuitive web UI built with Jinja2 templates and Bootstrap.
 -   **RESTful API**: Comprehensive API for programmatic QR code management.
 -   **Docker & Traefik**: Production-ready deployment with HTTPS support, reverse proxying, and load balancing capabilities provided by Traefik.
--   **Optimized SQLite**: Utilizes WAL mode, connection pooling hints (via SQLAlchemy settings), and performance tuning PRAGMAs.
+-   **PostgreSQL Database**: Robust relational database for improved concurrency and data integrity.
 -   **Database Migrations**: Managed with Alembic.
 -   **Optimized First-Request Performance**: Uses FastAPI's lifespan context manager to pre-initialize critical code paths, eliminating cold-start delays for QR redirects and API endpoints.
 
@@ -44,6 +44,7 @@ To run the QR Code Generator locally using Docker Compose:
 | Container              | Purpose                                        | Ports Exposed (Host) | Internal Port | Network                  | Volumes Used                                                    |
 | :--------------------- | :--------------------------------------------- | :------------------- | :------------ | :----------------------- | :-------------------------------------------------------------- |
 | `qr_generator_api`     | FastAPI Application + Web UI                   | (via Traefik)        | 8000          | `qr_generator_network` | `qr_data`, `qr_logs`, `./app` (dev only)                        |
+| `qr_generator_postgres`| PostgreSQL Database                            | (internal only)      | 5432          | `qr_generator_network` | `postgres_data`                                                 |
 | `qr_generator_traefik` | Reverse Proxy, TLS, Routing, Security         | 80, 443, 8080, 8082  | N/A           | `qr_generator_network` | `docker.sock`, `traefik_certs`, `traefik_logs`                |
 
 ## Security Setup
@@ -97,10 +98,10 @@ flowchart TD
          direction LR
          APP["FastAPI App"]
          QR["QR Logic"]
-         DB[("SQLite DB")]
+         DB[("PostgreSQL DB")]
          APP --> QR
          APP --> DB
-         DB --> DB_VOL["Volume: qr_data"]
+         DB --> DB_VOL["Volume: postgres_data"]
          style APP fill:#ccf,stroke:#333,stroke-width:2px
     end
 
@@ -111,8 +112,8 @@ flowchart TD
         end
 
         subgraph runtime["Runtime Stage"]
-            R["python:3.12-slim + runtime deps (curl, sqlite3) + app code + scripts"]
-            ENV_VARS["ENV: PORT=8000, WORKERS, DB_URL, etc."]
+            R["python:3.12-slim + runtime deps (curl, postgresql-client) + app code + scripts"]
+            ENV_VARS["ENV: PORT=8000, WORKERS, PG_DATABASE_URL, etc."]
             HEALTH["Healthcheck: /health (curl)"]
         end
 
@@ -125,6 +126,7 @@ flowchart TD
         direction LR
         subgraph compose_services["Services"]
             API_SVC["API Service (qr_generator_api)"]
+            POSTGRES_SVC["PostgreSQL (qr_generator_postgres)"]
             PROXY_SVC["Traefik Proxy (qr_generator_traefik)"]
         end
 
@@ -132,7 +134,7 @@ flowchart TD
             direction LR
             subgraph DEV["Development (default)"]
                 DEV_FEATURES["Features: Hot reload, Debug, App mounting"]
-                TEST_MODE["Testing: SQLite Test DB (pytest)"]
+                TEST_MODE["Testing: Test Database (pytest)"]
             end
 
             PROD["Production Env: Optimized, No hot reload"]
@@ -140,7 +142,7 @@ flowchart TD
 
         subgraph compose_storage["Storage & Network"]
             direction LR
-            VOLUMES["Named Volumes: qr_data, qr_logs, traefik_certs, traefik_logs"]
+            VOLUMES["Named Volumes: qr_data, postgres_data, qr_logs, traefik_certs, traefik_logs"]
             NET["Network: qr_generator_network (bridge)"]
         end
 
@@ -200,7 +202,7 @@ Settings are managed via environment variables (loaded by `app/core/config.py`) 
 
 Key variables include:
 
--   `DATABASE_URL`: Connection string for the application's SQLite database.
+-   `PG_DATABASE_URL`: Connection string for the PostgreSQL database.
 -   `ENVIRONMENT`: Set to `production` or `development`.
 -   `BASE_URL`: The public base URL of the application (used for generating dynamic QR content).
 -   `LOG_LEVEL`: Logging level (e.g., `INFO`, `DEBUG`).
@@ -221,7 +223,7 @@ Key variables include:
     -   `tests/`: Pytest tests, fixtures, factories.
     -   `scripts/`: Utility scripts (`init.sh`, `manage_db.py`).
 -   **`alembic/`**: Database migration scripts.
--   **`data/`**: Persistent storage for SQLite DB (via `qr_data` volume).
+-   **`data/`**: Persistent storage (via `qr_data` volume).
 -   **`logs/`**: Log file storage (via `qr_logs`, `traefik_logs` volumes).
 -   **`certs/`**: TLS certificates for Traefik.
 -   `Dockerfile`: Defines the application's Docker image build process.
@@ -253,7 +255,7 @@ Key variables include:
 
 1.  Set up a Python virtual environment (`python -m venv venv`).
 2.  Install requirements: `pip install -r requirements.txt`.
-3.  Set required environment variables (DB\_URL, etc.).
+3.  Set required environment variables (PG_DATABASE_URL, etc.).
 4.  Initialize/Migrate database: `python app/scripts/manage_db.py --migrate`.
 5.  Run the development server: `uvicorn app.main:app --reload`.
 
@@ -269,7 +271,7 @@ docker-compose exec api pytest --cov=app --cov-report=term-missing -v
 docker-compose exec api pytest app/tests/test_api_v1.py -v
 ```
 
-Tests utilize a dedicated file-based SQLite database (`test_db_*.db`) managed by `conftest.py`, ensuring isolation.
+Tests utilize a dedicated test database managed by `conftest.py`, ensuring isolation.
 
 ### Database Management
 
@@ -294,7 +296,7 @@ The `init.sh` script automatically handles validation and migration checks on co
 -   **Connectivity**: Ensure containers are on the same `qr_generator_network`. Use `docker network inspect qr_generator_network`.
 -   **Traefik Issues**: Check Traefik logs (`docker-compose logs traefik`) or the Traefik dashboard for routing or middleware errors.
 -   **QR Redirect Issues**: Check for valid short_id and updated redirect URL in the database.
--   **SQLite Permissions**: Ensure the `/app/data` directory in the container has the correct permissions.
+-   **PostgreSQL Issues**: Verify PostgreSQL container is running and healthy with `docker ps` and `docker-compose logs postgres`.
 -   **Authentication Issues**: Verify that `users.htpasswd` is correctly mounted in the Traefik container and has appropriate permissions (600). Check that the middleware is correctly configured in `dynamic_conf.yml`.
 
 ## License

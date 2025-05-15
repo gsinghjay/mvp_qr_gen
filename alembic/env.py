@@ -9,7 +9,7 @@ from alembic import context
 # Add the parent directory to sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.database import SQLITE_URL
+from app.database import CURRENT_DB_URL
 from app.models.qr import Base
 
 # this is the Alembic Config object, which provides
@@ -17,7 +17,7 @@ from app.models.qr import Base
 config = context.config
 
 # override sqlalchemy.url from alembic.ini with value from environment
-config.set_main_option("sqlalchemy.url", SQLITE_URL)
+config.set_main_option("sqlalchemy.url", CURRENT_DB_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -47,15 +47,16 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(
-        url=url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
-        compare_type=True,  # Enable type comparison for migrations
-        compare_server_default=True,  # Enable server default comparison
-        render_as_batch=True,  # Enable batch migrations for SQLite
-    )
+    context_config = {
+        "url": url,
+        "target_metadata": target_metadata,
+        "literal_binds": True,
+        "dialect_opts": {"paramstyle": "named"},
+        "compare_type": True,  # Enable type comparison for migrations
+        "compare_server_default": True,  # Enable server default comparison
+    }
+    
+    context.configure(**context_config)
 
     with context.begin_transaction():
         context.run_migrations()
@@ -75,13 +76,14 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            compare_type=True,  # Enable type comparison for migrations
-            compare_server_default=True,  # Enable server default comparison
-            render_as_batch=True,  # Enable batch migrations for SQLite
-        )
+        context_config = {
+            "connection": connection,
+            "target_metadata": target_metadata,
+            "compare_type": True,  # Enable type comparison for migrations
+            "compare_server_default": True,  # Enable server default comparison
+        }
+        
+        context.configure(**context_config)
 
         with context.begin_transaction():
             context.run_migrations()

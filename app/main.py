@@ -132,7 +132,7 @@ async def lifespan(app: FastAPI):
                         # CRITICAL: Warm up the exact service method used by redirect endpoint
                         logger.info(f"Warming up get_qr_by_short_id with {short_id}...")
                         try:
-                            # This calls find_by_pattern in the repository with the correct pattern list
+                            # This uses direct lookup by short_id
                             found_qr = qr_service.get_qr_by_short_id(short_id)
                             logger.info(f"Successfully retrieved QR via short_id: {found_qr.id}")
                             
@@ -154,26 +154,9 @@ async def lifespan(app: FastAPI):
                         except Exception as e:
                             logger.warning(f"Service method warm-up failed: {e}")
                             
-                            # Fallback to repository method directly
-                            patterns = [
-                                f"/r/{short_id}",
-                                f"{settings.BASE_URL}/r/{short_id}",
-                                short_id,
-                                f"%/r/{short_id}"
-                            ]
-                            found_qr = qr_repo.find_by_pattern(patterns)
-                            if found_qr:
-                                logger.info(f"Fallback to repository method successful")
-                                
-                                # Try to warm up update_scan_statistics with correct parameters
-                                try:
-                                    qr_repo.update_scan_statistics(
-                                        qr_id=found_qr.id, 
-                                        timestamp=datetime.now(UTC)
-                                    )
-                                    logger.info("Warmed up repository scan statistics update path")
-                                except Exception as e:
-                                    logger.warning(f"Repository scan statistics update failed: {e}")
+                            # Log the error but continue initialization
+                            logger.warning(f"Unable to warm up QR redirect path: {e}")
+                            logger.info("Application will continue to initialize")
             else:
                 # If no QRs exist, create test ones to warm up paths
                 logger.info("No QR codes found, creating test QRs for initialization...")
@@ -210,6 +193,7 @@ async def lifespan(app: FastAPI):
                         logger.info("Warmed up scan statistics with test QR")
                     except Exception as e:
                         logger.warning(f"Service method warm-up failed: {e}")
+                        logger.info("Application will continue to initialize")
                 
                 # Generate test image
                 _ = qr_service.generate_qr(

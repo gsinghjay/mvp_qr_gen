@@ -81,25 +81,15 @@
     </div>
 </main>
 
-<!-- QR Code Result Modal -->
-<div id="qr-detail-modal" class="modal fade" tabindex="-1" aria-labelledby="qrDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">QR Code Created Successfully</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Toast notification for successful creation -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="qr-success-toast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                QR code created successfully! Redirecting to QR list...
             </div>
-            <div class="modal-body">
-                <div class="text-center p-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading QR code details...</span>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <a href="/qr-list" class="btn btn-outline-secondary">View All QR Codes</a>
-                <a href="/qr-create" class="btn btn-primary">Create Another QR Code</a>
-            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     </div>
 </div>
@@ -108,18 +98,34 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Get toast element
+        const toastElement = document.getElementById('qr-success-toast');
+        const toast = new bootstrap.Toast(toastElement, { delay: 1500 });
+        
         // Listen for successful form submissions
         document.body.addEventListener('htmx:afterRequest', function(event) {
             // Check if this is a form submission to create a QR code
             if (event.detail.requestConfig.path.endsWith('/api/v1/fragments/qr-create') && 
                 event.detail.successful) {
                 
-                // Show the success modal
-                const modalElement = document.getElementById('qr-detail-modal');
-                const modal = new bootstrap.Modal(modalElement);
-                modal.show();
+                // Show the toast notification
+                toast.show();
+                
+                // Automatically redirect to QR list page after 1.5 seconds
+                setTimeout(function() {
+                    window.location.href = '/qr-list';
+                }, 1500);
             }
         });
+        
+        // Function to close modal for the Cancel button
+        window.closeModal = function() {
+            // In Option B, just reset the form
+            const staticRadio = document.getElementById('static-qr');
+            if (staticRadio) {
+                staticRadio.click();
+            }
+        };
     });
 </script>
 {% endblock %} 

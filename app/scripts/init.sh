@@ -1,45 +1,49 @@
 #!/bin/bash
 set -e
 
+# PostgreSQL is now the only database type
+echo "PostgreSQL database system enabled"
+
 # Function to initialize database
 initialize_database() {
     echo "Initializing database..."
-    # Make a backup of existing database if it exists instead of deleting it
-    if [ -f "/app/data/qr_codes.db" ]; then
-        local timestamp=$(date +%Y%m%d_%H%M%S)
-        local backup_file="/app/data/backups/qr_codes_${timestamp}_before_init.db"
-        mkdir -p "/app/data/backups"
-        echo "Creating emergency backup at ${backup_file} before initialization"
-        cp "/app/data/qr_codes.db" "${backup_file}"
-        
-        # Copy the backup to the external backups directory if it exists
-        if [ -d "/app/backups" ]; then
-            echo "Copying backup to external directory"
-            cp "${backup_file}" "/app/backups/"
-        fi
+    
+    # Ensure connection before initialization
+    echo "Waiting for PostgreSQL to be ready..."
+    # Add a timeout to prevent infinite waiting
+    timeout=60
+    counter=0
+    
+    # Keep checking until PostgreSQL is ready or timeout
+    until PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "${POSTGRES_HOST}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c '\q' 2>/dev/null || [ $counter -eq $timeout ]; do
+        echo "PostgreSQL not ready yet. Waiting..."
+        sleep 1
+        counter=$((counter+1))
+    done
+    
+    if [ $counter -eq $timeout ]; then
+        echo "Timed out waiting for PostgreSQL to be ready"
+        exit 1
     fi
     
-    # Initialize the database without removing the file
+    echo "PostgreSQL is ready. Initializing..."
+    
+    # Initialize the database
     /app/scripts/manage_db.py --init || exit 1
+    
     echo "Running initial migrations..."
     /app/scripts/manage_db.py --migrate || exit 1
 }
 
 # Function to backup database
 backup_database() {
-    local timestamp=$(date +%Y%m%d_%H%M%S)
-    local backup_file="/app/data/backups/qr_codes_${timestamp}.db"
-    mkdir -p "/app/data/backups"
-    if [ -f "/app/data/qr_codes.db" ]; then
-        echo "Creating backup at ${backup_file}"
-        cp "/app/data/qr_codes.db" "${backup_file}"
-        
-        # Copy the backup to the external backups directory if it exists
-        if [ -d "/app/backups" ]; then
-            echo "Copying backup to external directory"
-            cp "${backup_file}" "/app/backups/"
-        fi
+    # Use manage_db.py which uses pg_dump
+    echo "Creating PostgreSQL backup before migration..."
+    if [ -d "/app/backups" ]; then
+        echo "External backups directory exists and will be used by manage_db.py"
     fi
+    # Call the script with the --create-backup option
+    /app/scripts/manage_db.py --create-backup || echo "Warning: Backup creation might have failed, but continuing anyway"
 }
 
 # Ensure data directory has correct permissions
@@ -56,19 +60,25 @@ fi
 
 # Initialize or validate database before starting the application
 echo "Checking database status..."
-if [ ! -f "/app/data/qr_codes.db" ]; then
-    echo "Fresh installation detected."
+
+# PostgreSQL initialization and validation
+echo "Checking PostgreSQL database..."
+
+# Verify PostgreSQL connection first
+if ! PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "${POSTGRES_HOST}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c '\q' 2>/dev/null; then
+    echo "Cannot connect to PostgreSQL. Waiting for database to be ready..."
+    # Wait for PostgreSQL to be ready (handled in initialize_database)
     initialize_database
 else
-    echo "Existing database detected. Validating..."
+    echo "PostgreSQL connection successful. Validating database..."
     if ! /app/scripts/manage_db.py --validate; then
-        echo "Database validation failed. Creating backup and reinitializing..."
+        echo "PostgreSQL database validation failed. Creating backup and reinitializing..."
         backup_database
         initialize_database
     else
-        echo "Database validation successful. Checking for migrations..."
+        echo "PostgreSQL database validation successful. Checking for migrations..."
         if ! /app/scripts/manage_db.py --check; then
-            echo "Running migrations..."
+            echo "Running migrations for PostgreSQL..."
             backup_database
             /app/scripts/manage_db.py --migrate || exit 1
         fi
@@ -77,14 +87,10 @@ fi
 
 echo "Database setup complete."
 
-# Create a test backup to verify external backup directory is working
-if [ -f "/app/data/qr_codes.db" ] && [ -d "/app/backups" ]; then
-    echo "Creating test backup to verify external backup directory..."
-    timestamp=$(date +%Y%m%d_%H%M%S)
-    test_backup_file="/app/data/backups/qr_codes_${timestamp}_test.db"
-    cp "/app/data/qr_codes.db" "${test_backup_file}"
-    cp "${test_backup_file}" "/app/backups/"
-    echo "Test backup created and copied to external directory."
+# Create a regular backup at startup if external backups directory exists
+if [ -d "/app/backups" ]; then
+    echo "Creating regular PostgreSQL backup at startup..."
+    backup_database
 fi
 
 # Start the FastAPI application based on environment

@@ -13,6 +13,8 @@ from ..database import get_db, get_db_with_logging
 from ..main import app
 from ..models import QRCode
 from ..schemas import QRCodeCreate, QRType
+from ..schemas.common import ErrorCorrectionLevel
+from ..schemas.qr.parameters import StaticQRCreateParameters
 from ..services.qr_service import QRCodeService
 from .helpers import assert_http_exception, assert_qr_code_fields
 
@@ -21,7 +23,9 @@ from .helpers import assert_http_exception, assert_qr_code_fields
 @pytest.fixture
 def qr_service(test_db):
     """Fixture to create a real QR service with test database."""
-    return QRCodeService(test_db)
+    from ..repositories.qr_repository import QRCodeRepository
+    repository = QRCodeRepository(test_db)
+    return QRCodeService(repository)
 
 
 @pytest.fixture
@@ -199,15 +203,17 @@ class TestQRCodeService:
                 True,
                 {
                     "content": "https://example.com",
-                    "qr_type": QRType.STATIC,
+                    "title": "Test Static QR",
                     "fill_color": "#000000",
                     "back_color": "#FFFFFF",
+                    "error_level": ErrorCorrectionLevel.M,
                 },
                 {
                     "id": "test123",
                     "content": "https://example.com",
                     "qr_type": "static",
                     "scan_count": 0,
+                    "title": "Test Static QR",
                 },
             ),
             # Real DB test case
@@ -215,19 +221,20 @@ class TestQRCodeService:
                 False,
                 {
                     "content": "https://example.com",
-                    "qr_type": QRType.STATIC,
+                    "title": "Test Static QR",
                     "fill_color": "#000000",
                     "back_color": "#FFFFFF",
+                    "error_level": ErrorCorrectionLevel.M,
                 },
-                {"content": "https://example.com", "qr_type": "static", "scan_count": 0},
+                {"content": "https://example.com", "qr_type": "static", "scan_count": 0, "title": "Test Static QR"},
             ),
         ],
         ids=["mock", "real_db"],
     )
     def test_create_static_qr(self, is_mock, qr_data, expected_fields, mock_qr_service, qr_service):
         """Test creating a static QR code (mock and real DB)."""
-        # Convert dict to QRCodeCreate model
-        qr_data_model = QRCodeCreate(**qr_data)
+        # Convert dict to StaticQRCreateParameters model that the service expects
+        qr_data_model = StaticQRCreateParameters(**qr_data)
 
         if is_mock:
             # Arrange for mock test
@@ -239,6 +246,8 @@ class TestQRCodeService:
                 fill_color="#000000",
                 back_color="#FFFFFF",
                 scan_count=expected_fields["scan_count"],
+                title=expected_fields["title"],
+                error_level="m",
             )
             mock_qr_service.create_static_qr.return_value = test_qr
 
@@ -268,9 +277,10 @@ class TestQRCodeService:
         # Arrange
         qr_data = {
             "content": "https://example.com",
-            "qr_type": "static",
+            "title": "Test Static QR",
             "fill_color": "#000000",
             "back_color": "#FFFFFF",
+            "error_level": "m",  # Use string here since JSON serialization will convert it anyway
         }
 
         # Act
@@ -280,5 +290,5 @@ class TestQRCodeService:
         assert response.status_code == 201  # API returns 201 Created for successful creation
         result = response.json()
         assert_qr_code_fields(
-            result, {"content": "https://example.com", "qr_type": "static", "scan_count": 0}
+            result, {"content": "https://example.com", "qr_type": "static", "scan_count": 0, "title": "Test Static QR"}
         )

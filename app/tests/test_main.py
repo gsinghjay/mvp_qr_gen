@@ -58,6 +58,8 @@ def create_test_qr_code(client: TestClient, qr_type: QRType = QRType.STATIC) -> 
         "back_color": back_color,
         "size": 10,
         "border": 4,
+        "title": f"Test {qr_type.value.title()} QR",
+        "description": f"A test {qr_type.value} QR code generated for testing",
     }
     json_payload = jsonable_encoder(payload)
     endpoint = f"/api/v1/qr/{qr_type.value}"
@@ -105,6 +107,8 @@ def test_create_static_qr(client: TestClient, test_db: Session):
         "back_color": "#FFFFFF",
         "size": 10,
         "border": 4,
+        "title": "Test Static QR",
+        "description": "A test static QR code",
     }
     json_payload = jsonable_encoder(payload)
 
@@ -121,6 +125,7 @@ def test_create_static_qr(client: TestClient, test_db: Session):
             "fill_color": "#000000",
             "back_color": "#FFFFFF",
             "redirect_url": None,
+            "title": "Test Static QR",
         },
     )
 
@@ -150,6 +155,8 @@ def test_create_dynamic_qr(client: TestClient, test_db: Session):
         "back_color": "#FFFFFF",
         "size": 10,
         "border": 4,
+        "title": "Test Dynamic QR",
+        "description": "A test dynamic QR code",
     }
     json_payload = jsonable_encoder(payload)
 
@@ -165,6 +172,7 @@ def test_create_dynamic_qr(client: TestClient, test_db: Session):
             "redirect_url": "https://example.com/redirect",
             "fill_color": "#000000",
             "back_color": "#FFFFFF",
+            "title": "Test Dynamic QR",
         },
     )
 

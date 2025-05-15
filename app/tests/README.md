@@ -68,15 +68,73 @@ Our testing strategy includes multiple levels of testing:
 - Test edge cases and boundary conditions
 - Test validation logic thoroughly
 
+## Test Infrastructure
+
+### Test Database Configuration
+
+The test suite uses a dedicated PostgreSQL database separate from the production database:
+
+1. **Schema Management with Alembic**: 
+   - Test database schema is created using Alembic migrations to ensure it exactly matches production schema
+   - The `setup_test_database` fixture in `conftest.py` runs `alembic upgrade head` to create the schema
+
+2. **Transaction Isolation**: 
+   - Each test runs in its own transaction that gets rolled back at the end
+   - The `test_db` fixture manages this transaction isolation
+   - Prevents tests from interfering with each other's data
+
+3. **Docker Integration**:
+   - Dedicated `postgres_test` service in Docker Compose provides isolated test database
+   - Environment variables (`TEST_DATABASE_URL`, etc.) configure the test database connection
+
+### Test Data Management
+
+1. **Factory Pattern**:
+   - Test data is created using the factory pattern via classes in `factories.py`
+   - `QRCodeFactory` provides methods to create both static and dynamic QR codes
+   - Factory methods allow customizing attributes while using sensible defaults
+
+2. **Fixtures Using Factories**:
+   - Fixtures in `conftest.py` use the factory pattern to create test entities
+   - Common entity types (static QR, dynamic QR, etc.) have dedicated fixtures
+   - Factories only add entities to the session without committing or flushing, letting the test fixture manage transactions
+
+3. **Transaction Management**:
+   - All test data is created within a transaction that is rolled back after the test
+   - Factories don't flush or commit changes, letting the test fixtures control transaction boundaries
+   - This ensures test data doesn't persist beyond the test and tests remain isolated
+
+### Asynchronous Testing Support
+
+1. **Async Session Fixtures**:
+   - `async_test_db` fixture provides an async SQLAlchemy session
+   - Uses nested transactions for test isolation similar to the sync version
+   - Automatically rolls back changes after each test
+
+2. **Async Client Fixture**:
+   - `async_client` fixture configures a test client with async database overrides
+   - Overrides async dependencies to use the test database session
+   - Works with pytest-asyncio for true async tests
+
+3. **Async Factory Methods**:
+   - `QRCodeFactory` provides async methods for async test contexts
+   - `async_create_with_params` and `async_create_batch_mixed` support async tests
+   - See `test_async_example.py` for examples of async testing patterns
+
 ## Test Fixtures
 
 The `conftest.py` file provides common fixtures that should be used across tests:
 
 ### Database Fixtures
 
-- `test_db`: Provides an isolated database session
-- `async_test_db`: Provides an isolated async database session
+- `test_db`: Provides an isolated database session within a transaction
+- `async_test_db`: Provides an isolated async database session for async tests
 - `seeded_db`: Provides a database pre-populated with test data
+
+### Factory Fixtures
+
+- `qr_code_factory`: Provides a configured `QRCodeFactory` instance for creating custom QR codes
+- `async_qr_code_factory`: Provides a configured `QRCodeFactory` for async tests
 
 ### QR Code Fixtures
 
@@ -88,7 +146,11 @@ The `conftest.py` file provides common fixtures that should be used across tests
 
 ### API Fixtures
 
-- `client`: Provides a FastAPI TestClient
+- `client`: Provides a FastAPI TestClient with dependency overrides configured
+  - Overrides `get_db` and `get_db_with_logging` to use the test database session
+  - Automatically restores original dependencies after tests
+- `async_client`: Provides a TestClient configured for async tests
+  - Overrides async dependencies to use the async test database session
 - `create_static_qr_request`: Function for creating static QR codes
 - `create_dynamic_qr_request`: Function for creating dynamic QR codes
 - `get_qr_request`: Function for retrieving QR codes
@@ -102,6 +164,39 @@ The `conftest.py` file provides common fixtures that should be used across tests
 - `dynamic_qr_payload`: Standard payload for dynamic QR code creation
 - `invalid_color_payload`: Payload with invalid color for testing validation
 - `invalid_url_payload`: Payload with invalid URL for testing validation
+
+## Dependency Overrides
+
+Tests use a standardized approach to dependency overrides:
+
+1. **Client Fixture Method**:
+   - The `client` fixture in `conftest.py` handles all necessary dependency overrides
+   - Overrides both `get_db` and `get_db_with_logging` to ensure all database access uses test sessions
+   - Stores and restores original dependencies to prevent cross-test interference
+   - Example usage:
+     ```python
+     def test_create_qr(client, static_qr_payload):
+         response = client.post("/api/v1/qr/", json=static_qr_payload)
+         assert response.status_code == 201
+     ```
+
+2. **DependencyOverrideManager** (for advanced scenarios):
+   - For tests requiring more complex dependency overrides, use the `DependencyOverrideManager` in `helpers.py`
+   - Can be used as a context manager to apply overrides within a specific test scope
+   - Example usage:
+     ```python
+     from app.tests.helpers import DependencyOverrideManager
+     
+     def test_special_case(test_db):
+         with DependencyOverrideManager.create_db_override(app, test_db) as override:
+             # Add additional overrides if needed
+             override.override(get_settings, lambda: test_settings)
+             
+             # Test code here
+             client = TestClient(app)
+             response = client.get("/api/v1/special")
+             # The overrides are automatically restored after the context manager exits
+     ```
 
 ## Utility Functions
 
@@ -176,29 +271,38 @@ The `utils.py` file provides common utility functions for assertions and validat
        # Test internal logic and database operations
    ```
 
-7. **Use validation utilities for consistent checking**:
+7. **Use factories for test data**:
    ```python
-   # Instead of manually checking color format
-   assert data["fill_color"].startswith("#")
+   # Let fixtures provide standard entities
+   def test_standard_qr(client, static_qr):
+       response = client.get(f"/api/v1/qr/{static_qr.id}")
+       assert response.status_code == 200
    
-   # Use the validation utility
-   validate_color_code(data["fill_color"])
-   
-   # Instead of manually checking URL format
-   assert data["redirect_url"].startswith(("http://", "https://"))
-   
-   # Use the validation utility
-   validate_redirect_url(data["redirect_url"])
-   
-   # Instead of manual scan statistics validation
-   assert isinstance(data["scan_count"], int)
-   assert data["scan_count"] >= 0
-   
-   # Use the validation utility
-   validate_scan_statistics({
-       "scan_count": data["scan_count"],
-       "last_scan_at": data.get("last_scan_at")
-   })
+   # Use factory directly for custom scenarios
+   def test_custom_qr(client, qr_code_factory):
+       special_qr = qr_code_factory.create_static(
+           content="https://special.example.com",
+           title="Special Test QR",
+           size=15
+       )
+       response = client.get(f"/api/v1/qr/{special_qr.id}")
+       assert response.status_code == 200
+   ```
+
+8. **Use async features for async code**:
+   ```python
+   # For async endpoints or services, use async fixtures
+   @pytest.mark.asyncio
+   async def test_async_feature(async_client, async_qr_code_factory):
+       # Create test data asynchronously
+       qr = await async_qr_code_factory.async_create_with_params(
+           qr_type=QRType.DYNAMIC,
+           redirect_url="https://example.com/async"
+       )
+       
+       # Test the endpoint
+       response = async_client.get(f"/api/v1/qr/{qr.id}")
+       assert response.status_code == 200
    ```
 
 ### Test Naming Conventions
@@ -230,32 +334,31 @@ For specific test cases:
 docker compose exec api pytest app/tests/test_main.py::test_create_static_qr -v
 ```
 
-## Test Development Workflow
+## CI/CD Integration
 
-When adding new features or fixing bugs, follow this workflow:
+The CI/CD pipeline is configured to run tests against the dedicated test database:
 
-1. **Write failing tests first**: Create tests that validate the expected behavior
-2. **Implement the feature or fix the bug**: Make the failing tests pass
-3. **Refactor if needed**: Clean up the code without breaking tests
-4. **Add edge cases and error condition tests**: Ensure robust behavior
+1. **Environment Setup**:
+   - The `postgres_test` service is started in Docker Compose
+   - `TEST_DATABASE_URL` and `TESTING_MODE=true` environment variables are set
 
-For new tests, follow these guidelines:
+2. **Test Execution**:
+   - Alembic runs migrations to set up the test database schema
+   - Pytest runs the test suite against the isolated test database
+   - Test transactions are rolled back to keep the database clean
 
-1. **Choose the right test file**: Place your test in the appropriate file based on what you're testing
-2. **Use existing fixtures**: Utilize fixtures from conftest.py rather than creating your own setup code
-3. **Use utility functions**: Leverage utils.py for common validation patterns
-4. **Follow naming conventions**: Name tests clearly as `test_<what>_<condition>`
-5. **Add descriptive docstrings**: Explain what aspect of functionality is being tested
-6. **Test both success and failure paths**: Don't just test the happy path
-7. **Keep tests focused**: Test one thing per test function
-8. **Maintain isolation**: Ensure tests don't affect each other
+3. **Test Reports**:
+   - Test coverage reports are generated
+   - Test failures are reported in the CI/CD logs
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Database locked errors**: This usually happens when tests don't clean up database connections properly.
-   - Solution: Use the `test_db` fixture which handles transaction isolation.
+1. **Test database connection issues**:
+   - Ensure the `postgres_test` service is running in Docker Compose
+   - Check that `TEST_DATABASE_URL` is correctly configured
+   - Verify that the `TESTING_MODE=true` environment variable is set
 
 2. **Failing assertions**: If tests are failing with assertion errors, use the verbose flag to see detailed output:
    ```bash
@@ -263,11 +366,13 @@ For new tests, follow these guidelines:
    ```
 
 3. **Test interference**: If tests interfere with each other, they may not be properly isolated.
-   - Solution: Make sure tests don't share state outside of fixtures.
+   - Make sure tests don't commit transactions directly (let the fixtures handle it)
+   - Use factory methods that don't flush to the database
+   - Ensure all tests use the `test_db` fixture for database operations
 
 4. **Slow tests**: If tests are running slowly, identify and optimize the bottlenecks.
    - Use session-scoped fixtures for expensive setup operations
-   - Use in-memory SQLite for tests that don't need file-based storage
+   - Consider if some tests can be unit tests without database interaction
 
 ## Maintenance
 
@@ -275,3 +380,77 @@ For new tests, follow these guidelines:
 - Regularly review tests for duplication and refactor as needed
 - Monitor test coverage and add tests for uncovered code
 - Update tests when requirements or code changes 
+
+## Usage Examples
+
+### Basic Test with Database
+
+```python
+def test_qr_code_creation(test_db, qr_code_factory):
+    """Test creating a QR code with the factory."""
+    # Create a QR code using the factory
+    qr = qr_code_factory.create_with_params(
+        qr_type=QRType.STATIC,
+        content="https://example.com",
+        fill_color="#FF0000",
+        back_color="#0000FF"
+    )
+    
+    # Verify the QR code was created properly
+    assert qr.id is not None
+    assert qr.content == "https://example.com"
+    assert qr.qr_type == "static"
+    assert qr.fill_color == "#FF0000"
+    assert qr.back_color == "#0000FF"
+    
+    # Verify it was added to the database
+    result = test_db.execute(select(QRCode).where(QRCode.id == qr.id))
+    db_qr = result.scalar_one_or_none()
+    assert db_qr is not None
+    assert db_qr.id == qr.id
+```
+
+### Advanced Test with API Client
+
+```python
+def test_api_integration(client, qr_code_factory):
+    """Test API integration with pre-created data."""
+    # Create a QR code for testing
+    qr = qr_code_factory.create_with_params(
+        qr_type=QRType.STATIC,
+        content="https://example.com/test",
+        title="Test QR",
+        description="A test QR code"
+    )
+    
+    # Use the client to retrieve the QR code
+    response = client.get(f"/api/v1/qr/{qr.id}")
+    
+    # Verify the response
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == qr.id
+    assert data["content"] == "https://example.com/test"
+    assert data["title"] == "Test QR"
+```
+
+## Known Issues and Limitations
+
+### Asynchronous Testing
+
+The test infrastructure includes support for asynchronous testing with pytest-asyncio, but there are some known limitations:
+
+1. **Timezone Issues with asyncpg**: There are issues with PostgreSQL's asyncpg driver when handling timezone-aware vs naive datetimes. The current implementation includes a workaround that converts aware datetimes to naive ones, but this is an area that needs further improvement.
+
+2. **Async API Tests**: The async API client tests are currently skipped in `test_async_example.py` due to dependency resolution issues. These need to be addressed in a future update.
+
+3. **Example File**: An example file `test_async_example.py` shows how to structure async tests but contains skipped tests that serve as templates for future implementation.
+
+### Async Test Strategy:
+
+Until the above issues are resolved, the recommended approach for testing async code is:
+
+1. Use the regular synchronous test fixtures for most tests
+2. Only use async fixtures when testing code that requires async/await patterns
+3. Convert timezone-aware datetime objects to naive ones before storing in the database
+4. Be aware that transaction management might behave differently between sync and async tests 
