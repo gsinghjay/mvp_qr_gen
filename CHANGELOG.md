@@ -1,6 +1,92 @@
 # CHANGELOG
 
 
+## v0.22.1 (2025-05-19)
+
+### Bug Fixes
+
+- **tests**: Add missing app import in QR service tests
+  ([`63b4198`](https://github.com/gsinghjay/mvp_qr_gen/commit/63b41982a57a397e3c13be73772569d8ac439793))
+
+- **tests**: Resolve duplicate table errors in test database setup
+  ([`c1e16ce`](https://github.com/gsinghjay/mvp_qr_gen/commit/c1e16ce038b2d70625d582717a44002ff9602ef4))
+
+### Documentation
+
+- Add directory structure documentation for test organization
+  ([`4bd1333`](https://github.com/gsinghjay/mvp_qr_gen/commit/4bd13337503661aede9410096f1c5b21b6a2d744))
+
+### Refactoring
+
+- Organize end-to-end tests in dedicated directory
+  ([`e00c0a7`](https://github.com/gsinghjay/mvp_qr_gen/commit/e00c0a74f1edbc1f0c77012fc68f3dbbc03d9fce))
+
+- Organize integration tests in dedicated directory
+  ([`906e48c`](https://github.com/gsinghjay/mvp_qr_gen/commit/906e48cda5c8a77fda8f116de8a55564f88d3b44))
+
+- Organize unit tests in dedicated directory
+  ([`62c9e39`](https://github.com/gsinghjay/mvp_qr_gen/commit/62c9e397f279d84bb2e47bc495b7a88746844677))
+
+- Remove SQLite-specific tests after PostgreSQL migration
+  ([`d194766`](https://github.com/gsinghjay/mvp_qr_gen/commit/d194766fdb81b90bd3c1e338c4d5b80e332f34c9))
+
+- Remove test_api_restructure.py after reorganization
+  ([`fa8583a`](https://github.com/gsinghjay/mvp_qr_gen/commit/fa8583a62ac600cfd2184c4d5b4f56b814f942aa))
+
+- Remove test_async_example.py after reorganization
+  ([`884ba79`](https://github.com/gsinghjay/mvp_qr_gen/commit/884ba79b66e032f94e5bf1433d6fb083f7fd41a4))
+
+- Remove test_background_tasks.py after reorganization
+  ([`a44d04f`](https://github.com/gsinghjay/mvp_qr_gen/commit/a44d04f08fd2a9e877f9105080b7b99089a1b883))
+
+- Remove test_database_connection.py after reorganization
+  ([`40abe1b`](https://github.com/gsinghjay/mvp_qr_gen/commit/40abe1b7d73dd1a093028a9cd374ead9337c3090))
+
+- Remove test_dependency_overrides.py after reorganization
+  ([`6cfaf83`](https://github.com/gsinghjay/mvp_qr_gen/commit/6cfaf832f7b0d76c5496581f49e08bcc02c8b6a5))
+
+- Remove test_exceptions.py after reorganization
+  ([`d5f1171`](https://github.com/gsinghjay/mvp_qr_gen/commit/d5f1171b33ace5d7311d3a7c5d67b686fb2b5cc8))
+
+- Remove test_factories.py after reorganization
+  ([`65d1647`](https://github.com/gsinghjay/mvp_qr_gen/commit/65d16474a0ea964c0ce174bdf4732161286f246d))
+
+- Remove test_http_methods.py after reorganization
+  ([`eec0bd8`](https://github.com/gsinghjay/mvp_qr_gen/commit/eec0bd8ea99ea186a356ec60afe199b40c3e930e))
+
+- Remove test_integration.py after reorganization
+  ([`1af2655`](https://github.com/gsinghjay/mvp_qr_gen/commit/1af2655a54a750a415a46dfdf2ec3ea1057266bd))
+
+- Remove test_lifecycle.py after reorganization
+  ([`b2e093a`](https://github.com/gsinghjay/mvp_qr_gen/commit/b2e093a8695843f4b650b2ad1fccb12b50028bd5))
+
+- Remove test_main.py after reorganization
+  ([`0062814`](https://github.com/gsinghjay/mvp_qr_gen/commit/0062814f7ccd69ff4f2a70cce804043f59a91c2f))
+
+- Remove test_middleware.py after reorganization
+  ([`80bd09f`](https://github.com/gsinghjay/mvp_qr_gen/commit/80bd09f1e4dccf3b9eac946872d42352a1606d08))
+
+- Remove test_models_schemas.py after reorganization
+  ([`933371e`](https://github.com/gsinghjay/mvp_qr_gen/commit/933371e06433dc73b0033753460d528581eddd11))
+
+- Remove test_qr_service.py after reorganization
+  ([`2e21e97`](https://github.com/gsinghjay/mvp_qr_gen/commit/2e21e9761de4971022508baf32745caf2faf5fdf))
+
+- Remove test_response_models.py after reorganization
+  ([`2e4b332`](https://github.com/gsinghjay/mvp_qr_gen/commit/2e4b332ea14417bc151c07ceb98069d9aabd24f2))
+
+- Remove test_router_structure.py after reorganization
+  ([`d539634`](https://github.com/gsinghjay/mvp_qr_gen/commit/d539634413a2775aebc9af727cea2ef07a8f75c4))
+
+- Remove test_validation_parameterized.py after reorganization
+  ([`cfa7a88`](https://github.com/gsinghjay/mvp_qr_gen/commit/cfa7a8822fa5fa3e145926fbcd73f56713030c05))
+
+### Testing
+
+- **db**: Add specific tests to verify test database setup integrity
+  ([`ea258ae`](https://github.com/gsinghjay/mvp_qr_gen/commit/ea258ae7a009cdc65d0faf63cf8cbe584e004f08))
+
+
 ## v0.22.0 (2025-05-19)
 
 ### Bug Fixes
