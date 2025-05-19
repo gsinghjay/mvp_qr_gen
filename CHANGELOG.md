@@ -1,6 +1,264 @@
 # CHANGELOG
 
 
+## v0.22.0 (2025-05-19)
+
+### Bug Fixes
+
+- Adjust QR code size calculation for pixel unit
+  ([`0670682`](https://github.com/gsinghjay/mvp_qr_gen/commit/0670682626524d821978a1508104ca4ca4c3ec7e))
+
+- Correct indentation and update test fixtures for PostgreSQL
+  ([`2432d48`](https://github.com/gsinghjay/mvp_qr_gen/commit/2432d48c0886a1ed99c7cd4cea96b397603008d3))
+
+- Improve QR list display and pagination
+  ([`47a5993`](https://github.com/gsinghjay/mvp_qr_gen/commit/47a5993f58dc88600562611d3219a9e82442dcf9))
+
+- Update QR model to use PostgreSQL-compatible timestamp defaults
+  ([`df2bb96`](https://github.com/gsinghjay/mvp_qr_gen/commit/df2bb9635b9de1cbe3b8c83c462e997d9fad3669))
+
+- **backend**: Remove restriction to allow editing any QR code type
+  ([`039fba4`](https://github.com/gsinghjay/mvp_qr_gen/commit/039fba4216c64f0a2c0681d5e5cd2f57cbee8590))
+
+- **frontend**: Correct form structure in QR edit modal to enable form submission
+  ([`6493050`](https://github.com/gsinghjay/mvp_qr_gen/commit/6493050a8e5f469a733e6d3e59d3dcbecceca484))
+
+- **security**: Prevent redirect loop on auth domain by excluding access-restricted path
+  ([`8bb672e`](https://github.com/gsinghjay/mvp_qr_gen/commit/8bb672e838c6d268929d8c1597b9a7cba3ed0553))
+
+### Chores
+
+- Add alembic script template for migration generation
+  ([`0c07b5c`](https://github.com/gsinghjay/mvp_qr_gen/commit/0c07b5ccdcbb60eb58fd10c2e9a0bb5af3b4df92))
+
+- Add backups directory to gitignore
+  ([`d75d87d`](https://github.com/gsinghjay/mvp_qr_gen/commit/d75d87d6a65cec8e163d9a07ac3a8e263e1d7702))
+
+- Remove SQLite-specific migration files
+  ([`86b49ba`](https://github.com/gsinghjay/mvp_qr_gen/commit/86b49bac26f7c6428559d0ad160a297c7ee7dc38))
+
+- Remove unused image assets
+  ([`fe1403c`](https://github.com/gsinghjay/mvp_qr_gen/commit/fe1403cd3466d688446ece3cd3069132ef5f13cc))
+
+- Update alembic.ini for PostgreSQL compatibility
+  ([`517c50e`](https://github.com/gsinghjay/mvp_qr_gen/commit/517c50e60f9ca9fa339cb289966f05a912eaa621))
+
+- Update gitignore patterns
+  ([`6f19679`](https://github.com/gsinghjay/mvp_qr_gen/commit/6f19679a94869620d2a926b1300a7ea13e30d661))
+
+- Update project metadata and dependencies
+  ([`9e46b91`](https://github.com/gsinghjay/mvp_qr_gen/commit/9e46b9149e8031557a9ea693fac5786c7027e742))
+
+- Update QR logo image
+  ([`1f7b255`](https://github.com/gsinghjay/mvp_qr_gen/commit/1f7b2552650f8e578929708df83e82df56f37bcc))
+
+- **docker**: Replace SQLite with PostgreSQL client tools
+  ([`5000d7d`](https://github.com/gsinghjay/mvp_qr_gen/commit/5000d7d28f1c74e02faae26b3fe4ee109ce22e01))
+
+### Documentation
+
+- Add detailed documentation for database schema report script
+  ([`15eb906`](https://github.com/gsinghjay/mvp_qr_gen/commit/15eb9060aa2159be5cd7a36ffc89e5e35b7d5800))
+
+- Add README for database scripts directory
+  ([`8fe08b1`](https://github.com/gsinghjay/mvp_qr_gen/commit/8fe08b1a3c5662beeb4e2f0bcc299e9461c98361))
+
+- Remove STATUS.md in favor of consolidated documentation
+  ([`093a482`](https://github.com/gsinghjay/mvp_qr_gen/commit/093a482660762e3379b839ecbdecc940c474a1c2))
+
+- Update API test documentation and scripts for scan tracking
+  ([`ec3ee30`](https://github.com/gsinghjay/mvp_qr_gen/commit/ec3ee30ef18fca5644b8ec3a4799d4db7a6ed3f7))
+
+- Update infrastructure documentation for PostgreSQL architecture
+  ([`b8a766d`](https://github.com/gsinghjay/mvp_qr_gen/commit/b8a766d7d1be14947650900f0f4686ccfac45298))
+
+- Update project story to reflect PostgreSQL migration
+  ([`39b85ef`](https://github.com/gsinghjay/mvp_qr_gen/commit/39b85ef41aaf170133958383a3f81b73b48626b2))
+
+- Update README to reflect PostgreSQL-only usage
+  ([`9f18e32`](https://github.com/gsinghjay/mvp_qr_gen/commit/9f18e3250a2d4bc1c22d284c5f70194f2dad69ee))
+
+- Update test documentation for PostgreSQL test database
+  ([`89371e3`](https://github.com/gsinghjay/mvp_qr_gen/commit/89371e32d43fcb260f37662f6819107e34923ab0))
+
+### Features
+
+- Add methods for scan statistics and analytics in QRRepository
+  ([`31f07b2`](https://github.com/gsinghjay/mvp_qr_gen/commit/31f07b2f2f3e68678a5512b67d9d756c0e1a541c))
+
+- Add migration for scan_log table and QR code enhancements
+  ([`4e7ad71`](https://github.com/gsinghjay/mvp_qr_gen/commit/4e7ad716d792f3b74b5114197493f5f9921623cb))
+
+- Add migration for short_id column with data population
+  ([`814b875`](https://github.com/gsinghjay/mvp_qr_gen/commit/814b875df1c9174720036205e17224822df34711))
+
+- Add official HCCC logo in SVG format
+  ([`372cc34`](https://github.com/gsinghjay/mvp_qr_gen/commit/372cc34b0613d02657a1c529bfdb27d1bd5718c2))
+
+- Add physical dimension inputs to QR details modal
+  ([`7654dba`](https://github.com/gsinghjay/mvp_qr_gen/commit/7654dbac493c3a5d07125a1fea46e20eba21227f))
+
+- Add physical dimension parameters to QR image schemas
+  ([`ccfe0f4`](https://github.com/gsinghjay/mvp_qr_gen/commit/ccfe0f45a8abf99b6e090596a872efd110a0a33d))
+
+- Add PostgreSQL backup capability to manage_db.py
+  ([`f42027a`](https://github.com/gsinghjay/mvp_qr_gen/commit/f42027a203de3e9f97c099a4b7effd6d63e58cae))
+
+- Add PostgreSQL database schema report script
+  ([`4591d1c`](https://github.com/gsinghjay/mvp_qr_gen/commit/4591d1cf1898a093c157c581d68ac99af7607126))
+
+- Add scan_ref parameter handling for genuine scan detection
+  ([`ecd8630`](https://github.com/gsinghjay/mvp_qr_gen/commit/ecd8630e062accb22689fa6adf2da784a345b8db))
+
+- Add ScanLog model for detailed scan tracking
+  ([`7613638`](https://github.com/gsinghjay/mvp_qr_gen/commit/7613638b9beebdaf0a5014972fc0e4bb799da3fb))
+
+- Add short_id column to QRCode model for optimized lookups
+  ([`b3c3450`](https://github.com/gsinghjay/mvp_qr_gen/commit/b3c34504847f519bee043782f80037420fd62c18))
+
+- Add short_id field to QR code schemas for improved data validation and API responses
+  ([`64606e7`](https://github.com/gsinghjay/mvp_qr_gen/commit/64606e7a46d660e5123d7d1885c21769be3dd2b6))
+
+- Configure alembic env.py for PostgreSQL support
+  ([`57019c6`](https://github.com/gsinghjay/mvp_qr_gen/commit/57019c68f4b3e9c7f62f75a485740011ee8a66c4))
+
+- Create initial PostgreSQL schema migration
+  ([`2097dbd`](https://github.com/gsinghjay/mvp_qr_gen/commit/2097dbd45838a00423a09d39ab0dceb06e15cc98))
+
+- Enhance QR detail template to display scan statistics
+  ([`971fe34`](https://github.com/gsinghjay/mvp_qr_gen/commit/971fe340a7766e4da9343a092c2efa280739c85e))
+
+- Enhance QR endpoints to support physical dimensions and DPI
+  ([`30a71c5`](https://github.com/gsinghjay/mvp_qr_gen/commit/30a71c58a783a5e15706d96534f57c9259f72de8))
+
+- Enhance QR imaging with physical dimension and DPI support
+  ([`f42c32c`](https://github.com/gsinghjay/mvp_qr_gen/commit/f42c32c9e51a7cfcf0f3921187ef78fe3db020c6))
+
+- Enhance QR service with physical dimension support
+  ([`42176a3`](https://github.com/gsinghjay/mvp_qr_gen/commit/42176a3b547a6ba183a98fed810b51b115dabdcb))
+
+- Enhance QRCode model with genuine scan tracking fields
+  ([`0ca376b`](https://github.com/gsinghjay/mvp_qr_gen/commit/0ca376b2470fdd7a61694e596107c3c5f771a3d8))
+
+- Implement get_by_short_id repository method for direct lookups
+  ([`75494fc`](https://github.com/gsinghjay/mvp_qr_gen/commit/75494fcb6d2c0ef733f2be4ccd406cdfe2dec35a))
+
+- Implement streamlined QR creation workflow
+  ([`a9dcb35`](https://github.com/gsinghjay/mvp_qr_gen/commit/a9dcb35d024f50a1500ecd55a8b12c4d39db7dcc))
+
+- Implement user agent parsing and scan logging in QRService
+  ([`7e6d5a1`](https://github.com/gsinghjay/mvp_qr_gen/commit/7e6d5a14b04188c0a9e387898b11e43dac026fb4))
+
+- Include ScanLog model in models package
+  ([`89510eb`](https://github.com/gsinghjay/mvp_qr_gen/commit/89510eb4c1552c3fa0ec03f6bea114c37dc2ff4f))
+
+- Update Docker configuration for PostgreSQL services
+  ([`0e2716d`](https://github.com/gsinghjay/mvp_qr_gen/commit/0e2716d3bd7a6a759cb603ea5fad104deec6b05a))
+
+- Update fragment endpoints to support scan analytics display
+  ([`8d0470c`](https://github.com/gsinghjay/mvp_qr_gen/commit/8d0470c33ad372bf7520ee7d0ce49ea7ebcb761f))
+
+- Update fragments endpoint to handle physical dimension parameters
+  ([`9a7466b`](https://github.com/gsinghjay/mvp_qr_gen/commit/9a7466b4b0136add8239f4fc19dfe8c9dd5caba4))
+
+- Update init.sh to support PostgreSQL backup on startup
+  ([`d989a58`](https://github.com/gsinghjay/mvp_qr_gen/commit/d989a583e5c3e53f40e465198d9983061b52ed4d))
+
+- Update QR schemas for PostgreSQL compatibility
+  ([`4c1617c`](https://github.com/gsinghjay/mvp_qr_gen/commit/4c1617c29e148ec5f0074c1e5e5583ef258c3c4f))
+
+- Update QR schemas with scan tracking information
+  ([`386f44f`](https://github.com/gsinghjay/mvp_qr_gen/commit/386f44f0d7851ec1ee4bf1acc7dfb626bb8fbad2))
+
+- Update QRCodeService to utilize short_id for improved redirect performance
+  ([`7ce41ff`](https://github.com/gsinghjay/mvp_qr_gen/commit/7ce41ff1eaac8e5f5211afd6883aedae8c29400b))
+
+- **deps**: Add psycopg2-binary for PostgreSQL support
+  ([`d964f1e`](https://github.com/gsinghjay/mvp_qr_gen/commit/d964f1e6e4d92f7b01093dbd3b8986a11708a967))
+
+- **docker**: Add PostgreSQL service to Docker Compose
+  ([`9aab687`](https://github.com/gsinghjay/mvp_qr_gen/commit/9aab687f235a7f2b072bed002de0e6f290528823))
+
+- **scripts**: Enhance manage_db.py with PostgreSQL validation and backup
+  ([`0b3de97`](https://github.com/gsinghjay/mvp_qr_gen/commit/0b3de973cb9e4d6649ee03111d6c84d8155c2d9e))
+
+- **scripts**: Update init.sh with PostgreSQL readiness checks
+  ([`6d6642d`](https://github.com/gsinghjay/mvp_qr_gen/commit/6d6642dd0e8e9f607b2fdf80f0ef215efbf8e725))
+
+- **security**: Add routing for new auth domain and IP 130.156.44.53
+  ([`425bb22`](https://github.com/gsinghjay/mvp_qr_gen/commit/425bb2255a6c935288c8d6ea710f8e68d16ffc7b))
+
+- **ui**: Implement toast notification with QR details modal for better user experience
+  ([`aba23d2`](https://github.com/gsinghjay/mvp_qr_gen/commit/aba23d280230ff5a9bd9fde67355010b9caa6898))
+
+### Refactoring
+
+- Remove physical dimension fields from QR creation form
+  ([`7ab5803`](https://github.com/gsinghjay/mvp_qr_gen/commit/7ab5803a4e33d0c4d75413539759c2afd3738dd5))
+
+- Remove SQLite database URL from configuration
+  ([`8d59e73`](https://github.com/gsinghjay/mvp_qr_gen/commit/8d59e73c65e691e99bd947b036d9228e1a35d3c3))
+
+- Remove SQLite-specific code from database management script
+  ([`a310a19`](https://github.com/gsinghjay/mvp_qr_gen/commit/a310a19dec8f49d8f55510e42e46e9b3d21f57db))
+
+- Simplify database module for PostgreSQL-only operation
+  ([`83b008e`](https://github.com/gsinghjay/mvp_qr_gen/commit/83b008ee44a4055fe790a43e9d8f5d67fff54bba))
+
+- Update Alembic configuration for PostgreSQL exclusivity
+  ([`f373c7d`](https://github.com/gsinghjay/mvp_qr_gen/commit/f373c7d2c306bfa78601e2d87bd9ca2fe73b8baf))
+
+- Update health service for PostgreSQL-exclusive metrics
+  ([`a7ed95f`](https://github.com/gsinghjay/mvp_qr_gen/commit/a7ed95fb802a2a678ca654a2d184d77282852abe))
+
+- Update initialization script for PostgreSQL-only setup
+  ([`1692475`](https://github.com/gsinghjay/mvp_qr_gen/commit/16924752f0412efa891f8b6249bcbd432a6af024))
+
+- Update test factories for PostgreSQL compatibility
+  ([`2eb6199`](https://github.com/gsinghjay/mvp_qr_gen/commit/2eb619918c9e7b308a8d7c347a2086cf7ae8ea5b))
+
+- Update test helpers for PostgreSQL support
+  ([`0c27d73`](https://github.com/gsinghjay/mvp_qr_gen/commit/0c27d7301541b895c94f4d51647e47c9d5e4c087))
+
+- **database**: Implement dual database support for SQLite and PostgreSQL
+  ([`cf3dd21`](https://github.com/gsinghjay/mvp_qr_gen/commit/cf3dd2100d7226c6629f90b1a26ba2bae7971e51))
+
+- **repo**: Remove unused find_by_pattern method
+  ([`33357d5`](https://github.com/gsinghjay/mvp_qr_gen/commit/33357d5b29c474676e9b010e771565624401f9b3))
+
+- **service**: Remove fallback pattern matching in get_qr_by_short_id
+  ([`35079e9`](https://github.com/gsinghjay/mvp_qr_gen/commit/35079e99a5cc11bca435106ad95e24575170cedf))
+
+- **startup**: Simplify lifespan warmup logic for QR lookups
+  ([`d3ca7f1`](https://github.com/gsinghjay/mvp_qr_gen/commit/d3ca7f11ef40e293e7caf946f99e45a233af0ee0))
+
+### Testing
+
+- Adapt SQLite-specific tests for PostgreSQL environment
+  ([`684a7a6`](https://github.com/gsinghjay/mvp_qr_gen/commit/684a7a667dd1fa352c1c453ecc140680663c2253))
+
+- Add asynchronous test examples for PostgreSQL compatibility
+  ([`2b13fba`](https://github.com/gsinghjay/mvp_qr_gen/commit/2b13fba63eb1088ca1ae26e8bfa1c883ca21689f))
+
+- Convert integration tests to use PostgreSQL
+  ([`db28701`](https://github.com/gsinghjay/mvp_qr_gen/commit/db28701a8ebb71a242cb76dcf4b463714afe2b3b))
+
+- Convert main application tests to use PostgreSQL
+  ([`350f1b3`](https://github.com/gsinghjay/mvp_qr_gen/commit/350f1b3e64d840d847c5d753cf480cbfe6639436))
+
+- Implement database connection tests for PostgreSQL
+  ([`481f101`](https://github.com/gsinghjay/mvp_qr_gen/commit/481f101c8ecfdf5c155678546266c9ea84bb1da9))
+
+- Refactor QR service tests for PostgreSQL test database
+  ([`c279d04`](https://github.com/gsinghjay/mvp_qr_gen/commit/c279d041a1887850a2b18170f41a00fa12d17e66))
+
+- Update lifecycle tests for PostgreSQL compatibility
+  ([`0e8eed0`](https://github.com/gsinghjay/mvp_qr_gen/commit/0e8eed01c711addee3636944c3a92ae203d48bef))
+
+- Update middleware tests for PostgreSQL compatibility
+  ([`eecde35`](https://github.com/gsinghjay/mvp_qr_gen/commit/eecde359c5a0d15e1e792eb293dcd41cf3c608d3))
+
+
 ## v0.21.0 (2025-05-06)
 
 ### Chores
