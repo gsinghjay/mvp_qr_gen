@@ -27,6 +27,7 @@ from app.core.exceptions import QRCodeNotFoundError, DatabaseError
 from app.schemas.qr.parameters import StaticQRCreateParameters
 from app.schemas.common import ErrorCorrectionLevel
 from app.schemas import QRCodeCreate, QRType
+from app.main import app  # Add this import for the client_with_real_db fixture
 
 
 # Define real and mock test approaches
