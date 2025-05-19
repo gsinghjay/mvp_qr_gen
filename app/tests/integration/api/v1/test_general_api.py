@@ -13,7 +13,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from ..dependencies import get_qr_service
+from app.tests.dependencies import get_qr_service
 from ..main import app
 from ..models import QRCode
 from ..models.qr import QRCode

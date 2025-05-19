@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from ..dependencies import get_qr_service
+from app.tests.dependencies import get_qr_service
 from ..main import app
 from ..models.qr import QRCode
 from ..schemas.qr.models import QRType

@@ -4,26 +4,35 @@ Test cases for the QR code service layer using dependency injection.
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from unittest.mock import MagicMock, patch
 
-from ..database import get_db, get_db_with_logging
-from ..main import app
-from ..models import QRCode
-from ..schemas import QRCodeCreate, QRType
-from ..schemas.common import ErrorCorrectionLevel
-from ..schemas.qr.parameters import StaticQRCreateParameters
-from ..services.qr_service import QRCodeService
-from .helpers import assert_http_exception, assert_qr_code_fields
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from app.database import get_db, get_db_with_logging
+from app.dependencies import get_qr_service
+from app.tests.factories import QRCodeFactory
+from app.tests.conftest import test_db
+from app.tests.helpers import assert_http_exception, assert_qr_code_fields
+
+from app.models.qr import QRCode
+from app.repositories.qr_repository import QRCodeRepository
+from app.services.qr_service import QRCodeService
+from app.core.exceptions import QRCodeNotFoundError, DatabaseError
+from app.schemas.qr.parameters import StaticQRCreateParameters
+from app.schemas.common import ErrorCorrectionLevel
+from app.schemas import QRCodeCreate, QRType
 
 
 # Define real and mock test approaches
 @pytest.fixture
 def qr_service(test_db):
     """Fixture to create a real QR service with test database."""
-    from ..repositories.qr_repository import QRCodeRepository
     repository = QRCodeRepository(test_db)
     return QRCodeService(repository)
 
@@ -31,8 +40,6 @@ def qr_service(test_db):
 @pytest.fixture
 def mock_qr_service():
     """Fixture to create a mock QR service."""
-    from unittest.mock import MagicMock
-
     mock_service = MagicMock(spec=QRCodeService)
     return mock_service
 
@@ -186,8 +193,6 @@ class TestQRCodeService:
             )
         else:
             # Act & Assert for real DB test
-            from app.core.exceptions import QRCodeNotFoundError
-
             with pytest.raises(QRCodeNotFoundError) as exc_info:
                 qr_service.get_qr_by_id(qr_id)
 
