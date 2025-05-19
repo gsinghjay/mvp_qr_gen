@@ -13,7 +13,7 @@ This module consolidates all QR code-related operations including:
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -180,100 +180,13 @@ async def get_qr_image(
         include_logo=params.include_logo,
         error_level=params.error_level.value,
         svg_title=params.svg_title,
-        svg_description=params.svg_description
+        svg_description=params.svg_description,
+        physical_size=params.physical_size,
+        physical_unit=params.physical_unit,
+        dpi=params.dpi
     )
 
-# Get QR Code Image (alternative URL format to support both patterns)
-@router.get(
-    "/image/{qr_id}",
-    responses={
-        200: {
-            "description": "QR code image (alternative URL format)",
-            "content": {
-                "image/png": {},
-                "image/jpeg": {},
-                "image/svg+xml": {},
-                "image/webp": {},
-            },
-        },
-        404: {"description": "QR code not found"},
-        422: {"description": "Validation error"},
-        500: {"description": "Database error"},
-    },
-)
-async def get_qr_image_alt(
-    qr_id: str,
-    qr_service: QRServiceDep,
-    format: str = "png",
-    size: int = 10,
-    border: int = 4,
-    fill_color: str | None = None,
-    back_color: str | None = None,
-    quality: int | None = None,
-    include_logo: bool = False,
-    error_level: str = "M",
-    svg_title: str | None = None,
-    svg_description: str | None = None,
-):
-    """
-    Get QR code image by ID (alternative URL format).
-    
-    This endpoint serves the same function as /{qr_id}/image but with a different URL pattern
-    to support clients that expect /image/{qr_id}.
-    
-    Args:
-        qr_id: The ID of the QR code to retrieve
-        format: Image format (png, svg, jpeg, webp)
-        size: QR code size (1-100)
-        border: QR code border width (0-20)
-        fill_color: QR code fill color in hex format (#RRGGBB)
-        back_color: QR code background color in hex format (#RRGGBB)
-        quality: Image quality (1-100, for lossy formats)
-        include_logo: Whether to include a logo in the QR code
-        error_level: Error correction level (L, M, Q, H)
-        svg_title: Title for SVG format (improves accessibility)
-        svg_description: Description for SVG format (improves accessibility)
-        qr_service: The QR code service (injected)
-        
-    Returns:
-        The QR code image in the requested format
-        
-    Raises:
-        QRCodeNotFoundError: If the QR code is not found
-        QRCodeValidationError: If the image parameters are invalid
-        DatabaseError: If a database error occurs
-    """
-    from app.schemas.common import ImageFormat, ErrorCorrectionLevel
-    
-    # Get the QR code
-    qr = qr_service.get_qr_by_id(qr_id)
-    
-    # Map format string to ImageFormat enum
-    try:
-        image_format = ImageFormat(format.lower())
-    except ValueError:
-        image_format = ImageFormat.PNG
-    
-    # Map error level string to ErrorCorrectionLevel enum
-    try:
-        error_correction = ErrorCorrectionLevel(error_level.upper())
-    except ValueError:
-        error_correction = ErrorCorrectionLevel.M
-    
-    # Generate the QR code image
-    return qr_service.generate_qr(
-        data=qr.content,
-        size=size,
-        border=border,
-        fill_color=fill_color or qr.fill_color,
-        back_color=back_color or qr.back_color,
-        image_format=image_format.value,
-        image_quality=quality,
-        include_logo=include_logo,
-        error_level=error_correction.value,
-        svg_title=svg_title,
-        svg_description=svg_description
-    )
+
 
 # Create Static QR Code
 @router.post(

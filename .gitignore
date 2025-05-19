@@ -80,3 +80,5 @@ repomix-output.xml
 .cursorignore
 memory-bank/
 .cursor/
+backups/
+database_reports/

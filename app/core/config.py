@@ -39,7 +39,6 @@ QR_CODES_DIR.mkdir(parents=True, exist_ok=True)
 class Settings(BaseSettings):
     """Application settings using Pydantic v2."""
 
-    DATABASE_URL: str = "sqlite:///./data/qr_codes.db"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = True
     
@@ -47,6 +46,9 @@ class Settings(BaseSettings):
     # Override with BASE_URL environment variable in production
     BASE_URL: str = "http://localhost:8000"
 
+    # Database URLs
+    TEST_DATABASE_URL: str | None = os.getenv("TEST_DATABASE_URL")
+    
     # Security
     TRUSTED_HOSTS: list[str] = ["*"]
     CORS_ORIGINS: list[str] = ["*"]

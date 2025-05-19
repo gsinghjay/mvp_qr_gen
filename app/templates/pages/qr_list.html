@@ -92,10 +92,17 @@
 </main>
 
 <!-- Modal for QR Code Detail -->
-<div id="qr-detail-modal" class="modal fade" tabindex="-1" aria-labelledby="qrDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
+<div id="qr-detail-modal" class="modal fade modal-lg" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <!-- Modal content will be loaded here via HTMX -->
+            <!-- Modal content will be loaded here by HTMX -->
+            <div class="modal-body">
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

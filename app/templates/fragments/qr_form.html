@@ -6,8 +6,7 @@
   <div class="p-3">
     <form
       hx-post="/api/v1/fragments/qr-create"
-      hx-target="#qr-detail-modal"
-      hx-swap="innerHTML"
+      hx-swap="none"
     >
       <input type="hidden" name="qr_type" value="{{ qr_type }}">
       
@@ -135,29 +134,36 @@
       
       <div class="d-flex justify-content-end gap-2">
         <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary">Create QR Code</button>
+        <button type="submit" class="btn btn-primary">
+          <span class="htmx-indicator spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          Create QR Code
+        </button>
       </div>
     </form>
   </div>
 </div>
 
 <script>
-  function updateErrorLevel() {
-    const includeLogoCheckbox = document.getElementById('include_logo');
-    const errorLevelSelect = document.getElementById('error_level');
-    
-    if (includeLogoCheckbox.checked) {
-      // Save the current selection before forcing high error correction
-      errorLevelSelect.dataset.previousValue = errorLevelSelect.value;
-      // Set to high error correction level when including logo
-      errorLevelSelect.value = 'H';
-      errorLevelSelect.disabled = true;
-    } else {
-      // Restore previous selection if available
-      if (errorLevelSelect.dataset.previousValue) {
-        errorLevelSelect.value = errorLevelSelect.dataset.previousValue;
-      }
-      errorLevelSelect.disabled = false;
-    }
+function updateErrorLevel() {
+  if (document.getElementById('include_logo').checked) {
+    document.getElementById('error_level').value = 'H';
+    document.getElementById('error_level').disabled = true;
+  } else {
+    document.getElementById('error_level').disabled = false;
   }
+}
+
+function closeModal() {
+  // In Option B, just reset the form
+  const staticRadio = document.getElementById('static-qr');
+  if (staticRadio) {
+    staticRadio.click();
+  }
+}
+
+// Initialize the collapsible section
+document.addEventListener('DOMContentLoaded', function() {
+  // Only initialize logo toggle
+  updateErrorLevel();
+});
 </script> 

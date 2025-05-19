@@ -153,6 +153,9 @@ def assert_qr_code_fields(
             "scan_count": qr_code.scan_count,
             "created_at": qr_code.created_at,
             "last_scan_at": qr_code.last_scan_at,
+            "title": qr_code.title,
+            "description": qr_code.description,
+            "error_level": qr_code.error_level,
         }
 
     # Check each expected field

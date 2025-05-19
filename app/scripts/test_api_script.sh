@@ -519,6 +519,130 @@ test_svg_accessibility() {
     echo -e "\n${GREEN}✓ PASS:${NC} SVG accessibility tests completed successfully"
 }
 
+# Function to test enhanced user agent tracking
+test_enhanced_user_agent_tracking() {
+    print_section "TESTING ENHANCED USER AGENT TRACKING"
+    
+    echo -e "\n${YELLOW}Testing Genuine Scan Detection and User Agent Tracking...${NC}"
+    
+    # Create a dynamic QR code for testing user agent tracking
+    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
+        -H "Content-Type: application/json" \
+        -d '{
+            "redirect_url": "https://user-agent-test.example.com",
+            "title": "User Agent Tracking Test",
+            "description": "Testing enhanced scan tracking with user agent analysis"
+        }')
+    
+    local qr_id=$(echo "$response" | jq -r '.id')
+    echo "$response" | jq . > /dev/null
+    print_status $? "QR code creation for user agent tracking test successful"
+    
+    # Get the content with short_id
+    local CONTENT=$(echo "$response" | jq -r '.content')
+    echo -e "${YELLOW}QR code content:${NC} $CONTENT"
+    
+    # Extract short ID from the dynamic QR code's content and query parameters
+    local SHORT_ID=$(echo "$CONTENT" | sed 's/.*\/r\///' | sed 's/?.*//')
+    echo -e "${YELLOW}Extracted short ID:${NC} $SHORT_ID"
+    
+    # Check initial scan statistics
+    local initial_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$qr_id)
+    local initial_scan_count=$(echo "$initial_response" | jq -r '.scan_count')
+    local initial_genuine_scan_count=$(echo "$initial_response" | jq -r '.genuine_scan_count')
+    
+    echo -e "${YELLOW}Initial scan count:${NC} $initial_scan_count"
+    echo -e "${YELLOW}Initial genuine scan count:${NC} $initial_genuine_scan_count"
+    
+    # Test 1: Simulate a non-genuine scan (direct URL access without scan_ref parameter)
+    echo -e "\n${YELLOW}Test 1: Simulating direct URL access (non-genuine scan)...${NC}"
+    local non_genuine_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+        -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" \
+        $API_URL/r/$SHORT_ID)
+    
+    if [ "$non_genuine_status" == "302" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Non-genuine scan redirect successful"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Non-genuine scan redirect failed (status: $non_genuine_status)"
+        exit 1
+    fi
+    
+    # Test 2: Simulate a genuine QR scan with scan_ref parameter and mobile user agent
+    echo -e "\n${YELLOW}Test 2: Simulating genuine QR scan with mobile device...${NC}"
+    local genuine_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+        -A "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1" \
+        "$API_URL/r/$SHORT_ID?scan_ref=qr")
+    
+    if [ "$genuine_status" == "302" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Genuine scan redirect successful"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Genuine scan redirect failed (status: $genuine_status)"
+        exit 1
+    fi
+    
+    # Test 3: Simulate an Android device scan
+    echo -e "\n${YELLOW}Test 3: Simulating QR scan with Android device...${NC}"
+    local android_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+        -A "Mozilla/5.0 (Linux; Android 12; SM-G991U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Mobile Safari/537.36" \
+        "$API_URL/r/$SHORT_ID?scan_ref=qr")
+    
+    if [ "$android_status" == "302" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Android scan redirect successful"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Android scan redirect failed (status: $android_status)"
+        exit 1
+    fi
+    
+    # Wait for background tasks to complete
+    echo -e "${YELLOW}Waiting for background tasks to complete...${NC}"
+    sleep 3
+    
+    # Check updated scan statistics
+    local updated_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$qr_id)
+    local updated_scan_count=$(echo "$updated_response" | jq -r '.scan_count')
+    local updated_genuine_scan_count=$(echo "$updated_response" | jq -r '.genuine_scan_count')
+    local first_genuine_scan_at=$(echo "$updated_response" | jq -r '.first_genuine_scan_at')
+    local last_genuine_scan_at=$(echo "$updated_response" | jq -r '.last_genuine_scan_at')
+    
+    echo -e "${YELLOW}Updated scan count:${NC} $updated_scan_count"
+    echo -e "${YELLOW}Updated genuine scan count:${NC} $updated_genuine_scan_count"
+    echo -e "${YELLOW}First genuine scan at:${NC} $first_genuine_scan_at"
+    echo -e "${YELLOW}Last genuine scan at:${NC} $last_genuine_scan_at"
+    
+    # Verify total scan count increased by 3
+    local expected_scan_count=$((initial_scan_count + 3))
+    if [ "$updated_scan_count" -eq "$expected_scan_count" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Total scan count increased correctly (${initial_scan_count} -> ${updated_scan_count})"
+    else
+        echo -e "${YELLOW}⚠ WARNING:${NC} Total scan count did not increase by expected amount"
+        echo -e "Expected: $expected_scan_count, Actual: $updated_scan_count"
+    fi
+    
+    # Verify genuine scan count increased by 2 (for the genuine scans only)
+    local expected_genuine_scan_count=$((initial_genuine_scan_count + 2))
+    if [ "$updated_genuine_scan_count" -eq "$expected_genuine_scan_count" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Genuine scan count increased correctly (${initial_genuine_scan_count} -> ${updated_genuine_scan_count})"
+    else
+        echo -e "${YELLOW}⚠ WARNING:${NC} Genuine scan count did not increase by expected amount"
+        echo -e "Expected: $expected_genuine_scan_count, Actual: $updated_genuine_scan_count"
+    fi
+    
+    # Verify first_genuine_scan_at and last_genuine_scan_at are set
+    if [ "$first_genuine_scan_at" != "null" ] && [ ! -z "$first_genuine_scan_at" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} First genuine scan timestamp is properly set"
+    else
+        echo -e "${RED}✗ FAIL:${NC} First genuine scan timestamp was not set"
+    fi
+    
+    if [ "$last_genuine_scan_at" != "null" ] && [ ! -z "$last_genuine_scan_at" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Last genuine scan timestamp is properly set"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Last genuine scan timestamp was not set"
+    fi
+    
+    echo -e "\n${GREEN}✓ PASS:${NC} Enhanced user agent tracking tests completed successfully"
+}
+
 # Function to run optimization task verification tests
 test_optimization_tasks() {
     print_section "TESTING FASTAPI OPTIMIZATION TASKS"
@@ -528,6 +652,9 @@ test_optimization_tasks() {
     
     # Test Task 2: Background Tasks for Scan Statistics
     test_background_tasks_scan_statistics
+    
+    # Test Task 3: Enhanced User Agent Tracking
+    test_enhanced_user_agent_tracking
     
     echo -e "\n${GREEN}✓ PASS:${NC} All optimization task tests completed successfully"
 }

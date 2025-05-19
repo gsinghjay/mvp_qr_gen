@@ -12,20 +12,39 @@ services:
       - DEBUG=${DEBUG:-false}
       - BASE_URL=${BASE_URL:-https://10.1.6.12}
       # Database Configuration
-      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/qr_codes.db}
+      - PG_DATABASE_URL=${PG_DATABASE_URL:-postgresql+psycopg2://pguser:pgpassword@postgres:5432/qrdb}
       - ENVIRONMENT=production # Production environment settings
+      # PostgreSQL Configuration
+      - POSTGRES_USER=${POSTGRES_USER:-pguser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pgpassword}
+      - POSTGRES_DB=${POSTGRES_DB:-qrdb}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      # Test Database Configuration
+      - TEST_POSTGRES_USER=${TEST_POSTGRES_USER:-pguser_test}
+      - TEST_POSTGRES_PASSWORD=${TEST_POSTGRES_PASSWORD:-pgpassword_test}
+      - TEST_POSTGRES_DB=${TEST_POSTGRES_DB:-qrdb_test}
+      - TEST_POSTGRES_HOST=${TEST_POSTGRES_HOST:-postgres_test}
+      - TEST_POSTGRES_PORT=${TEST_POSTGRES_PORT:-5432}
+      - TEST_DATABASE_URL=${TEST_DATABASE_URL:-postgresql+psycopg2://pguser_test:pgpassword_test@postgres_test:5432/qrdb_test}
       # Cookie settings (for CSRF protection only)
       - COOKIE_DOMAIN=${COOKIE_DOMAIN:-10.1.6.12}
     volumes:
       - qr_data:/app/data
       - ./backups:/app/backups
       - qr_logs:/logs
+      - ./app/tests:/app/app/tests
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres_test:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
       # Default route (INTERNAL ONLY)
@@ -60,6 +79,48 @@ services:
       - "traefik.http.routers.api-domain.middlewares=redirect-to-https@docker,cors@docker"
       - "traefik.http.routers.api-public-qr.middlewares=redirect-to-https@docker"
 
+  # PostgreSQL service
+  postgres:
+    image: postgres:15
+    container_name: qr_generator_postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-pguser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pgpassword}
+      - POSTGRES_DB=${POSTGRES_DB:-qrdb}
+      - TZ=America/New_York
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pguser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    # Expose port only internally, not to host
+    expose:
+      - "5432"
+
+  # PostgreSQL Test service
+  postgres_test:
+    image: postgres:15
+    container_name: qr_generator_postgres_test
+    environment:
+      - POSTGRES_USER=${TEST_POSTGRES_USER:-pguser_test}
+      - POSTGRES_PASSWORD=${TEST_POSTGRES_PASSWORD:-pgpassword_test}
+      - POSTGRES_DB=${TEST_POSTGRES_DB:-qrdb_test}
+      - TZ=America/New_York
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TEST_POSTGRES_USER:-pguser_test}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    # Expose port only internally, not to host
+    expose:
+      - "5432"
+
   traefik:
     image: traefik:v2.10
     container_name: qr_generator_traefik
@@ -89,4 +150,8 @@ volumes:
   qr_logs:
     driver: local
   traefik_logs:
+    driver: local
+  postgres_data:
+    driver: local
+  postgres_test_data:
     driver: local 

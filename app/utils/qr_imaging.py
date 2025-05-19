@@ -23,6 +23,9 @@ def generate_qr_image(
     error_level: str = "m",
     svg_title: Optional[str] = None,
     svg_description: Optional[str] = None,
+    physical_size: Optional[float] = None,
+    physical_unit: Optional[str] = None,
+    dpi: Optional[int] = None,
 ) -> bytes:
     """
     Generate a QR code image with the specified parameters using a hybrid approach:
@@ -48,6 +51,9 @@ def generate_qr_image(
             - h: High (30% of data can be restored)
         svg_title: Optional title for SVG format (improves accessibility)
         svg_description: Optional description for SVG format (improves accessibility)
+        physical_size: Physical size of the QR code in the specified unit
+        physical_unit: Physical unit for size (in, cm, mm)
+        dpi: DPI (dots per inch) for physical output
         
     Returns:
         The QR code image as bytes.
@@ -77,6 +83,21 @@ def generate_qr_image(
         # Create QR code with specified error correction level
         qr = segno.make(content, error=error)
         
+        # Check if physical dimensions are specified
+        if physical_size is not None and physical_unit is not None and dpi is not None:
+            # Calculate pixel dimensions based on physical dimensions and DPI
+            if physical_unit == "in":
+                pixel_size = int(physical_size * dpi)
+            elif physical_unit == "cm":
+                pixel_size = int(physical_size * dpi / 2.54)  # 1 inch = 2.54 cm
+            elif physical_unit == "mm":
+                pixel_size = int(physical_size * dpi / 25.4)  # 1 inch = 25.4 mm
+            else:
+                raise ValueError(f"Unsupported physical unit: {physical_unit}")
+            
+            # Override the size parameter with calculated pixel size
+            size = pixel_size
+        
         # For SVG output, handle differently since it's vector-based
         if image_format.lower() == "svg":
             output = io.BytesIO()
@@ -96,13 +117,23 @@ def generate_qr_image(
                 
             # Generate SVG with accessibility options
             qr.save(output, kind="svg", **svg_options)
+            
+            # If physical dimensions are specified, update SVG viewBox to support physical dimensions
+            if physical_size is not None and physical_unit is not None:
+                svg_content = output.getvalue().decode('utf-8')
+                # Add width and height with physical units
+                svg_content = svg_content.replace('<svg ', 
+                                                  f'<svg width="{physical_size}{physical_unit}" '
+                                                  f'height="{physical_size}{physical_unit}" ')
+                return svg_content.encode('utf-8')
+                
             return output.getvalue()
         
         # For raster formats, we'll use Pillow for final processing
         # First generate a high-resolution QR code
         qr_buffer = io.BytesIO()
         # Use a larger scale for better quality when resizing
-        scale = max(1, size // 40)  # Estimate a good initial scale
+        scale = max(1, size // 40)
         qr.save(qr_buffer, kind="png", scale=scale, dark=fill_color, light=back_color, border=border)
         qr_buffer.seek(0)
         
@@ -156,6 +187,23 @@ def generate_qr_image(
             save_kwargs["quality"] = 95
             save_kwargs["method"] = 6  # Highest quality WebP
         
+        # Add DPI information if provided
+        if dpi is not None:
+            # PIL uses dots per mm, so convert DPI to DPMM
+            dpmm = dpi / 25.4
+            save_kwargs["dpi"] = (dpi, dpi)
+            # For PNG, set the physical density explicitly if PngInfo is available
+            if image_format.lower() == "png":
+                try:
+                    from PIL import PngImagePlugin
+                    save_kwargs["pnginfo"] = PngImagePlugin.PngInfo()
+                    save_kwargs["pnginfo"].add_text("dpi", str(dpi))
+                    save_kwargs["pnginfo"].add_text("pHYs", f"{int(dpmm * 1000)},{int(dpmm * 1000)},1")
+                except (ImportError, AttributeError):
+                    # Older versions of Pillow don't support PngInfo
+                    # Just use the dpi parameter which is supported in older versions
+                    pass
+        
         img.save(output, format=image_format.upper(), **save_kwargs)
         return output.getvalue()
         
@@ -176,6 +224,9 @@ def generate_qr_response(
     error_level: str = "m",
     svg_title: Optional[str] = None,
     svg_description: Optional[str] = None,
+    physical_size: Optional[float] = None,
+    physical_unit: Optional[str] = None,
+    dpi: Optional[int] = None,
 ) -> StreamingResponse:
     """
     Generate a QR code and return it as a StreamingResponse.
@@ -192,6 +243,9 @@ def generate_qr_response(
         error_level: Error correction level (l, m, q, h)
         svg_title: Optional title for SVG format (improves accessibility)
         svg_description: Optional description for SVG format (improves accessibility)
+        physical_size: Physical size of the QR code in the specified unit
+        physical_unit: Physical unit for size (in, cm, mm)
+        dpi: DPI (dots per inch) for physical output
         
     Returns:
         StreamingResponse containing the image
@@ -228,17 +282,27 @@ def generate_qr_response(
             logo_path=logo_path,
             error_level=error_level,
             svg_title=svg_title,
-            svg_description=svg_description
+            svg_description=svg_description,
+            physical_size=physical_size,
+            physical_unit=physical_unit,
+            dpi=dpi
         )
         
         # Create BytesIO from the generated bytes
         buf = io.BytesIO(img_bytes)
         buf.seek(0)
         
+        # Generate a meaningful filename
+        extension = image_format
+        if physical_size is not None and physical_unit is not None and dpi is not None:
+            filename = f"qr_{physical_size}{physical_unit}_{dpi}dpi.{extension}"
+        else:
+            filename = f"qr_{size}px.{extension}"
+        
         return StreamingResponse(
             buf,
             media_type=IMAGE_FORMATS[image_format],
-            headers={"Content-Disposition": f'inline; filename="qr.{image_format}"'},
+            headers={"Content-Disposition": f'inline; filename="{filename}"'},
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

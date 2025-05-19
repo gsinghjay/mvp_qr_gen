@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.database import engine
-from app.main import create_app, lifespan
+from app.main import lifespan
 
 
 @pytest.fixture
@@ -101,7 +101,8 @@ def test_lifespan_shutdown_called(mock_engine_dispose):
 
 def test_app_lifespan_with_db_init(mock_init_db):
     """Test that the application's lifespan correctly initializes the database."""
-    app = create_app()
+    # Create app directly instead of using create_app
+    app = FastAPI(lifespan=lifespan)
 
     with TestClient(app) as client:
         client.get("/docs")

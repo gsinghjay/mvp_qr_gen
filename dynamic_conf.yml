@@ -47,7 +47,7 @@ http:
 
     # Public access-restricted page (static file path)
     public-access-restricted-router:
-      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`)) && PathPrefix(`/static/access-restricted.html`)"
+      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`) || Host(`130.156.44.53`) || Host(`web.auth.hccc.edu`)) && PathPrefix(`/static/access-restricted.html`)"
       service: api-service
       entryPoints:
         - web
@@ -80,9 +80,20 @@ http:
         - access-restricted-redirect@file
       priority: 600
 
+    # Block all paths on new IP and domain (auth domain)
+    auth-ip-block-router:
+      rule: "(Host(`130.156.44.53`) || Host(`web.auth.hccc.edu`)) && !PathPrefix(`/static/access-restricted.html`) && !PathPrefix(`/static/assets/`)"
+      service: api-service
+      entryPoints:
+        - web
+        - websecure
+      middlewares:
+        - access-restricted-redirect@file
+      priority: 600
+
     # Allow static assets for the access-restricted page
     public-static-assets-router:
-      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`)) && PathPrefix(`/static/assets/`)"
+      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`) || Host(`130.156.44.53`) || Host(`web.auth.hccc.edu`)) && PathPrefix(`/static/assets/`)"
       service: api-service
       entryPoints:
         - web

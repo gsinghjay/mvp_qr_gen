@@ -7,12 +7,13 @@ import uuid
 from datetime import UTC, datetime
 from io import BytesIO
 from zoneinfo import ZoneInfo
-from typing import Optional, Union, List, Tuple, Dict
+from typing import Optional, Union, List, Tuple, Dict, Any
 
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
+from user_agents import parse as parse_user_agent
 
 from ..core.exceptions import (
     DatabaseError,
@@ -24,7 +25,7 @@ from ..core.exceptions import (
 from ..core.config import settings
 from ..models.qr import QRCode
 from ..repositories.qr_repository import QRCodeRepository
-from ..schemas.common import QRType
+from ..schemas.common import QRType, ErrorCorrectionLevel
 from ..schemas.qr.models import QRCodeCreate
 from ..schemas.qr.parameters import (
     DynamicQRCreateParameters,
@@ -92,25 +93,20 @@ class QRCodeService:
 
         Raises:
             QRCodeNotFoundError: If the QR code is not found
+            InvalidQRTypeError: If the QR code is not of type 'dynamic'
             DatabaseError: If a database error occurs
         """
-        # Build a list of possible patterns to match
-        # 1. Direct content match for static QR codes
-        # 2. /r/{short_id} pattern for relative URLs
-        # 3. https://domain.com/r/{short_id} pattern for absolute URLs with the default domain
-        # 4. Any other absolute URL pattern with /r/{short_id}
-        patterns = [
-            short_id,  # Direct content match
-            f"/r/{short_id}",  # Relative URL pattern
-            f"{settings.BASE_URL}/r/{short_id}",  # Absolute URL with our domain
-            f"%/r/{short_id}",  # LIKE pattern for any domain with our path
-        ]
+        # Look up QR code directly by short_id
+        qr = self.repository.get_by_short_id(short_id)
 
-        # Try to find a QR code matching any of these patterns
-        qr = self.repository.find_by_pattern(patterns)
         if not qr:
             logger.warning(f"QR code with short ID {short_id} not found")
             raise QRCodeNotFoundError(f"QR code with short ID {short_id} not found")
+
+        # Ensure the QR code is of type 'dynamic' for redirects
+        if qr.qr_type != 'dynamic':
+            logger.warning(f"QR code with short ID {short_id} is not dynamic (type: {qr.qr_type})")
+            raise InvalidQRTypeError(f"QR code with short ID {short_id} is not dynamic")
 
         return qr
 
@@ -223,8 +219,8 @@ class QRCodeService:
             # Generate a short unique identifier for the redirect path
             short_id = str(uuid.uuid4())[:8]
             
-            # Create full URL with BASE_URL
-            full_url = f"{settings.BASE_URL}/r/{short_id}"
+            # Create full URL with BASE_URL and tracking parameter
+            full_url = f"{settings.BASE_URL}/r/{short_id}?scan_ref=qr"
 
             # Create QR code data
             qr_data = QRCodeCreate(
@@ -240,6 +236,7 @@ class QRCodeService:
                 border=data.border,
                 error_level=data.error_level.value,
                 created_at=datetime.now(UTC),
+                short_id=short_id,  # Store the short_id in the database
             )
 
             # Validate QR code data
@@ -253,7 +250,7 @@ class QRCodeService:
 
             qr = self.repository.create(model_data)
 
-            logger.info(f"Created dynamic QR code with ID {qr.id} and redirect path {qr.content}")
+            logger.info(f"Created dynamic QR code with ID {qr.id} and redirect path {qr.content}, short_id: {short_id}")
             return qr
         except ValidationError as e:
             # Only catch and translate validation errors
@@ -267,6 +264,66 @@ class QRCodeService:
             # Other value errors are validation errors
             logger.error(f"Validation error creating dynamic QR code: {str(e)}")
             raise QRCodeValidationError(str(e))
+
+    def _parse_user_agent_data(self, ua_string: str | None) -> Dict[str, any]:
+        """
+        Parse a user agent string into structured data for scan log entries.
+        
+        Args:
+            ua_string: Raw user agent string to parse
+            
+        Returns:
+            Dictionary with parsed user agent data
+        """
+        if not ua_string:
+            return {
+                "device_family": "Unknown",
+                "os_family": "Unknown",
+                "os_version": "Unknown",
+                "browser_family": "Unknown",
+                "browser_version": "Unknown",
+                "is_mobile": False,
+                "is_tablet": False,
+                "is_pc": True,  # Default to PC if unknown
+                "is_bot": False
+            }
+        
+        try:
+            # Parse the user agent string
+            user_agent = parse_user_agent(ua_string)
+            
+            # Extract device information
+            is_mobile = user_agent.is_mobile
+            is_tablet = user_agent.is_tablet
+            is_pc = not (is_mobile or is_tablet)
+            is_bot = user_agent.is_bot
+            
+            # Create structured data dictionary
+            return {
+                "device_family": user_agent.device.family or "Unknown",
+                "os_family": user_agent.os.family or "Unknown",
+                "os_version": f"{user_agent.os.version_string}" if user_agent.os.version_string else "Unknown",
+                "browser_family": user_agent.browser.family or "Unknown",
+                "browser_version": f"{user_agent.browser.version_string}" if user_agent.browser.version_string else "Unknown",
+                "is_mobile": is_mobile,
+                "is_tablet": is_tablet,
+                "is_pc": is_pc,
+                "is_bot": is_bot
+            }
+        except Exception as e:
+            # Log the error but return default values rather than failing
+            logger.error(f"Error parsing user agent string: {str(e)}")
+            return {
+                "device_family": "Parse Error",
+                "os_family": "Unknown",
+                "os_version": "Unknown",
+                "browser_family": "Unknown",
+                "browser_version": "Unknown",
+                "is_mobile": False,
+                "is_tablet": False,
+                "is_pc": False,
+                "is_bot": False
+            }
 
     def update_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
         """
@@ -378,6 +435,7 @@ class QRCodeService:
         timestamp: datetime | None = None,
         client_ip: str | None = None,
         user_agent: str | None = None,
+        is_genuine_scan_signal: bool = False,
     ) -> None:
         """
         Update scan statistics for a QR code.
@@ -391,13 +449,24 @@ class QRCodeService:
             timestamp: The timestamp of the scan, defaults to current time
             client_ip: The IP address of the client that scanned the QR code
             user_agent: The user agent of the client that scanned the QR code
+            is_genuine_scan_signal: Whether this is a genuine QR scan (vs. direct URL access)
             
         Raises:
             QRCodeNotFoundError: If the QR code is not found
             DatabaseError: If a database error occurs
         """
-        # Use repository method to update scan statistics
-        self.repository.update_scan_statistics(qr_id, timestamp, client_ip, user_agent)
+        # Parse user agent data
+        ua_data = self._parse_user_agent_data(user_agent)
+        
+        # Use repository method to update scan statistics and create scan log
+        self.repository.update_and_log_scan_statistics(
+            qr_id, 
+            timestamp, 
+            client_ip, 
+            user_agent, 
+            ua_data, 
+            is_genuine_scan_signal
+        )
 
     def validate_qr_code(self, qr_data: QRCodeCreate) -> None:
         """
@@ -495,6 +564,9 @@ class QRCodeService:
         include_logo: bool = False,
         svg_title: str | None = None,
         svg_description: str | None = None,
+        physical_size: float | None = None,
+        physical_unit: str | None = None,
+        dpi: int | None = None,
     ) -> StreamingResponse:
         """
         Generate a QR code with the given parameters.
@@ -511,6 +583,9 @@ class QRCodeService:
             include_logo: Whether to include the default logo
             svg_title: Optional title for SVG format (improves accessibility)
             svg_description: Optional description for SVG format (improves accessibility)
+            physical_size: Physical size of the QR code in the specified unit
+            physical_unit: Physical unit for size (in, cm, mm)
+            dpi: DPI (dots per inch) for physical output
 
         Returns:
             StreamingResponse: FastAPI response containing the QR code image
@@ -518,9 +593,22 @@ class QRCodeService:
         Raises:
             HTTPException: If the image format is not supported or conversion fails
         """
-        # Calculate the approximate size based on size parameter
-        # For segno, we use the total image size rather than box_size
-        pixel_size = size * 25  # Rough estimate based on typical QR code size
+        # If physical dimensions are specified, use them directly
+        if physical_size is not None and physical_unit is not None and dpi is not None:
+            # Calculate pixel size from physical dimensions and DPI to set final output size
+            if physical_unit == "in":
+                pixel_size = int(physical_size * dpi)
+            elif physical_unit == "cm":
+                pixel_size = int(physical_size * dpi / 2.54)  # 1 inch = 2.54 cm
+            elif physical_unit == "mm":
+                pixel_size = int(physical_size * dpi / 25.4)  # 1 inch = 25.4 mm
+            else:
+                # Default to size parameter if physical unit is not recognized
+                pixel_size = size * 25  # Rough estimate based on typical QR code size
+        else:
+            # Calculate the approximate size based on size parameter
+            # For segno, we use the total image size rather than box_size
+            pixel_size = size * 25  # Rough estimate based on typical QR code size
         
         return generate_qr_response(
             content=data,
@@ -533,7 +621,10 @@ class QRCodeService:
             logo_path=True if include_logo else None,  # Pass logo_path based on include_logo
             error_level=error_level,
             svg_title=svg_title,
-            svg_description=svg_description
+            svg_description=svg_description,
+            physical_size=physical_size,
+            physical_unit=physical_unit,
+            dpi=dpi
         )
 
     def delete_qr(self, qr_id: str) -> None:
@@ -579,3 +670,156 @@ class QRCodeService:
             "total_qr_codes": total_qr_codes,
             "recent_qr_codes": recent_qr_codes
         }
+
+    def get_scan_analytics_data(self, qr_id: str) -> Dict[str, Any]:
+        """
+        Get detailed scan analytics data for a QR code.
+        
+        Args:
+            qr_id: ID of the QR code to get analytics for
+            
+        Returns:
+            Dictionary containing detailed analytics data
+            
+        Raises:
+            QRCodeNotFoundError: If the QR code is not found
+            DatabaseError: If a database error occurs
+        """
+        # Get the QR code to verify it exists and get basic info
+        qr = self.get_qr_by_id(qr_id)
+        
+        # Get scan logs for the QR code
+        scan_logs, total_logs = self.repository.get_scan_logs_for_qr(qr_id, limit=100)
+        
+        # Get device statistics
+        device_stats = self.repository.get_device_statistics(qr_id)
+        
+        # Get browser statistics
+        browser_stats = self.repository.get_browser_statistics(qr_id)
+        
+        # Get OS statistics
+        os_stats = self.repository.get_os_statistics(qr_id)
+        
+        # Calculate percentage of genuine scans
+        genuine_scan_pct = 0
+        if qr.scan_count > 0:
+            genuine_scan_pct = round((qr.genuine_scan_count / qr.scan_count) * 100)
+        
+        # Prepare timestamps for display
+        created_at_formatted = qr.created_at.strftime("%B %d, %Y at %H:%M")
+        last_scan_formatted = qr.last_scan_at.strftime("%B %d, %Y at %H:%M") if qr.last_scan_at else "Not yet scanned"
+        first_genuine_scan_formatted = qr.first_genuine_scan_at.strftime("%B %d, %Y at %H:%M") if qr.first_genuine_scan_at else None
+        last_genuine_scan_formatted = qr.last_genuine_scan_at.strftime("%B %d, %Y at %H:%M") if qr.last_genuine_scan_at else None
+        
+        # Prepare scan log data for table display
+        scan_log_data = []
+        for log in scan_logs:
+            scan_log_data.append({
+                "id": log.id,
+                "scanned_at": log.scanned_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "is_genuine_scan": log.is_genuine_scan,
+                "device_family": log.device_family,
+                "os_family": log.os_family,
+                "browser_family": log.browser_family,
+                "is_mobile": log.is_mobile,
+                "is_tablet": log.is_tablet,
+                "is_pc": log.is_pc,
+                "is_bot": log.is_bot
+            })
+        
+        # Get time series data for chart (last 7 days)
+        time_series_data = self._get_time_series_data(qr_id)
+        
+        return {
+            "qr": qr,
+            "created_at_formatted": created_at_formatted,
+            "last_scan_formatted": last_scan_formatted,
+            "first_genuine_scan_formatted": first_genuine_scan_formatted,
+            "last_genuine_scan_formatted": last_genuine_scan_formatted,
+            "genuine_scan_pct": genuine_scan_pct,
+            "total_logs": total_logs,
+            "scan_logs": scan_log_data,
+            "device_stats": device_stats,
+            "browser_stats": browser_stats,
+            "os_stats": os_stats,
+            "time_series_data": time_series_data
+        }
+        
+    def _get_time_series_data(self, qr_id: str) -> Dict[str, List]:
+        """
+        Get time series scan data for charts (last 7 days).
+        
+        Args:
+            qr_id: ID of the QR code to get time series data for
+            
+        Returns:
+            Dictionary with dates and scan counts
+        """
+        from datetime import timedelta
+        from sqlalchemy import func, cast, Date
+        
+        try:
+            # Calculate date range (last 7 days)
+            end_date = datetime.now(UTC)
+            start_date = end_date - timedelta(days=6)  # 7 days including today
+            
+            # Get daily scan counts for all scans
+            all_scans_query = (
+                self.repository.db.query(
+                    cast(ScanLog.scanned_at, Date).label('scan_date'),
+                    func.count(ScanLog.id).label('scan_count')
+                )
+                .filter(
+                    ScanLog.qr_code_id == qr_id,
+                    ScanLog.scanned_at >= start_date,
+                    ScanLog.scanned_at <= end_date
+                )
+                .group_by(cast(ScanLog.scanned_at, Date))
+                .order_by(cast(ScanLog.scanned_at, Date))
+            )
+            all_scans_results = {
+                row.scan_date.strftime('%Y-%m-%d'): row.scan_count 
+                for row in all_scans_query
+            }
+            
+            # Get daily scan counts for genuine scans only
+            genuine_scans_query = (
+                self.repository.db.query(
+                    cast(ScanLog.scanned_at, Date).label('scan_date'),
+                    func.count(ScanLog.id).label('scan_count')
+                )
+                .filter(
+                    ScanLog.qr_code_id == qr_id,
+                    ScanLog.is_genuine_scan == True,  
+                    ScanLog.scanned_at >= start_date,
+                    ScanLog.scanned_at <= end_date
+                )
+                .group_by(cast(ScanLog.scanned_at, Date))
+                .order_by(cast(ScanLog.scanned_at, Date))
+            )
+            genuine_scans_results = {
+                row.scan_date.strftime('%Y-%m-%d'): row.scan_count 
+                for row in genuine_scans_query
+            }
+            
+            # Generate all dates in range
+            dates = [(start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+            all_counts = [all_scans_results.get(date, 0) for date in dates]
+            genuine_counts = [genuine_scans_results.get(date, 0) for date in dates]
+            
+            # Format dates for display (e.g., "Jun 15")
+            display_dates = [(start_date + timedelta(days=i)).strftime('%b %d') for i in range(7)]
+            
+            return {
+                "dates": display_dates,  
+                "all_counts": all_counts,
+                "genuine_counts": genuine_counts
+            }
+        except SQLAlchemyError as e:
+            logger.error(f"Database error retrieving time series data for QR code {qr_id}: {str(e)}")
+            # Return empty data on error
+            return {
+                "dates": [],
+                "all_counts": [],
+                "genuine_counts": []
+            }

@@ -1,4 +1,4 @@
-Currently, the application uses a simplified edge security model through Traefik for protection, with no user authentication required. The primary application data (QR codes, etc.) is stored in an **SQLite database**. We are actively working on enhancing QR code customization using the **Segno** library and improving overall code modularity and maintainability following FastAPI best practices.
+Currently, the application uses a simplified edge security model through Traefik for protection, with no user authentication required. The primary application data (QR codes, etc.) is stored in a **PostgreSQL database**. We are actively working on enhancing QR code customization using the **Segno** library and improving overall code modularity and maintainability following FastAPI best practices.
 
 ## System Architecture Overview (Current State)
 
@@ -7,8 +7,8 @@ graph TD
     Client["Client Browsers/Apps"] --> Traefik["Traefik Edge Gateway<br>(dynamic_conf.yml routing)"]
 
     subgraph "Infrastructure"
-        Traefik --> API_Service["API Service (FastAPI)<br>Security: Network Controls<br>DB: SQLite"]
-        API_Service --> API_DB["(SQLite DB via Volume qr_data)"]
+        Traefik --> API_Service["API Service (FastAPI)<br>Security: Network Controls<br>DB: PostgreSQL"]
+        API_Service --> PostgreSQL["PostgreSQL Database<br>(via Volume postgres_data)"]
     end
 
     subgraph "API Service Components"
@@ -31,7 +31,7 @@ graph TD
         
         API_Service --> Initialization["Lifespan Initialization<br>Warms up critical code paths"]
         Initialization --> QR_Service
-        Initialization --> API_DB
+        Initialization --> PostgreSQL
     end
 
     API_Endpoints --> Services
@@ -39,24 +39,26 @@ graph TD
     QR_Endpoints --> Services
     Redirect_Endpoints --> Services
 
-    Services --> API_DB
+    Services --> PostgreSQL
 
     Traefik -- "Provides Security Controls" --> Security_Controls["Network-Level Security:<br>IP Allowlisting<br>Path-Based Control<br>TLS Termination<br>Rate Limiting"]
 ```
 
 ## Database Evolution
 
-Our application's main data store is currently an **SQLite database**, managed using SQLAlchemy ORM and Alembic migrations.
+Our application's main data store is a **PostgreSQL database**, managed using SQLAlchemy ORM and Alembic migrations.
 
 ```mermaid
 gitGraph
-    commit id: "Initial Schema (initial_migration)" tag: "SQLite Base"
+    commit id: "Initial Schema (initial_migration)" tag: "Base Schema"
     commit id: "Add timezone awareness (timezone_aware_migration)" tag: "UTC Support"
+    commit id: "Migrate to PostgreSQL" tag: "PostgreSQL Migration"
     commit id: "Current Schema"
 ```
 
 -   **`initial_migration`**: Established the core `qr_codes` table structure.
 -   **`timezone_aware_migration`**: Updated timestamp columns to be timezone-aware (UTC) and set stricter defaults.
+-   **`postgresql_migration`**: Migrated the database from SQLite to PostgreSQL for improved concurrency and reliability.
 
 ## Request Flow Through The System (Current State)
 
@@ -65,7 +67,7 @@ sequenceDiagram
     participant User
     participant Traefik
     participant FastAPIApp
-    participant SQLiteDB
+    participant PostgreSQL
 
     User->>Traefik: HTTP Request (e.g., /qr-list or /r/{short_id})
 
@@ -76,8 +78,8 @@ sequenceDiagram
             Traefik->>FastAPIApp: Forward Request (Matching Route)
             FastAPIApp->>FastAPIApp: Execute Middleware (CORS, Logging, Metrics, etc.)
             FastAPIApp->>FastAPIApp: Route to Endpoint (/qr-list)
-            FastAPIApp->>SQLiteDB: Query QR Codes
-            SQLiteDB->>FastAPIApp: QR Data
+            FastAPIApp->>PostgreSQL: Query QR Codes
+            PostgreSQL->>FastAPIApp: QR Data
             FastAPIApp->>User: Render QR List Page
         else IP Not Allowed
             Traefik->>User: 403 Forbidden/Redirect to Access Restricted Page
@@ -88,8 +90,8 @@ sequenceDiagram
         Traefik->>Traefik: Apply Rate Limiting Middleware
         Traefik->>FastAPIApp: Forward Request (Matching Route)
         FastAPIApp->>FastAPIApp: Execute Middleware
-        FastAPIApp->>SQLiteDB: Look up short_id
-        SQLiteDB->>FastAPIApp: Redirect URL
+        FastAPIApp->>PostgreSQL: Look up short_id
+        PostgreSQL->>FastAPIApp: Redirect URL
         FastAPIApp->>FastAPIApp: Update scan statistics (Background Task)
         FastAPIApp->>User: 302 Redirect to target URL
     end
@@ -99,7 +101,7 @@ sequenceDiagram
 
 ### Configuration Management (`app/core/config.py`)
 
-Uses Pydantic `BaseSettings` loading from environment variables/`.env`. Defines settings for the **SQLite** database (`DATABASE_URL`), environment mode, CORS, trusted hosts, and security settings. The security model is simplified, relying on Traefik for network-level access control rather than authentication.
+Uses Pydantic `BaseSettings` loading from environment variables/`.env`. Defines settings for environment mode, CORS, trusted hosts, and security settings. The security model is simplified, relying on Traefik for network-level access control rather than authentication.
 
 ### Middleware Stack (`app/main.py`, `app/middleware/`)
 
@@ -128,7 +130,7 @@ Requests pass through: GZip, Trusted Hosts, CORS, Security Headers, Prometheus M
 ### QR Code Generation System (`app/services/qr_service.py`, `app/models/qr.py`, `app/routers/qr/`)
 
 -   **Core Logic**: `QRCodeService` handles QR operations.
--   **Database Model**: `QRCode` model (SQLAlchemy) stored in **SQLite**. Uses custom `UTCDateTime`.
+-   **Database Model**: `QRCode` model (SQLAlchemy) stored in **PostgreSQL**. Uses custom `UTCDateTime`.
 -   **Generation Library**: Uses **Segno** for core QR generation, combined with **Pillow** for raster image manipulation (resizing, logo embedding).
 -   **Types**: `static` and `dynamic`. Dynamic codes use a short URL (`/r/{short_id}`) stored in `content` and redirect to `redirect_url`.
 -   **Redirects**: `/r/{short_id}` endpoint (`app/routers/qr/redirect.py`) handles redirection and triggers background tasks for scan statistics updates.
@@ -155,9 +157,9 @@ Requests pass through: GZip, Trusted Hosts, CORS, Security Headers, Prometheus M
 
 ## Database Management
 
--   **Primary DB**: SQLite (`qr_codes.db`).
+-   **Primary DB**: PostgreSQL.
 -   **Migrations**: Alembic (`alembic/`, `alembic.ini`).
--   **Management Scripts**: `manage_db.py` (init, migrate, check, validate, backup) and `init.sh` (startup orchestration, backups). Backups are stored internally (`qr_data` volume) and copied externally (`./backups` host mount).
+-   **Management Scripts**: `manage_db.py` (init, migrate, check, validate, backup) and `init.sh` (startup orchestration, backups). Backups are stored internally via `pg_dump` and copied externally (`./backups` host mount).
 
 ## Future Plans / Conclusion
 

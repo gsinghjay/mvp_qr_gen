@@ -7,6 +7,12 @@ testpaths = [
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+pythonpath = ["app"]
+filterwarnings = ["ignore::DeprecationWarning"]
+env = [
+    "TESTING_MODE=true",
+    "TEST_DATABASE_URL=postgresql+psycopg2://pguser_test:pgpassword_test@postgres_test:5432/qrdb_test",
+]
 
 [tool.coverage.run]
 branch = true

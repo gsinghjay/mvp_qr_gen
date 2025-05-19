@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional, List, Annotated
 
 from fastapi import APIRouter, Depends, Request, Form, HTTPException, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
@@ -137,32 +137,40 @@ async def create_qr_code(
     svg_title: str = Form(None),
     svg_description: str = Form(None),
     include_logo: bool = Form(False),
+    # Physical dimension parameters are kept but not used for QR code creation
+    # They're only used for response template context if provided
+    physical_size: str = Form(None),
+    physical_unit: str = Form(None),
+    dpi: str = Form(None),
 ):
     """
-    Create a new QR code.
+    Create a QR code from form submission.
     
     Args:
         request: The FastAPI request object.
         qr_service: The QR code service.
-        qr_type: The type of QR code to create ("static" or "dynamic").
-        content: The content for static QR codes.
-        title: The title of the QR code.
-        description: The description of the QR code.
-        redirect_url: The redirect URL for dynamic QR codes.
-        error_level: The error correction level.
-        svg_title: The SVG title for accessibility.
-        svg_description: The SVG description for accessibility.
-        include_logo: Whether to include the organization logo.
+        qr_type: The type of QR code (static or dynamic).
+        content: The content to encode in the QR code (for static QR codes).
+        title: The user-friendly title for the QR code.
+        description: A detailed description of the QR code.
+        redirect_url: The URL to redirect to when the QR code is scanned (for dynamic QR codes).
+        error_level: The error correction level (L, M, Q, H).
+        svg_title: An optional title for SVG format (improves accessibility).
+        svg_description: An optional description for SVG format (improves accessibility).
+        include_logo: Whether to include the default logo in the QR code.
         
     Returns:
-        HTMLResponse: The rendered QR detail fragment.
+        HTMLResponse: The rendered QR detail fragment or error message.
     """
     try:
-        # Convert error_level to lowercase to match the enum values
-        error_level = error_level.lower()
+        # Validate inputs
+        logger.info(f"Creating {qr_type} QR code with title: {title}")
         
-        # Force high error correction level if including logo
-        if include_logo and error_level != 'h':
+        # Convert error level to lowercase for internal processing
+        error_level = error_level.lower() if error_level else "m"
+        
+        # Check if logo is included, if so, set error level to high
+        if include_logo:
             error_level = 'h'
         
         # Create the QR code based on type
@@ -211,20 +219,21 @@ async def create_qr_code(
         has_scan_data = qr.scan_count > 0 if hasattr(qr, 'scan_count') else False
         
         # Return the created QR detail
-        return templates.TemplateResponse(
-            "fragments/qr_detail.html",
-            {
-                "request": request,
-                "qr": qr,
-                "created_at_formatted": created_at_formatted,
-                "last_scan_formatted": last_scan_formatted,
-                "short_id": short_id,
-                "short_url": short_url,
-                "error_level_display": error_level_display,
-                "has_scan_data": has_scan_data,
-                "success_message": "QR Code created successfully!"
-            }
-        )
+        response_data = {
+            "request": request,
+            "qr": qr,
+            "created_at_formatted": created_at_formatted,
+            "last_scan_formatted": last_scan_formatted,
+            "short_id": short_id,
+            "short_url": short_url,
+            "error_level_display": error_level_display,
+            "has_scan_data": has_scan_data,
+            "success_message": "QR Code created successfully!"
+        }
+            
+        # For Option B, we return a simple 204 No Content response
+        # HTMX will handle the toast and redirect via event listeners
+        return Response(status_code=204)
     except ValidationError as e:
         # Return the form with validation errors
         return templates.TemplateResponse(
@@ -236,10 +245,13 @@ async def create_qr_code(
                 "title": title,
                 "description": description,
                 "redirect_url": redirect_url,
-                "error_level": error_level.upper(),
+                "error_level": error_level.upper() if isinstance(error_level, str) else "M",
                 "svg_title": svg_title,
                 "svg_description": svg_description,
                 "include_logo": include_logo,
+                "physical_size": physical_size,
+                "physical_unit": physical_unit,
+                "dpi": dpi,
                 "error_messages": e.errors(),
                 "error_levels": ["L", "M", "Q", "H"]
             }
@@ -283,7 +295,9 @@ async def get_qr_detail_fragment(
         short_id = None
         short_url = None
         if qr.qr_type == "dynamic" and '/r/' in qr.content:
-            short_id = qr.content.split('/r/')[-1]
+            # Handle both cases with and without query parameters
+            path_part = qr.content.split('/r/')[-1]
+            short_id = path_part.split('?')[0] if '?' in path_part else path_part
             short_url = f"{settings.BASE_URL}/r/{short_id}"
         
         # Format error level for display (uppercase)
@@ -292,18 +306,21 @@ async def get_qr_detail_fragment(
         # Check if the QR code has been scanned
         has_scan_data = qr.scan_count > 0 if hasattr(qr, 'scan_count') else False
         
+        # Prepare response data
+        response_data = {
+            "request": request,
+            "qr": qr,
+            "created_at_formatted": created_at_formatted,
+            "last_scan_formatted": last_scan_formatted,
+            "short_id": short_id,
+            "short_url": short_url,
+            "error_level_display": error_level_display,
+            "has_scan_data": has_scan_data
+        }
+        
         return templates.TemplateResponse(
             "fragments/qr_detail.html",
-            {
-                "request": request,
-                "qr": qr,
-                "created_at_formatted": created_at_formatted,
-                "last_scan_formatted": last_scan_formatted,
-                "short_id": short_id,
-                "short_url": short_url,
-                "error_level_display": error_level_display,
-                "has_scan_data": has_scan_data
-            }
+            response_data
         )
     except QRCodeNotFoundError:
         return templates.TemplateResponse(
@@ -344,9 +361,6 @@ async def get_qr_edit_fragment(
     """
     try:
         qr = qr_service.get_qr_by_id(qr_id)
-        if qr.qr_type != "dynamic":
-            raise HTTPException(status_code=400, detail="Only dynamic QR codes can be edited")
-        
         return templates.TemplateResponse(
             "fragments/qr_edit.html",
             {
@@ -380,6 +394,8 @@ async def update_qr_code(
     Returns:
         HTMLResponse: The rendered QR detail fragment.
     """
+    logger.info(f"Updating QR code {qr_id} - Title: '{title}', Description: '{description}', Redirect URL: '{redirect_url}'")
+    
     try:
         # Create update parameters
         params = QRUpdateParameters(
@@ -390,6 +406,7 @@ async def update_qr_code(
         
         # Update the QR code
         qr = qr_service.update_qr(qr_id, params)
+        logger.info(f"Successfully updated QR code {qr_id}")
         
         # Format dates for better readability
         created_at_formatted = qr.created_at.strftime("%B %d, %Y at %H:%M")
@@ -399,7 +416,9 @@ async def update_qr_code(
         short_id = None
         short_url = None
         if qr.qr_type == "dynamic" and '/r/' in qr.content:
-            short_id = qr.content.split('/r/')[-1]
+            # Handle both cases with and without query parameters
+            path_part = qr.content.split('/r/')[-1]
+            short_id = path_part.split('?')[0] if '?' in path_part else path_part
             short_url = f"{settings.BASE_URL}/r/{short_id}"
         
         # Format error level for display (uppercase)
