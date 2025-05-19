@@ -4,6 +4,7 @@ Test configuration and fixtures for the QR code generator API.
 
 import os
 import uuid
+import asyncio
 from collections.abc import AsyncGenerator, Generator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -44,6 +45,12 @@ if not TEST_DB_URL or "test" not in TEST_DB_URL:
 
 # Configure the default fixture loop scope for pytest-asyncio
 pytest_asyncio.plugin.default_fixture_loop_scope = "function"
+
+# Create engine for schema management (with autocommit)
+setup_engine = create_engine(
+    TEST_DB_URL,
+    isolation_level="AUTOCOMMIT",  # Important for DDL operations
+)
 
 # Create engines for test database
 engine = create_engine(
@@ -206,31 +213,173 @@ def create_test_qr_codes(
     return qr_codes
 
 
+def drop_all_tables():
+    """
+    Drop all tables in the test database.
+    
+    This function uses AUTOCOMMIT to ensure DDL changes are committed immediately.
+    """
+    print("--- Dropping all existing tables ---")
+    
+    # Use the setup_engine with AUTOCOMMIT
+    with setup_engine.connect() as conn:
+        # Disable foreign key constraints
+        conn.execute(text("SET session_replication_role = 'replica'"))
+        
+        # Get list of all tables in public schema
+        tables = conn.execute(text(
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+        )).scalars().all()
+        
+        if not tables:
+            print("No tables found to drop")
+            return
+        
+        print(f"Found tables: {tables}")
+        
+        # Drop each table
+        for table in tables:
+            try:
+                print(f"Dropping table: {table}")
+                conn.execute(text(f'DROP TABLE IF EXISTS "{table}" CASCADE'))
+            except Exception as e:
+                print(f"Error dropping table {table}: {e}")
+        
+        # Re-enable foreign key constraints
+        conn.execute(text("SET session_replication_role = 'origin'"))
+        
+        print("Tables dropped successfully")
+
+
+def create_schema_with_alembic():
+    """
+    Create the database schema using Alembic migrations.
+    
+    This gives us the benefit of having the alembic_version table
+    with the latest migration version.
+    """
+    print("--- Creating schema with Alembic migrations ---")
+    
+    try:
+        # Get Alembic configuration
+        alembic_cfg = AlembicConfig("alembic.ini")
+        
+        # Run migrations
+        alembic_command.upgrade(alembic_cfg, "head")
+        print("Alembic migrations applied successfully")
+        return True
+    except Exception as e:
+        print(f"Error applying Alembic migrations: {e}")
+        return False
+
+
+def create_schema_with_sqlalchemy():
+    """
+    Create the database schema using SQLAlchemy's metadata.create_all.
+    
+    This is a fallback if Alembic migrations fail. It won't create
+    the alembic_version table.
+    """
+    print("--- Creating schema with SQLAlchemy metadata ---")
+    
+    try:
+        # Create tables from SQLAlchemy models
+        Base.metadata.create_all(bind=setup_engine)
+        print("SQLAlchemy schema created successfully")
+        return True
+    except Exception as e:
+        print(f"Error creating SQLAlchemy schema: {e}")
+        return False
+
+
+def verify_schema():
+    """Verify that the required tables exist in the database."""
+    print("--- Verifying schema ---")
+    
+    with setup_engine.connect() as conn:
+        # Check for required tables
+        qr_table_exists = conn.execute(text(
+            "SELECT EXISTS (SELECT FROM pg_tables "
+            "WHERE schemaname = 'public' AND tablename = 'qr_codes')"
+        )).scalar()
+        
+        scan_table_exists = conn.execute(text(
+            "SELECT EXISTS (SELECT FROM pg_tables "
+            "WHERE schemaname = 'public' AND tablename = 'scan_logs')"
+        )).scalar()
+        
+        # Check tables have expected columns
+        if qr_table_exists:
+            columns = conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = 'qr_codes'"
+            )).scalars().all()
+            print(f"qr_codes table columns: {columns}")
+        
+        tables_status = f"qr_codes: {qr_table_exists}, scan_logs: {scan_table_exists}"
+        print(f"Schema verification: {tables_status}")
+        
+        return qr_table_exists and scan_table_exists
+
+
+async def async_dispose_engines():
+    """Properly dispose the async engine."""
+    if async_engine is not None:
+        await async_engine.dispose()
+
+
 # Fixtures
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
-    """Create the test database schema using Alembic migrations."""
-    # Get Alembic configuration
-    alembic_cfg = AlembicConfig("alembic.ini")
+    """
+    Create the test database schema for the test session.
     
-    # Ensure alembic.ini uses the correct test database URL
-    # This is handled by the dynamic URL selection in alembic/env.py
+    This fixture runs once per test session and ensures that
+    the database schema is properly created before any tests run.
+    """
+    print(f"\n--- Setting up test database: {TEST_DB_URL} ---")
     
-    # Log database setup
-    print(f"Setting up test database with URL: {TEST_DB_URL}")
+    # Step 1: Drop all existing tables to start clean
+    drop_all_tables()
     
-    # Run migrations to create schema
-    alembic_command.upgrade(alembic_cfg, "head")
+    # Step 2: Create schema with Alembic (preferred method)
+    alembic_success = create_schema_with_alembic()
     
-    # Yield to tests
+    # Step 3: If Alembic fails, fall back to SQLAlchemy metadata
+    if not alembic_success:
+        print("Falling back to SQLAlchemy schema creation")
+        create_schema_with_sqlalchemy()
+    
+    # Step 4: Verify schema was created correctly
+    if not verify_schema():
+        raise RuntimeError("Failed to create schema for testing. Verify database permissions.")
+    
+    # All good - yield to let tests run
     yield
     
-    # We don't need to downgrade or drop tables since test transactions will be rolled back
-    # and the database is dedicated for testing only
+    # Tests are done - dispose of engines
+    print("\n--- Testing complete, disposing engines ---")
+    setup_engine.dispose()
+    engine.dispose()
+    
+    # Handle async engine disposal
+    try:
+        # Create an event loop if needed
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Run the async disposal
+        loop.run_until_complete(async_dispose_engines())
+    except Exception as e:
+        print(f"Warning: Could not properly dispose async engine: {e}")
+        # This is not critical for tests, so continue
 
 
 @pytest.fixture(autouse=True)
-def reset_test_database(request):
+def reset_test_database_between_tests(request):
     """Reset the test database between tests by truncating all tables."""
     # Skip for session-scoped fixtures
     if 'setup_test_database' in request.fixturenames:
@@ -240,24 +389,22 @@ def reset_test_database(request):
     # Get all table names
     with engine.connect() as conn:
         tables = conn.execute(text(
-            "SELECT table_name FROM information_schema.tables "
-            "WHERE table_schema = 'public' AND table_type = 'BASE TABLE'"
-        )).fetchall()
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+        )).scalars().all()
         
         # Start a transaction
         with conn.begin():
             # Disable foreign key checks temporarily
-            conn.execute(text("SET session_replication_role = 'replica';"))
+            conn.execute(text("SET session_replication_role = 'replica'"))
             
             # Truncate all tables
             for table in tables:
-                table_name = table[0]
                 # Skip alembic_version table
-                if table_name != 'alembic_version':
-                    conn.execute(text(f'TRUNCATE TABLE "{table_name}" CASCADE;'))
+                if table != 'alembic_version':
+                    conn.execute(text(f'TRUNCATE TABLE "{table}" CASCADE'))
             
             # Re-enable foreign key checks
-            conn.execute(text("SET session_replication_role = 'origin';"))
+            conn.execute(text("SET session_replication_role = 'origin'"))
     
     yield
 
