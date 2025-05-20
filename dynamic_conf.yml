@@ -1,166 +1,177 @@
 # Dynamic configuration (dynamic_conf.yml)
 http:
   routers:
-    # QR Redirect router (high priority, public access)
-    qr-redirect-router:
-      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`)) && PathPrefix(`/r/`)"
+    # --- Goal 1: Dashboard on 10.1.6.12 (Internal IP) ---
+    internal-dashboard-router:
+      rule: "Host(`10.1.6.12`)" # Covers all paths on this host
       service: api-service
       entryPoints:
-        - web
+        - web # HTTP
       middlewares:
         - redirect-to-https@file
-        - rate-limit@file
-        - public-endpoints@file
-      priority: 500
-
-    qr-redirect-secure-router:
-      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`)) && PathPrefix(`/r/`)"
-      service: api-service
-      entryPoints:
-        - websecure
-      tls: {}  # Use default certificate store
-      middlewares:
-        - rate-limit@file
-        - public-endpoints@file
-      priority: 500
-
-    # Internal QR redirect router (optimized for internal network)
-    internal-qr-redirect-router:
-      rule: "Host(`10.1.6.12`) && PathPrefix(`/r/`)"
-      service: api-service
-      entryPoints:
-        - web
-      middlewares:
-        - redirect-to-https@file
-        - public-endpoints@file  # Use public-endpoints instead of ip-whitelist for faster processing
-      priority: 650  # Higher than internal-router but lower than specialized routers
-
-    internal-qr-redirect-secure-router:
-      rule: "Host(`10.1.6.12`) && PathPrefix(`/r/`)"
-      service: api-service
-      entryPoints:
-        - websecure
-      tls: {}  # Use default certificate store
-      middlewares:
-        - public-endpoints@file  # Use public-endpoints instead of ip-whitelist for faster processing
-      priority: 650  # Higher than internal-router but lower than specialized routers
-
-    # Public access-restricted page (static file path)
-    public-access-restricted-router:
-      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`) || Host(`130.156.44.53`) || Host(`web.auth.hccc.edu`)) && PathPrefix(`/static/access-restricted.html`)"
-      service: api-service
-      entryPoints:
-        - web
-        - websecure
-      middlewares:
-        - public-endpoints@file
+        - ip-whitelist@file      # Internal IPs only
+        - dashboard-auth@file    # Basic Auth
         - security-headers@file
-      tls: {}  # Use default certificate store
+      priority: 700 # High priority for specific internal IP
+
+    internal-dashboard-secure-router:
+      rule: "Host(`10.1.6.12`)" # Covers all paths on this host
+      service: api-service
+      entryPoints:
+        - websecure # HTTPS
+      tls: {}
+      middlewares:
+        - ip-whitelist@file      # Internal IPs only
+        - dashboard-auth@file    # Basic Auth
+        - security-headers@file
       priority: 700
 
-    # Block all other paths on public IP
-    public-ip-block-router:
-      rule: "Host(`130.156.44.52`) && !PathPrefix(`/r/`) && !PathPrefix(`/static/access-restricted.html`) && !PathPrefix(`/static/assets/`)"
+    # --- Goal 2: web.hccc.edu (Public Redirect Domain) ---
+    web-hccc-qr-redirect-router: # Handles /r/ path
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && PathPrefix(`/r/`)"
       service: api-service
       entryPoints:
         - web
-        - websecure
       middlewares:
-        - access-restricted-redirect@file
-      priority: 600
-      
-    # Block all other paths on web.hccc.edu domain
-    domain-block-router:
-      rule: "Host(`web.hccc.edu`) && !PathPrefix(`/r/`) && !PathPrefix(`/static/access-restricted.html`) && !PathPrefix(`/static/assets/`)"
-      service: api-service
-      entryPoints:
-        - web
-        - websecure
-      middlewares:
-        - access-restricted-redirect@file
-      priority: 600
-
-    # Block all paths on new IP and domain (auth domain)
-    auth-ip-block-router:
-      rule: "(Host(`130.156.44.53`) || Host(`web.auth.hccc.edu`)) && !PathPrefix(`/static/access-restricted.html`) && !PathPrefix(`/static/assets/`)"
-      service: api-service
-      entryPoints:
-        - web
-        - websecure
-      middlewares:
-        - access-restricted-redirect@file
-      priority: 600
-
-    # Allow static assets for the access-restricted page
-    public-static-assets-router:
-      rule: "(Host(`130.156.44.52`) || Host(`web.hccc.edu`) || Host(`130.156.44.53`) || Host(`web.auth.hccc.edu`)) && PathPrefix(`/static/assets/`)"
-      service: api-service
-      entryPoints:
-        - web
-        - websecure
-      middlewares:
-        - public-endpoints@file
+        - redirect-to-https@file
+        - rate-limit@file        # Public endpoint, rate limit
+        - public-endpoints@file  # Allow all IPs for this path
         - security-headers@file
-      tls: {}  # Use default certificate store
       priority: 650
-      
-    # Internal access for all routes (10.1.6.12)
-    internal-router:
-      rule: "Host(`10.1.6.12`)"
-      service: api-service
-      entryPoints:
-        - web
-      middlewares:
-        - redirect-to-https@file
-        - ip-whitelist@file
-        - dashboard-auth@file
-        - security-headers@file
-      priority: 600
 
-    internal-secure-router:
-      rule: "Host(`10.1.6.12`)"
+    web-hccc-qr-redirect-secure-router:
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && PathPrefix(`/r/`)"
       service: api-service
       entryPoints:
         - websecure
-      tls: {}  # Use default certificate store
+      tls: {}
       middlewares:
-        - ip-whitelist@file
-        - dashboard-auth@file
+        - rate-limit@file
+        - public-endpoints@file
         - security-headers@file
-      priority: 600
-      
-    # API routers (lower priority, restricted access)
-    api-router:
-      rule: "PathPrefix(`/`) && !PathPrefix(`/r/`) && !PathPrefix(`/health`)"
-      service: api-service
-      entryPoints:
-        - web
-      middlewares:
-        - redirect-to-https@file
-        - ip-whitelist@file
-        - security-headers@file
-      priority: 10
+      priority: 650
 
-    api-secure-router:
-      rule: "PathPrefix(`/`) && !PathPrefix(`/r/`) && !PathPrefix(`/health`)"
-      service: api-service
-      entryPoints:
-        - websecure
-      tls: {}  # Use default certificate store
-      middlewares:
-        - ip-whitelist@file
-        - security-headers@file
-      priority: 10
-      
-    # Health check endpoint (public access)
-    health-router:
-      rule: "PathPrefix(`/health`)"
+    web-hccc-static-assets-router: # Handles static assets for restricted page
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && PathPrefix(`/static/assets/`)"
       service: api-service
       entryPoints:
         - web
       middlewares:
         - redirect-to-https@file
         - public-endpoints@file
+        - security-headers@file
+      priority: 640 # Needs to be higher than the catch-all redirect
+
+    web-hccc-static-assets-secure-router:
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && PathPrefix(`/static/assets/`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - public-endpoints@file
+        - security-headers@file
+      priority: 640
+
+    web-hccc-access-restricted-page-router: # Serves the actual restricted page
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && Path(`/static/access-restricted.html`)" # Exact path
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file
+        - security-headers@file
+      priority: 630 # Higher than the catch-all redirect
+
+    web-hccc-access-restricted-page-secure-router:
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && Path(`/static/access-restricted.html`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - public-endpoints@file
+        - security-headers@file
+      priority: 630
+
+    web-hccc-catch-all-redirect-router: # Catches everything else on web.hccc.edu
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`)" # Lowest priority for this host
+      service: api-service # Dummy service, middleware handles it
+      entryPoints:
+        - web
+        - websecure # Important: handle for HTTPS too
+      tls: {} # For websecure
+      middlewares:
+        - access-restricted-redirect@file # Redirects to the static page
+      priority: 100 # Low priority for this host, catches unmatched paths
+
+    # --- Goal 3: auth.hccc.edu (Placeholder for Keycloak) ---
+    auth-hccc-static-assets-router: # Handles static assets for restricted page
+      rule: "Host(`auth.hccc.edu`, `130.156.44.53`) && PathPrefix(`/static/assets/`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file
+        - security-headers@file
+      priority: 540
+
+    auth-hccc-static-assets-secure-router:
+      rule: "Host(`auth.hccc.edu`, `130.156.44.53`) && PathPrefix(`/static/assets/`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - public-endpoints@file
+        - security-headers@file
+      priority: 540
+
+    auth-hccc-access-restricted-page-router: # Serves the actual restricted page
+      rule: "Host(`auth.hccc.edu`, `130.156.44.53`) && Path(`/static/access-restricted.html`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file
+        - security-headers@file
+      priority: 530
+
+    auth-hccc-access-restricted-page-secure-router:
+      rule: "Host(`auth.hccc.edu`, `130.156.44.53`) && Path(`/static/access-restricted.html`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - public-endpoints@file
+        - security-headers@file
+      priority: 530
+
+    auth-hccc-catch-all-redirect-router: # Catches ALL paths on auth.hccc.edu
+      rule: "Host(`auth.hccc.edu`, `130.156.44.53`)"
+      service: api-service # Dummy service
+      entryPoints:
+        - web
+        - websecure # Important
+      tls: {} # For websecure
+      middlewares:
+        - access-restricted-redirect@file
+      priority: 90 # Lowest priority for this host
+
+    # --- Health Check (Public) ---
+    health-router:
+      rule: "PathPrefix(`/health`)" # Could be Host-specific if needed, but generally public
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file # Allow all IPs
+        - security-headers@file
       priority: 400
 
     health-secure-router:
@@ -168,73 +179,57 @@ http:
       service: api-service
       entryPoints:
         - websecure
-      tls: {}  # Use default certificate store
+      tls: {}
       middlewares:
         - public-endpoints@file
+        - security-headers@file
       priority: 400
 
-    # Domain-based routers (highest priority) - will be ready when DNS is set up
-    api-domain-router:
-      rule: "Host(`admin.hccc.edu`) && PathPrefix(`/`)"
-      service: api-service
+    # --- Traefik Dashboard (Internal Only) ---
+    dashboard-router: # Renamed for clarity
+      rule: "Host(`traefik.10.1.6.12`)" # Or your preferred dashboard host
+      service: api@internal # Special Traefik service
       entryPoints:
-        - web
-        - websecure
-      middlewares:
-        - redirect-to-https@file
-        - ip-whitelist@file
-        - security-headers@file
-      tls: {}  # Use default certificate store
-      priority: 200
-
-    # Traefik dashboard (internal only)
-    dashboard:
-      rule: "Host(`traefik.10.1.6.12`)"
-      service: api@internal
-      entryPoints:
-        - traefik
+        - traefik # Make sure this entrypoint is defined in traefik.yml
       middlewares:
         - ip-whitelist@file
+        - dashboard-auth@file # Added Basic Auth
+      priority: 800 # Very high priority
 
   middlewares:
-    # HTTPS redirect
     redirect-to-https:
       redirectScheme:
         scheme: https
         permanent: true
-    
-    # Access restricted page redirect (replaces block-access)
+
     access-restricted-redirect:
       redirectRegex:
-        regex: "^.*$"
+        regex: "^.*$" # Matches any path
         replacement: "/static/access-restricted.html"
-        permanent: false
-    
-    # Rate limiting
+        permanent: false # Important: false, so direct access to the page itself works
+
     rate-limit:
       rateLimit:
         average: 100
         burst: 50
         period: 1m
-        
-    # IP Whitelist (for admin/internal routes)
-    ip-whitelist:
+
+    ip-whitelist: # For internal dashboard and management
       ipWhiteList:
         sourceRange:
-          - "10.1.6.0/23"     # Internal network
-          - "127.0.0.1/32"    # Localhost
-          - "172.16.0.0/12"   # Docker network
-          - "192.168.0.0/16"  # Private network
-          - "10.0.0.0/8"      # Private network
-          - "69.114.94.0/24"  # External network
-        
-    # Public endpoints middleware (no IP restrictions)
-    public-endpoints:
+          - "10.1.6.0/23"
+          - "127.0.0.1/32"
+          - "172.16.0.0/12" # Docker default bridge
+          - "192.168.0.0/16" # Common private
+          - "10.0.0.0/8" # Common private
+          - "69.114.94.0/24" # Your specified external network for admin
+          # Add other trusted IPs/ranges for admin access
+
+    public-endpoints: # For truly public paths like /r/ and /health
       ipWhiteList:
         sourceRange:
-          - "0.0.0.0/0"       # Allow all IPs
-          
-    # Security headers
+          - "0.0.0.0/0" # Allow all
+
     security-headers:
       headers:
         customResponseHeaders:
@@ -244,26 +239,25 @@ http:
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         forceSTSHeader: true
-        contentSecurityPolicy: "frame-ancestors 'self'; frame-src 'self'; object-src 'none';"
+        contentSecurityPolicy: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; frame-ancestors 'self'; object-src 'none';" # Adjusted CSP
         customFrameOptionsValue: "DENY"
 
-    # Dashboard Basic Authentication
-    dashboard-auth:
+    dashboard-auth: # Basic Auth for dashboard/internal routes
       basicAuth:
         usersFile: "/etc/traefik/users.htpasswd"
-        realm: "QR Dashboard - Authorized Access Only"
+        realm: "QR System - Authorized Access Only"
+        # headerField: "X-WebAuth-User" # Optional: if you want to pass user to backend
 
   services:
     api-service:
       loadBalancer:
         servers:
-          - url: "http://api:8000"
+          - url: "http://api:8000" # Points to your FastAPI app container
         passHostHeader: true
-          
-# TLS configuration moved to root level
+
 tls:
   stores:
     default:
       defaultCertificate:
         certFile: /etc/certs/wildcard.crt.pem
-        keyFile: /etc/certs/wildcard.key.pem.nopass 
+        keyFile: /etc/certs/wildcard.key.pem.nopass
