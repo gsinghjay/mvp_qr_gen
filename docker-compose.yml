@@ -10,11 +10,11 @@ services:
       # Application Configuration
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DEBUG=${DEBUG:-false}
-      - BASE_URL=${BASE_URL:-https://10.1.6.12}
+      - BASE_URL=${BASE_URL:-https://10.1.6.12} # This should be your primary internal access URL
       # Database Configuration
       - PG_DATABASE_URL=${PG_DATABASE_URL:-postgresql+psycopg2://pguser:pgpassword@postgres:5432/qrdb}
       - ENVIRONMENT=production # Production environment settings
-      # PostgreSQL Configuration
+      # PostgreSQL Configuration (for app to connect to DB)
       - POSTGRES_USER=${POSTGRES_USER:-pguser}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pgpassword}
       - POSTGRES_DB=${POSTGRES_DB:-qrdb}
@@ -27,13 +27,13 @@ services:
       - TEST_POSTGRES_HOST=${TEST_POSTGRES_HOST:-postgres_test}
       - TEST_POSTGRES_PORT=${TEST_POSTGRES_PORT:-5432}
       - TEST_DATABASE_URL=${TEST_DATABASE_URL:-postgresql+psycopg2://pguser_test:pgpassword_test@postgres_test:5432/qrdb_test}
-      # Cookie settings (for CSRF protection only)
-      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-10.1.6.12}
+      # Cookie settings (if needed for any non-auth CSRF or future features)
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-10.1.6.12} # Align with your internal dashboard access
     volumes:
       - qr_data:/app/data
       - ./backups:/app/backups
       - qr_logs:/logs
-      - ./app/tests:/app/app/tests
+      - ./app/tests:/app/app/tests # For development/testing if running tests inside container
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -47,39 +47,19 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      # Default route (INTERNAL ONLY)
-      - "traefik.http.routers.api.rule=Host(`10.1.6.12`) && PathPrefix(`/`)"
-      - "traefik.http.services.api.loadbalancer.server.port=8000"
-      - "traefik.http.routers.api.entrypoints=web,websecure"
-      - "traefik.http.routers.api.tls=true"
-      - "traefik.http.routers.api.priority=10"
-      
-      # Public QR redirect route (PUBLIC on 130.156.44.52)
-      - "traefik.http.routers.api-public-qr.rule=Host(`130.156.44.52`) && PathPrefix(`/r/`)"
-      - "traefik.http.routers.api-public-qr.entrypoints=web,websecure"
-      - "traefik.http.routers.api-public-qr.tls=true"
-      - "traefik.http.routers.api-public-qr.service=api"
-      - "traefik.http.routers.api-public-qr.priority=500"
-      
-      # Domain-specific route for future use with web.hccc.edu
-      - "traefik.http.routers.api-domain.rule=Host(`web.hccc.edu`) && PathPrefix(`/`)"
-      - "traefik.http.routers.api-domain.entrypoints=web,websecure"
-      - "traefik.http.routers.api-domain.tls=true"
-      - "traefik.http.routers.api-domain.service=api"
-      - "traefik.http.routers.api-domain.priority=100"
-      
-      # Force HTTPS redirect
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
-      - "traefik.http.middlewares.cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS"
-      - "traefik.http.middlewares.cors.headers.accesscontrolalloworiginlist=https://10.1.6.12"
-      - "traefik.http.middlewares.cors.headers.accesscontrolmaxage=100"
-      - "traefik.http.middlewares.cors.headers.addvaryheader=true"
-      - "traefik.http.routers.api.middlewares=redirect-to-https@docker,cors@docker"
-      - "traefik.http.routers.api-domain.middlewares=redirect-to-https@docker,cors@docker"
-      - "traefik.http.routers.api-public-qr.middlewares=redirect-to-https@docker"
+      # Define the service for Traefik.
+      # The actual routing rules, entrypoints, and middlewares are now primarily in dynamic_conf.yml,
+      # which will refer to this service as 'api-service'.
+      - "traefik.http.services.api-service.loadbalancer.server.port=8000"
+      # Optional: If you want a very low priority, Docker-provider-specific default router
+      # for this service *if no rules in dynamic_conf.yml match it*.
+      # This is generally not needed if dynamic_conf.yml is comprehensive.
+      # - "traefik.http.routers.api-docker-catchall.rule=Host(`your-internal-docker-host.example.com`)" # Replace with a real, unique internal hostname
+      # - "traefik.http.routers.api-docker-catchall.service=api-service"
+      # - "traefik.http.routers.api-docker-catchall.priority=1" # Lowest priority
+      # - "traefik.http.routers.api-docker-catchall.entrypoints=web"
 
-  # PostgreSQL service
+  # PostgreSQL service (Production DB)
   postgres:
     image: postgres:15
     container_name: qr_generator_postgres
@@ -96,8 +76,7 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    # Expose port only internally, not to host
-    expose:
+    expose: # Expose only to other containers on the same Docker network
       - "5432"
 
   # PostgreSQL Test service
@@ -107,7 +86,7 @@ services:
     environment:
       - POSTGRES_USER=${TEST_POSTGRES_USER:-pguser_test}
       - POSTGRES_PASSWORD=${TEST_POSTGRES_PASSWORD:-pgpassword_test}
-      - POSTGRES_DB=${TEST_POSTGRES_DB:-qrdb_test}
+      - TEST_POSTGRES_DB=${TEST_POSTGRES_DB:-qrdb_test} # Note: This should be TEST_POSTGRES_DB
       - TZ=America/New_York
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
@@ -117,27 +96,28 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    # Expose port only internally, not to host
-    expose:
+    expose: # Expose only to other containers on the same Docker network
       - "5432"
 
   traefik:
-    image: traefik:v2.10
+    image: traefik:v2.10 # Or your preferred Traefik version
     container_name: qr_generator_traefik
     # Use existing configuration files instead of command-line flags
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./certs:/etc/certs:ro
-      - ./traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./dynamic_conf.yml:/etc/traefik/dynamic_conf.yml:ro
-      - ./users.htpasswd:/etc/traefik/users.htpasswd:ro
-      - traefik_logs:/logs/traefik
+      - /var/run/docker.sock:/var/run/docker.sock:ro # So Traefik can listen to Docker events
+      - ./certs:/etc/certs:ro                         # Mount your certificates
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro     # Static configuration
+      - ./dynamic_conf.yml:/etc/traefik/dynamic_conf.yml:ro # Dynamic configuration
+      - ./users.htpasswd:/etc/traefik/users.htpasswd:ro # Basic Auth users file
+      - traefik_logs:/logs/traefik # For Traefik's own logs, if configured in traefik.yml
     ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"  # Traefik Dashboard
-      - "8082:8082"  # Metrics endpoint
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS
+      - "8080:8080"   # Traefik Dashboard (if entryPoint 'traefik' is on :8080)
+      - "8082:8082"   # Metrics endpoint (if entryPoint 'metrics' is on :8082)
     restart: unless-stopped
+    # depends_on: # Optional: if you want api to be up for traefik to configure it, though dynamic config handles this
+    #   - api
 
 networks:
   default:
@@ -154,4 +134,4 @@ volumes:
   postgres_data:
     driver: local
   postgres_test_data:
-    driver: local 
+    driver: local
