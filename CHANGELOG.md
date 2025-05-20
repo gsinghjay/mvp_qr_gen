@@ -1,6 +1,35 @@
 # CHANGELOG
 
 
+## v0.24.0 (2025-05-20)
+
+### Bug Fixes
+
+- **security**: Add font-src directive to CSP to allow Bootstrap icons
+  ([`e905446`](https://github.com/gsinghjay/mvp_qr_gen/commit/e9054463043f3cd877b0b22f0c8f50ddd09847e6))
+
+- **tests**: Update import paths in test_general_api.py
+  ([`b848e1b`](https://github.com/gsinghjay/mvp_qr_gen/commit/b848e1b2fb7eb191861665d7cb215e95cd382048))
+
+### Documentation
+
+- **tests**: Add dependencies.py to test directory structure
+  ([`886e7f1`](https://github.com/gsinghjay/mvp_qr_gen/commit/886e7f188ac9c02e6662a5d782875d56cd064e4c))
+
+- **tests**: Document standardized dependency override approach
+  ([`4fa6ee2`](https://github.com/gsinghjay/mvp_qr_gen/commit/4fa6ee270a0283e62373a2b1396404b750867c40))
+
+### Features
+
+- **tests**: Create centralized test dependency injection functions
+  ([`bab3a1e`](https://github.com/gsinghjay/mvp_qr_gen/commit/bab3a1e3c92d6bfa1a83843d031d06f6ba72c756))
+
+### Refactoring
+
+- **tests**: Standardize client fixture dependency overrides in conftest.py
+  ([`dc4ac28`](https://github.com/gsinghjay/mvp_qr_gen/commit/dc4ac289cd40939ccac69d085b8fc2461c2e7f09))
+
+
 ## v0.23.0 (2025-05-20)
 
 ### Chores
