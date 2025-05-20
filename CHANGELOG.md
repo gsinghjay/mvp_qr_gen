@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v0.23.0 (2025-05-20)
+
+### Chores
+
+- **config**: Improve Traefik static configuration with proper log paths and entrypoints
+  ([`0843eaf`](https://github.com/gsinghjay/mvp_qr_gen/commit/0843eaf9ebfbc69345fa33fbf92a542155528efd))
+
+### Features
+
+- **routing**: Reorganize Traefik routers with proper priorities and domain isolation
+  ([`508ea67`](https://github.com/gsinghjay/mvp_qr_gen/commit/508ea673cc9e88ddc208c0da1f9d2bb90dff0af6))
+
+### Refactoring
+
+- **docker**: Streamline api service configuration and containerization
+  ([`fd3fd88`](https://github.com/gsinghjay/mvp_qr_gen/commit/fd3fd88058ac1b9d3cbfd66445e2c99cf539be42))
+
+
 ## v0.22.1 (2025-05-19)
 
 ### Bug Fixes
