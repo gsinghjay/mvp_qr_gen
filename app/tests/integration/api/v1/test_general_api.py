@@ -14,10 +14,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.tests.dependencies import get_qr_service
-from ..main import app
-from ..models import QRCode
-from ..models.qr import QRCode
-from ..schemas import (
+from app.main import app
+from app.models import QRCode
+from app.models.qr import QRCode
+from app.schemas import (
     HealthResponse,
     HealthStatus,
     QRType,
@@ -25,9 +25,9 @@ from ..schemas import (
     ServiceStatus,
     SystemMetrics,
 )
-from ..schemas.qr.models import QRType
-from ..services.qr_service import QRCodeService
-from .utils import validate_color_code, validate_qr_code_data
+from app.schemas.qr.models import QRType
+from app.services.qr_service import QRCodeService
+from ....utils import validate_color_code, validate_qr_code_data
 
 # Initialize Faker for generating test data
 fake = Faker()
@@ -365,6 +365,8 @@ def test_qr_code_types(
         "back_color": fake.hex_color().upper(),  # Ensure uppercase hex color
         "size": fake.random_int(min=5, max=50),
         "border": fake.random_int(min=1, max=10),
+        "title": f"Test {qr_type} QR Code",  # Add title field
+        "description": "Test QR code created for testing",  # Add description field
     }
 
     if include_redirect:
@@ -422,6 +424,8 @@ def test_qr_code_color_validation(client: TestClient, test_db: Session, color):
         "content": "https://example.com",
         "fill_color": color,
         "back_color": "#FFFFFF" if color != "#FFFFFF" else "#000000",  # Ensure different colors
+        "title": "Test Color QR Code",  # Add title field
+        "description": "A QR code for testing color validation",  # Add description field
     }
 
     # Attempt to create the QR code
