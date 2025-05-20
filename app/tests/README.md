@@ -169,9 +169,15 @@ The `conftest.py` file provides common fixtures that should be used across tests
 
 Tests use a standardized approach to dependency overrides:
 
-1. **Client Fixture Method**:
+1. **Centralized Dependency Configuration**:
+   - All test dependencies are defined in `app/tests/dependencies.py`
+   - Test-specific database sessions, repositories, and services are provided
+   - These dependencies mirror the application's dependencies but use test-specific implementations
+
+2. **Client Fixture Method**:
    - The `client` fixture in `conftest.py` handles all necessary dependency overrides
    - Overrides both `get_db` and `get_db_with_logging` to ensure all database access uses test sessions
+   - Overrides `get_qr_repository` and `get_qr_service` to use test-specific implementations
    - Stores and restores original dependencies to prevent cross-test interference
    - Example usage:
      ```python
@@ -180,7 +186,19 @@ Tests use a standardized approach to dependency overrides:
          assert response.status_code == 201
      ```
 
-2. **DependencyOverrideManager** (for advanced scenarios):
+3. **Async Client Support**:
+   - The `async_client` fixture provides similar overrides for async tests
+   - Uses async database session and overrides async dependencies
+   - Follows the same pattern as the synchronous client fixture
+   - Example usage:
+     ```python
+     @pytest.mark.asyncio
+     async def test_async_feature(async_client, async_test_db):
+         response = await async_client.get("/api/v1/some-async-endpoint")
+         assert response.status_code == 200
+     ```
+
+4. **DependencyOverrideManager** (for advanced scenarios):
    - For tests requiring more complex dependency overrides, use the `DependencyOverrideManager` in `helpers.py`
    - Can be used as a context manager to apply overrides within a specific test scope
    - Example usage:
