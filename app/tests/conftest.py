@@ -465,52 +465,63 @@ async def async_test_db() -> AsyncGenerator[AsyncSession, None]:
 def client(test_db) -> TestClient:
     """
     Create a FastAPI TestClient with dependency overrides for testing.
-    
+
     This fixture overrides key dependencies to use test instances:
     - get_db_with_logging: Main database dependency used across the app
     - get_db: Backup direct database dependency (used in some places)
-    
+    - get_qr_repository: Repository for QR code operations
+    - get_qr_service: Service for QR code business logic
+
     Args:
         test_db: Database session fixture
-        
+
     Returns:
         TestClient: FastAPI test client
     """
     # Store original dependencies to restore later
     original_dependencies = {}
-    
+
     try:
-        # Import dependencies here for clarity
-        from ..database import get_db, get_db_with_logging
-        from ..services.qr import get_qr_service
-        from ..repositories.qr import get_qr_repository
+        # Import all application dependencies
+        from app.database import get_db, get_db_with_logging
+        from app.dependencies import get_qr_service, get_qr_repository
         
+        # Import test-specific dependencies
+        from app.tests.dependencies import (
+            get_test_db,
+            get_test_db_with_logging,
+            get_qr_repository as get_test_qr_repository,
+            get_qr_service as get_test_qr_service,
+        )
+
         # Store original dependencies
         original_dependencies = app.dependency_overrides.copy()
-        
-        # Define override functions to use the test database session
+
+        # Override database session dependencies with test-specific versions
         def override_get_db():
             """Override the standard database session with test session."""
             try:
                 yield test_db
             finally:
                 pass
-        
+
         def override_get_db_with_logging():
             """Override the standard database session with test session."""
             try:
                 yield test_db
             finally:
                 pass
-        
-        # Configure dependency overrides
+
+        # Configure dependency overrides for database, repository, and service
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_db_with_logging] = override_get_db_with_logging
-        
+        app.dependency_overrides[get_qr_repository] = get_test_qr_repository
+        app.dependency_overrides[get_qr_service] = get_test_qr_service
+
         # Create and return the test client
         client = TestClient(app)
         return client
-    
+
     except Exception as e:
         # Restore original dependencies if an error occurs during setup
         app.dependency_overrides = original_dependencies
@@ -833,59 +844,67 @@ def redirect_qr_request(client):
 @pytest_asyncio.fixture
 async def async_client(async_test_db) -> AsyncGenerator[TestClient, None]:
     """
-    Create a FastAPI TestClient with dependency overrides for async testing.
-    
-    This fixture overrides key dependencies to use async test instances:
+    Create an asynchronous FastAPI TestClient with dependency overrides for testing.
+
+    This fixture overrides key dependencies to use test instances:
     - get_db_with_logging: Main database dependency used across the app
     - get_db: Backup direct database dependency (used in some places)
-    
+    - get_qr_repository: Repository for QR code operations
+    - get_qr_service: Service for QR code business logic
+
     Args:
         async_test_db: Async database session fixture
-        
+
     Returns:
         TestClient: FastAPI test client
     """
     # Store original dependencies to restore later
     original_dependencies = {}
-    
+
     try:
-        # Import dependencies here for clarity
-        from ..database import get_db, get_db_with_logging
-        from ..services.qr import get_qr_service
-        from ..repositories.qr import get_qr_repository
+        # Import all application dependencies
+        from app.database import get_db, get_db_with_logging
+        from app.dependencies import get_qr_service, get_qr_repository
         
+        # Import test-specific dependencies (will need async versions in the future)
+        from app.tests.dependencies import (
+            get_qr_repository as get_test_qr_repository,
+            get_qr_service as get_test_qr_service,
+        )
+
         # Store original dependencies
         original_dependencies = app.dependency_overrides.copy()
-        
-        # Define override functions to use the async test database session
+
+        # Override database session dependencies with async test-specific versions
         async def override_get_db():
             """Override the standard database session with async test session."""
             try:
                 yield async_test_db
             finally:
                 pass
-        
+
         async def override_get_db_with_logging():
             """Override the standard database session with async test session."""
             try:
                 yield async_test_db
             finally:
                 pass
-        
-        # Configure dependency overrides
+            
+        # We need special async repository/service overrides
+        # For now, we're using the non-async versions, but these should be replaced
+        # with properly async versions in the future
+
+        # Configure dependency overrides for database, repository, and service
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_db_with_logging] = override_get_db_with_logging
-        
+        app.dependency_overrides[get_qr_repository] = get_test_qr_repository
+        app.dependency_overrides[get_qr_service] = get_test_qr_service
+
         # Create and return the test client
         client = TestClient(app)
         yield client
-    
-    except Exception as e:
-        # Restore original dependencies if an error occurs during setup
-        app.dependency_overrides = original_dependencies
-        raise e
     finally:
-        # Restore original dependencies after the test
+        # Restore original dependencies
         app.dependency_overrides = original_dependencies
 
 
