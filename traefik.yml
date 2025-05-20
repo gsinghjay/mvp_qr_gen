@@ -9,7 +9,7 @@ log:
 
 # Access Logs Configuration
 accessLog:
-  filePath: "/var/log/traefik/access.log"
+  filePath: "/logs/traefik/access.log"
   format: json
   bufferingSize: 100
   filters:
