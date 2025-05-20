@@ -16,6 +16,7 @@ app/tests/
 ├── data/                  # Test data fixtures and sample data
 ├── e2e/                   # End-to-end tests simulating real user interactions
 ├── conftest.py            # Pytest fixtures and configuration
+├── dependencies.py        # Test-specific dependency injection functions
 ├── factories.py           # Test data factories using Factory Boy
 ├── helpers.py             # Test helper functions
 └── utils.py               # Utility functions for testing
@@ -70,4 +71,5 @@ docker exec qr_generator_api pytest app/tests/unit/services/test_qr_service.py
 - The tests use a dedicated PostgreSQL test database configured in docker-compose.yml
 - Test isolation is achieved through transaction-based roll-back after each test
 - Test dependencies and fixtures are defined in conftest.py
+- Dependency injection for tests is managed through dependencies.py, which provides test-specific implementations
 - Test data is created using factory_boy factories in factories.py 
