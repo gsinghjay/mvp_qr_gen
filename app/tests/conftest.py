@@ -24,8 +24,9 @@ from ..core.config import settings
 from ..database import Base, get_database_url, is_testing_mode
 from ..main import app
 from ..models.qr import QRCode
+from ..models.scan_log import ScanLog  # Add import for ScanLog model
 from ..schemas.qr.models import QRType
-from .factories import QRCodeFactory
+from .factories import QRCodeFactory, ScanLogFactory  # Add ScanLogFactory import
 
 # Initialize Faker for generating test data
 fake = Faker()
@@ -559,15 +560,93 @@ def test_session_factory():
 @pytest.fixture
 def qr_code_factory(test_db: Session) -> QRCodeFactory:
     """
-    Fixture that provides a QRCodeFactory instance.
+    Fixture to create QR code factory with test database session.
+    
+    Returns a QRCodeFactory instance with the current test database session for
+    creating QR codes in tests. This factory encapsulates the logic for generating
+    valid test QR codes with sensible defaults.
     
     Args:
-        test_db: Database session
+        test_db: Current test database session
         
     Returns:
-        Initialized QRCodeFactory with database session
+        QRCodeFactory instance with the test session
     """
-    return QRCodeFactory(db_session=test_db)
+    return QRCodeFactory(test_db)
+
+
+@pytest.fixture
+def scan_log_factory(test_db: Session) -> ScanLogFactory:
+    """
+    Fixture to create scan log factory with test database session.
+    
+    Returns a ScanLogFactory instance with the current test database session for
+    creating scan logs in tests. This factory encapsulates the logic for generating
+    valid test scan logs with sensible defaults.
+    
+    Args:
+        test_db: Current test database session
+        
+    Returns:
+        ScanLogFactory instance with the test session
+    """
+    return ScanLogFactory(test_db)
+
+
+@pytest.fixture
+def qr_with_scans(qr_code_factory: QRCodeFactory, scan_log_factory: ScanLogFactory) -> tuple[QRCode, list[ScanLog]]:
+    """
+    Fixture to create a QR code with associated scan logs.
+    
+    Creates a dynamic QR code with a mix of genuine and non-genuine scans
+    for testing scan statistics and analytics features.
+    
+    Args:
+        qr_code_factory: Factory for creating QR codes
+        scan_log_factory: Factory for creating scan logs
+        
+    Returns:
+        Tuple of (QRCode instance, list of ScanLog instances)
+    """
+    # Create a dynamic QR code
+    qr_code = qr_code_factory.create_dynamic()
+    
+    # Create a mix of genuine and non-genuine scans
+    scan_logs = scan_log_factory.create_batch_for_qr(
+        qr_code=qr_code,
+        count=20,  # 20 total scans
+        genuine_ratio=0.7,  # 70% genuine scans
+        max_days_ago=14,  # Up to 14 days old
+    )
+    
+    # Update QR code scan statistics to match
+    genuine_count = sum(1 for log in scan_logs if log.is_genuine_scan)
+    
+    # Update scan counts in QR code
+    qr_code.scan_count = len(scan_logs)
+    qr_code.genuine_scan_count = genuine_count
+    
+    # Set latest scan timestamps
+    if scan_logs:
+        # Find the most recent scan timestamp
+        all_scan_timestamps = [log.scanned_at for log in scan_logs]
+        last_scan_at = max(all_scan_timestamps)
+        qr_code.last_scan_at = last_scan_at
+        
+        # Find most recent genuine scan timestamp
+        genuine_scan_timestamps = [log.scanned_at for log in scan_logs if log.is_genuine_scan]
+        if genuine_scan_timestamps:
+            last_genuine_scan_at = max(genuine_scan_timestamps)
+            qr_code.last_genuine_scan_at = last_genuine_scan_at
+            
+            # Set first genuine scan timestamp if not already set
+            if not qr_code.first_genuine_scan_at:
+                first_genuine_scan_at = min(genuine_scan_timestamps)
+                qr_code.first_genuine_scan_at = first_genuine_scan_at
+    
+    # No need to commit - test transactions handle this
+    
+    return qr_code, scan_logs
 
 
 @pytest.fixture
@@ -911,14 +990,134 @@ async def async_client(async_test_db) -> AsyncGenerator[TestClient, None]:
 @pytest_asyncio.fixture
 async def async_qr_code_factory(async_test_db) -> AsyncGenerator[QRCodeFactory, None]:
     """
-    Fixture that provides a QRCodeFactory instance for async tests.
+    Async fixture that provides a QRCodeFactory instance for async tests.
+    
+    Returns a QRCodeFactory instance with the current async test database session
+    for creating QR codes in async tests.
     
     Args:
-        async_test_db: Async database session
+        async_test_db: Async test database session
         
-    Returns:
-        QRCodeFactory: Initialized factory with the async database session
+    Yields:
+        Initialized QRCodeFactory with async database session
     """
-    # For now, we're using the standard QRCodeFactory with the async session
-    # If needed, we could create an AsyncQRCodeFactory in the future
-    yield QRCodeFactory(db_session=async_test_db)
+    factory = QRCodeFactory(async_test_db)
+    yield factory
+
+
+@pytest_asyncio.fixture
+async def async_scan_log_factory(async_test_db) -> AsyncGenerator[ScanLogFactory, None]:
+    """
+    Async fixture that provides a ScanLogFactory instance for async tests.
+    
+    Returns a ScanLogFactory instance with the current async test database session
+    for creating scan logs in async tests.
+    
+    Args:
+        async_test_db: Async test database session
+        
+    Yields:
+        Initialized ScanLogFactory with async database session
+    """
+    factory = ScanLogFactory(async_test_db)
+    yield factory
+
+
+@pytest_asyncio.fixture
+async def async_qr_with_scans(
+    async_qr_code_factory: QRCodeFactory, 
+    async_scan_log_factory: ScanLogFactory
+) -> AsyncGenerator[tuple[QRCode, list[ScanLog]], None]:
+    """
+    Async fixture to create a QR code with associated scan logs for async tests.
+    
+    Creates a dynamic QR code with a mix of genuine and non-genuine scans
+    for testing scan statistics and analytics features in async tests.
+    
+    Args:
+        async_qr_code_factory: Factory for creating QR codes in async context
+        async_scan_log_factory: Factory for creating scan logs in async context
+        
+    Yields:
+        Tuple of (QRCode instance, list of ScanLog instances)
+    """
+    # Create a dynamic QR code
+    qr_code = await async_qr_code_factory.async_create_with_params(
+        qr_type=QRType.DYNAMIC,
+        redirect_url=fake.url()
+    )
+    
+    # Create genuine scans (70%)
+    genuine_count = 14  # 70% of 20
+    genuine_scans = []
+    for _ in range(genuine_count):
+        days_ago = fake.random.randint(0, 14)
+        hours_ago = fake.random.randint(0, 23)
+        
+        # Random device type distribution (mostly mobile for genuine scans)
+        is_mobile = fake.random.random() < 0.7  # 70% mobile
+        is_tablet = not is_mobile and fake.random.random() < 0.4  # 12% tablet (40% of non-mobile)
+        is_pc = not (is_mobile or is_tablet)  # 18% PC
+        
+        scan_log = await async_scan_log_factory.async_create_for_qr(
+            qr_code=qr_code,
+            is_genuine_scan=True,
+            days_ago=days_ago,
+            hours_ago=hours_ago,
+            is_mobile=is_mobile,
+            is_tablet=is_tablet,
+            is_pc=is_pc
+        )
+        genuine_scans.append(scan_log)
+    
+    # Create non-genuine scans (30%)
+    non_genuine_count = 6  # 30% of 20
+    non_genuine_scans = []
+    for _ in range(non_genuine_count):
+        days_ago = fake.random.randint(0, 14)
+        hours_ago = fake.random.randint(0, 23)
+        
+        # Random device type distribution (mostly desktop for non-genuine)
+        is_mobile = fake.random.random() < 0.2  # 20% mobile
+        is_tablet = not is_mobile and fake.random.random() < 0.1  # 8% tablet
+        is_pc = not (is_mobile or is_tablet)  # 72% PC
+        
+        scan_log = await async_scan_log_factory.async_create_for_qr(
+            qr_code=qr_code,
+            is_genuine_scan=False,
+            days_ago=days_ago,
+            hours_ago=hours_ago,
+            is_mobile=is_mobile,
+            is_tablet=is_tablet,
+            is_pc=is_pc
+        )
+        non_genuine_scans.append(scan_log)
+    
+    # Combine all scan logs
+    scan_logs = genuine_scans + non_genuine_scans
+    
+    # Update QR code scan statistics to match
+    qr_code.scan_count = len(scan_logs)
+    qr_code.genuine_scan_count = genuine_count
+    
+    # Set latest scan timestamps
+    if scan_logs:
+        # Find the most recent scan timestamp
+        all_scan_timestamps = [log.scanned_at for log in scan_logs]
+        last_scan_at = max(all_scan_timestamps)
+        qr_code.last_scan_at = last_scan_at
+        
+        # Find most recent genuine scan timestamp
+        genuine_scan_timestamps = [log.scanned_at for log in scan_logs if log.is_genuine_scan]
+        if genuine_scan_timestamps:
+            last_genuine_scan_at = max(genuine_scan_timestamps)
+            qr_code.last_genuine_scan_at = last_genuine_scan_at
+            
+            # Set first genuine scan timestamp if not already set
+            if not qr_code.first_genuine_scan_at:
+                first_genuine_scan_at = min(genuine_scan_timestamps)
+                qr_code.first_genuine_scan_at = first_genuine_scan_at
+    
+    # No need to commit - async tests handle transactions
+    
+    yield qr_code, scan_logs
