@@ -1,0 +1,163 @@
+<!-- Device, Browser, and OS Statistics Fragment -->
+<div class="mb-4">
+    <!-- Device Type Section -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center bg-light">
+                    <h5 class="card-title mb-0">Device Type Distribution</h5>
+                    <span class="badge bg-primary">{{ device_total }} scans</span>
+                </div>
+                <div class="card-body">
+                    {% if device_total > 0 %}
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <!-- Device Type Bar Chart -->
+                                <div class="device-type-bars">
+                                    {% for device_type, count in stats.device_types.items() %}
+                                        {% set percentage = (count / device_total * 100) | round(1) %}
+                                        {% if percentage > 0 %}
+                                            <div class="mb-3">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span>
+                                                        {% if device_type == 'mobile' %}
+                                                            <i class="fas fa-mobile-alt me-2"></i>Mobile
+                                                        {% elif device_type == 'tablet' %}
+                                                            <i class="fas fa-tablet-alt me-2"></i>Tablet
+                                                        {% elif device_type == 'pc' %}
+                                                            <i class="fas fa-desktop me-2"></i>Desktop
+                                                        {% elif device_type == 'bot' %}
+                                                            <i class="fas fa-robot me-2"></i>Bot
+                                                        {% else %}
+                                                            <i class="fas fa-question-circle me-2"></i>{{ device_type|capitalize }}
+                                                        {% endif %}
+                                                    </span>
+                                                    <span class="text-muted small">{{ count }} ({{ percentage }}%)</span>
+                                                </div>
+                                                <div class="progress" style="height: 10px;">
+                                                    {% if device_type == 'mobile' %}
+                                                        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ percentage }}%"></div>
+                                                    {% elif device_type == 'tablet' %}
+                                                        <div class="progress-bar bg-info" role="progressbar" style="width: {{ percentage }}%"></div>
+                                                    {% elif device_type == 'pc' %}
+                                                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ percentage }}%"></div>
+                                                    {% elif device_type == 'bot' %}
+                                                        <div class="progress-bar bg-warning" role="progressbar" style="width: {{ percentage }}%"></div>
+                                                    {% else %}
+                                                        <div class="progress-bar bg-secondary" role="progressbar" style="width: {{ percentage }}%"></div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="device-families">
+                                    <h6 class="border-bottom pb-2 mb-3">Top Device Models</h6>
+                                    <div class="list-group list-group-flush">
+                                        {% for device, count in stats.device_families.items() %}
+                                            <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center border-0">
+                                                <span>{{ device if device else 'Unknown' }}</span>
+                                                <span class="badge bg-secondary rounded-pill">{{ count }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i> No device data available yet.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Browser and OS Statistics -->
+    <div class="row">
+        <!-- Browser Statistics -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">Browser Distribution</h5>
+                </div>
+                <div class="card-body">
+                    {% if stats.browser_families %}
+                        <div class="browser-families">
+                            {% for browser, count in stats.browser_families.items() %}
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span>
+                                            {% if browser == 'Chrome' %}
+                                                <i class="fab fa-chrome me-2"></i>
+                                            {% elif browser == 'Firefox' %}
+                                                <i class="fab fa-firefox-browser me-2"></i>
+                                            {% elif browser == 'Safari' or browser == 'Mobile Safari' %}
+                                                <i class="fab fa-safari me-2"></i>
+                                            {% elif browser == 'Edge' %}
+                                                <i class="fab fa-edge me-2"></i>
+                                            {% else %}
+                                                <i class="fas fa-globe me-2"></i>
+                                            {% endif %}
+                                            {{ browser if browser else 'Unknown' }}
+                                        </span>
+                                        <span class="badge bg-secondary rounded-pill">{{ count }}</span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i> No browser data available yet.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- OS Statistics -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">Operating System Distribution</h5>
+                </div>
+                <div class="card-body">
+                    {% if stats.os_families %}
+                        <div class="os-families">
+                            {% for os, count in stats.os_families.items() %}
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span>
+                                            {% if os == 'Windows' %}
+                                                <i class="fab fa-windows me-2"></i>
+                                            {% elif os == 'Android' %}
+                                                <i class="fab fa-android me-2"></i>
+                                            {% elif os == 'iOS' %}
+                                                <i class="fab fa-apple me-2"></i>
+                                            {% elif os == 'Mac OS X' %}
+                                                <i class="fab fa-apple me-2"></i>
+                                            {% elif os == 'Linux' %}
+                                                <i class="fab fa-linux me-2"></i>
+                                            {% else %}
+                                                <i class="fas fa-microchip me-2"></i>
+                                            {% endif %}
+                                            {{ os if os else 'Unknown' }}
+                                        </span>
+                                        <span class="badge bg-secondary rounded-pill">{{ count }}</span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i> No OS data available yet.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

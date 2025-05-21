@@ -231,9 +231,12 @@ async def create_qr_code(
             "success_message": "QR Code created successfully!"
         }
             
-        # For Option B, we return a simple 204 No Content response
-        # HTMX will handle the toast and redirect via event listeners
-        return Response(status_code=204)
+        # For Option 2.3.B, we return a 204 response with HX-Trigger header containing the QR ID
+        response = Response(status_code=204)
+        # Add HX-Trigger header with QR ID in JSON format
+        import json
+        response.headers["HX-Trigger"] = json.dumps({"qrCreated": {"id": qr.id}})
+        return response
     except ValidationError as e:
         # Return the form with validation errors
         return templates.TemplateResponse(
@@ -267,60 +270,74 @@ async def create_qr_code(
             status_code=500,
         )
 
-@router.get("/qr-detail/{qr_id}", response_class=HTMLResponse)
-async def get_qr_detail_fragment(
+@router.get("/qr/{qr_id}/analytics/scan-logs", response_class=HTMLResponse)
+async def get_scan_logs_fragment(
     request: Request,
     qr_id: str,
     qr_service: QRServiceDep,
+    page: int = 1,
+    limit: int = 10,
+    genuine_only: bool = False,
 ):
     """
-    Get the QR code detail fragment.
+    Get the scan logs fragment for a specific QR code.
     
     Args:
         request: The FastAPI request object.
-        qr_id: The ID of the QR code.
+        qr_id: The ID of the QR code to get scan logs for.
         qr_service: The QR code service.
+        page: The page number.
+        limit: The number of logs per page.
+        genuine_only: Whether to include only genuine scans.
         
     Returns:
-        HTMLResponse: The rendered QR detail fragment.
+        HTMLResponse: The rendered scan logs fragment.
     """
     try:
-        qr = qr_service.get_qr_by_id(qr_id)
+        # Calculate offset from page number
+        skip = (page - 1) * limit
         
-        # Format dates for better readability
-        created_at_formatted = qr.created_at.strftime("%B %d, %Y at %H:%M")
-        last_scan_formatted = qr.last_scan_at.strftime("%B %d, %Y at %H:%M") if qr.last_scan_at else "Not yet scanned"
+        # Get scan logs from repository
+        scan_logs, total_logs = qr_service.repository.get_scan_logs_for_qr(
+            qr_id=qr_id,
+            skip=skip,
+            limit=limit,
+            genuine_only=genuine_only
+        )
         
-        # Handle short_id extraction for dynamic QR codes
-        short_id = None
-        short_url = None
-        if qr.qr_type == "dynamic" and '/r/' in qr.content:
-            # Handle both cases with and without query parameters
-            path_part = qr.content.split('/r/')[-1]
-            short_id = path_part.split('?')[0] if '?' in path_part else path_part
-            short_url = f"{settings.BASE_URL}/r/{short_id}"
+        # Format scan log data for the template
+        formatted_logs = []
+        for log in scan_logs:
+            formatted_logs.append({
+                "id": log.id,
+                "scanned_at": log.scanned_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "is_genuine_scan": log.is_genuine_scan,
+                "device_family": log.device_family or "Unknown",
+                "os_family": log.os_family or "Unknown",
+                "os_version": log.os_version or "",
+                "browser_family": log.browser_family or "Unknown",
+                "browser_version": log.browser_version or "",
+                "is_mobile": log.is_mobile,
+                "is_tablet": log.is_tablet,
+                "is_pc": log.is_pc,
+                "is_bot": log.is_bot
+            })
         
-        # Format error level for display (uppercase)
-        error_level_display = qr.error_level.upper() if qr.error_level else "M"
-        
-        # Check if the QR code has been scanned
-        has_scan_data = qr.scan_count > 0 if hasattr(qr, 'scan_count') else False
-        
-        # Prepare response data
-        response_data = {
-            "request": request,
-            "qr": qr,
-            "created_at_formatted": created_at_formatted,
-            "last_scan_formatted": last_scan_formatted,
-            "short_id": short_id,
-            "short_url": short_url,
-            "error_level_display": error_level_display,
-            "has_scan_data": has_scan_data
-        }
+        # Calculate total pages for pagination
+        total_pages = math.ceil(total_logs / limit) if total_logs > 0 else 1
         
         return templates.TemplateResponse(
-            "fragments/qr_detail.html",
-            response_data
+            "fragments/scan_log_table.html",
+            {
+                "request": request,
+                "qr_id": qr_id,
+                "scan_logs": formatted_logs,
+                "total_logs": total_logs,
+                "page": page,
+                "limit": limit,
+                "total_pages": total_pages,
+                "genuine_only": genuine_only
+            }
         )
     except QRCodeNotFoundError:
         return templates.TemplateResponse(
@@ -331,13 +348,13 @@ async def get_qr_detail_fragment(
             },
             status_code=404,
         )
-    except Exception as e:
-        logger.error(f"Error retrieving QR code detail: {str(e)}")
+    except DatabaseError as e:
+        logger.error(f"Database error retrieving scan logs for QR {qr_id}: {str(e)}")
         return templates.TemplateResponse(
             "fragments/error.html",
             {
                 "request": request,
-                "error": "An error occurred while retrieving QR code details."
+                "error": "An error occurred while retrieving scan logs."
             },
             status_code=500,
         )
@@ -357,17 +374,16 @@ async def get_qr_edit_fragment(
         qr_service: The QR code service.
         
     Returns:
-        HTMLResponse: The rendered QR edit form fragment.
+        HTMLResponse: A redirect to the analytics page.
     """
     try:
-        qr = qr_service.get_qr_by_id(qr_id)
-        return templates.TemplateResponse(
-            "fragments/qr_edit.html",
-            {
-                "request": request,
-                "qr": qr
-            }
+        # Create a response with an HX-Redirect header to the analytics page
+        response = HTMLResponse(
+            content="Redirecting to analytics page...",
+            status_code=200
         )
+        response.headers["HX-Redirect"] = f"/qr/{qr_id}/analytics"
+        return response
     except QRCodeNotFoundError:
         raise HTTPException(status_code=404, detail="QR code not found")
 
@@ -392,7 +408,7 @@ async def update_qr_code(
         description: The updated description for the QR code.
         
     Returns:
-        HTMLResponse: The rendered QR detail fragment.
+        HTMLResponse: An HTMX response that redirects to the QR analytics page.
     """
     logger.info(f"Updating QR code {qr_id} - Title: '{title}', Description: '{description}', Redirect URL: '{redirect_url}'")
     
@@ -408,39 +424,13 @@ async def update_qr_code(
         qr = qr_service.update_qr(qr_id, params)
         logger.info(f"Successfully updated QR code {qr_id}")
         
-        # Format dates for better readability
-        created_at_formatted = qr.created_at.strftime("%B %d, %Y at %H:%M")
-        last_scan_formatted = qr.last_scan_at.strftime("%B %d, %Y at %H:%M") if qr.last_scan_at else "Not yet scanned"
-        
-        # Handle short_id extraction for dynamic QR codes
-        short_id = None
-        short_url = None
-        if qr.qr_type == "dynamic" and '/r/' in qr.content:
-            # Handle both cases with and without query parameters
-            path_part = qr.content.split('/r/')[-1]
-            short_id = path_part.split('?')[0] if '?' in path_part else path_part
-            short_url = f"{settings.BASE_URL}/r/{short_id}"
-        
-        # Format error level for display (uppercase)
-        error_level_display = qr.error_level.upper() if qr.error_level else "M"
-        
-        # Check if the QR code has been scanned
-        has_scan_data = qr.scan_count > 0 if hasattr(qr, 'scan_count') else False
-        
-        return templates.TemplateResponse(
-            "fragments/qr_detail.html",
-            {
-                "request": request,
-                "qr": qr,
-                "created_at_formatted": created_at_formatted,
-                "last_scan_formatted": last_scan_formatted,
-                "short_id": short_id,
-                "short_url": short_url,
-                "error_level_display": error_level_display,
-                "has_scan_data": has_scan_data,
-                "success_message": "QR Code updated successfully!"
-            }
+        # Create a response with an HX-Redirect header to the analytics page
+        response = HTMLResponse(
+            content="QR Code updated successfully. Redirecting to analytics page...",
+            status_code=200
         )
+        response.headers["HX-Redirect"] = f"/qr/{qr_id}/analytics"
+        return response
     except QRCodeNotFoundError:
         return templates.TemplateResponse(
             "fragments/error.html",
@@ -451,29 +441,58 @@ async def update_qr_code(
             status_code=404,
         )
     except ValidationError as e:
-        # Get the original QR code for the form
-        try:
-            qr = qr_service.get_qr_by_id(qr_id)
-            return templates.TemplateResponse(
-                "fragments/qr_edit.html",
-                {
-                    "request": request,
-                    "qr": qr,
-                    "redirect_url": redirect_url,
-                    "title": title,
-                    "description": description,
-                    "error_messages": e.errors()
-                }
-            )
-        except Exception:
-            return templates.TemplateResponse(
-                "fragments/error.html",
-                {
-                    "request": request,
-                    "error": "An error occurred while retrieving the QR code for editing."
-                },
-                status_code=500,
-            )
+        # Determine whether the request came from the edit form on the analytics page
+        # or from the modal edit form (checking the hx-target header)
+        hx_target = request.headers.get("HX-Target", "")
+        
+        if "qr-edit-form-container" in hx_target:
+            # Request came from analytics page form
+            try:
+                qr = qr_service.get_qr_by_id(qr_id)
+                return templates.TemplateResponse(
+                    "fragments/qr_edit_form.html",
+                    {
+                        "request": request,
+                        "qr": qr,
+                        "redirect_url": redirect_url,
+                        "title": title,
+                        "description": description,
+                        "error_messages": e.errors()
+                    }
+                )
+            except Exception:
+                return templates.TemplateResponse(
+                    "fragments/error.html",
+                    {
+                        "request": request,
+                        "error": "An error occurred while retrieving the QR code for editing."
+                    },
+                    status_code=500,
+                )
+        else:
+            # Default to modal form response
+            try:
+                qr = qr_service.get_qr_by_id(qr_id)
+                return templates.TemplateResponse(
+                    "fragments/qr_edit.html",
+                    {
+                        "request": request,
+                        "qr": qr,
+                        "redirect_url": redirect_url,
+                        "title": title,
+                        "description": description,
+                        "error_messages": e.errors()
+                    }
+                )
+            except Exception:
+                return templates.TemplateResponse(
+                    "fragments/error.html",
+                    {
+                        "request": request,
+                        "error": "An error occurred while retrieving the QR code for editing."
+                    },
+                    status_code=500,
+                )
     except Exception as e:
         logger.error(f"Error updating QR code: {str(e)}")
         return templates.TemplateResponse(
@@ -518,4 +537,226 @@ async def get_pagination_fragment(
             "total_pages": total_pages,
             "resource": resource
         }
-    ) 
+    )
+
+@router.get("/qr/{qr_id}/analytics/device-stats", response_class=HTMLResponse)
+async def get_device_stats_fragment(
+    request: Request,
+    qr_id: str,
+    qr_service: QRServiceDep,
+    genuine_only: bool = False,
+):
+    """
+    Get the device, browser, and OS statistics fragment for a specific QR code.
+    
+    Args:
+        request: The FastAPI request object.
+        qr_id: The ID of the QR code to get statistics for.
+        qr_service: The QR code service.
+        genuine_only: Whether to include only genuine scans in the statistics.
+        
+    Returns:
+        HTMLResponse: The rendered device/browser/OS statistics fragment.
+    """
+    try:
+        # Get device statistics from repository
+        device_stats = qr_service.repository.get_device_statistics(qr_id)
+        
+        # Get browser statistics from repository
+        browser_stats = qr_service.repository.get_browser_statistics(qr_id)
+        
+        # Get OS statistics from repository
+        os_stats = qr_service.repository.get_os_statistics(qr_id)
+        
+        # Combine all statistics
+        stats = {
+            "device_types": device_stats.get("device_types", {}),
+            "device_families": device_stats.get("device_families", {}),
+            "browser_families": browser_stats.get("browser_families", {}),
+            "os_families": os_stats.get("os_families", {})
+        }
+        
+        # Calculate totals for percentage calculations
+        device_total = sum(stats["device_types"].values())
+        
+        return templates.TemplateResponse(
+            "fragments/device_os_browser_stats.html",
+            {
+                "request": request,
+                "qr_id": qr_id,
+                "stats": stats,
+                "device_total": device_total,
+                "genuine_only": genuine_only
+            }
+        )
+    except QRCodeNotFoundError:
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": f"QR code with ID {qr_id} not found."
+            },
+            status_code=404,
+        )
+    except DatabaseError as e:
+        logger.error(f"Database error retrieving device statistics for QR {qr_id}: {str(e)}")
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": "An error occurred while retrieving device statistics."
+            },
+            status_code=500,
+        )
+
+@router.get("/qr/{qr_id}/analytics/scan-timeseries")
+async def get_scan_timeseries(
+    qr_id: str,
+    qr_service: QRServiceDep,
+    time_range: str = "last7days",
+):
+    """
+    Get time series data for QR code scans for chart visualization.
+    
+    Args:
+        qr_id: The ID of the QR code to get time series data for.
+        qr_service: The QR code service.
+        time_range: Time range for data ("today", "yesterday", "last7days", 
+                   "last30days", "thisMonth", "lastMonth", "allTime")
+        
+    Returns:
+        JSON response with time series data for chart rendering.
+    """
+    try:
+        # Get time series data from repository
+        time_series_data = qr_service.repository.get_scan_timeseries(
+            qr_id=qr_id,
+            time_range=time_range
+        )
+        
+        return time_series_data
+    except QRCodeNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"QR code with ID {qr_id} not found"
+        )
+    except DatabaseError as e:
+        logger.error(f"Database error retrieving time series data for QR {qr_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while retrieving time series data"
+        )
+
+@router.get("/qr/{qr_id}/download-options", response_class=HTMLResponse)
+async def get_qr_download_options_fragment(
+    request: Request,
+    qr_id: str,
+    qr_service: QRServiceDep,
+):
+    """
+    Get the download options fragment for a specific QR code.
+    
+    Args:
+        request: The FastAPI request object.
+        qr_id: The ID of the QR code.
+        qr_service: The QR code service.
+        
+    Returns:
+        HTMLResponse: The rendered QR download options fragment.
+    """
+    try:
+        qr = qr_service.get_qr_by_id(qr_id)
+        
+        return templates.TemplateResponse(
+            "fragments/qr_download_options.html",
+            {
+                "request": request,
+                "qr": qr,
+            }
+        )
+    except QRCodeNotFoundError:
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": f"QR code with ID {qr_id} not found"
+            },
+            status_code=404,
+        )
+    except Exception as e:
+        logger.error(f"Error getting QR download options: {str(e)}")
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": "Unable to load QR download options"
+            },
+            status_code=500,
+        )
+
+@router.get("/qr-edit-form/{qr_id}", response_class=HTMLResponse)
+async def get_qr_edit_form_fragment(
+    request: Request,
+    qr_id: str,
+    qr_service: QRServiceDep,
+):
+    """
+    Get the QR code edit form fragment for the analytics page.
+    
+    Args:
+        request: The FastAPI request object.
+        qr_id: The ID of the QR code.
+        qr_service: The QR code service.
+        
+    Returns:
+        HTMLResponse: The rendered QR edit form fragment.
+    """
+    try:
+        # Get the QR code
+        qr = qr_service.get_qr_by_id(qr_id)
+        
+        # Return the edit form fragment
+        return templates.TemplateResponse(
+            "fragments/qr_edit_form.html",
+            {
+                "request": request,
+                "qr": qr,
+            }
+        )
+    except QRCodeNotFoundError:
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": f"QR code with ID {qr_id} not found."
+            },
+            status_code=404,
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving QR code for editing: {str(e)}")
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": f"An error occurred while retrieving the QR code: {str(e)}"
+            },
+            status_code=500,
+        )
+
+@router.get("/qr-edit-form-cancel/{qr_id}", response_class=HTMLResponse)
+async def cancel_qr_edit_form(
+    request: Request,
+    qr_id: str,
+):
+    """
+    Cancel the QR code edit form and return an empty response.
+    
+    Args:
+        request: The FastAPI request object.
+        qr_id: The ID of the QR code.
+        
+    Returns:
+        HTMLResponse: An empty response to clear the form container.
+    """
+    # Return an empty response to clear the form container
+    return HTMLResponse(content="") 

@@ -1,0 +1,92 @@
+<!-- QR Code Edit Form Fragment -->
+<form
+  hx-post="/api/v1/fragments/qr-update/{{ qr.id }}"
+  hx-target="#qr-edit-form-container"
+  hx-indicator="#loading-indicator"
+  class="card border mb-4"
+>
+  <div class="card-header bg-light d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Edit QR Code</h5>
+    <button type="button" class="btn btn-sm btn-outline-secondary" 
+            hx-get="/api/v1/fragments/qr-edit-form-cancel/{{ qr.id }}"
+            hx-target="#qr-edit-form-container">
+      <i class="bi bi-x"></i> Cancel
+    </button>
+  </div>
+  
+  <div class="card-body">
+    {% if error_messages %}
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        {% for error in error_messages %}
+          <li>{{ error.loc[0] }}: {{ error.msg }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    
+    <div class="mb-3">
+      <label for="title" class="form-label">Title</label>
+      <input 
+        type="text" 
+        id="title" 
+        name="title" 
+        class="form-control" 
+        value="{{ title or qr.title or '' }}"
+        placeholder="My QR Code"
+        maxlength="100"
+      >
+      <div class="form-text">
+        Update the descriptive title for this QR code
+      </div>
+    </div>
+    
+    <div class="mb-3">
+      <label for="description" class="form-label">Description</label>
+      <textarea 
+        id="description" 
+        name="description" 
+        class="form-control"
+        placeholder="Optional description for this QR code"
+        maxlength="500"
+      >{{ description or qr.description or '' }}</textarea>
+      <div class="form-text">
+        Update the optional description for this QR code
+      </div>
+    </div>
+    
+    {% if qr.qr_type == "dynamic" %}
+    <div class="mb-3">
+      <label for="redirect_url" class="form-label">Redirect URL</label>
+      <input 
+        type="url" 
+        id="redirect_url" 
+        name="redirect_url" 
+        class="form-control" 
+        value="{{ redirect_url or qr.redirect_url }}"
+        placeholder="https://example.com"
+      >
+      <div class="form-text">
+        Update where users will be redirected when scanning this QR code
+      </div>
+    </div>
+    {% endif %}
+    
+    <div class="text-center mt-4">
+      <img src="/api/v1/qr/{{ qr.id }}/image?image_format=png&size=10" alt="QR Code" class="img-fluid border" style="width: 200px; height: 200px; object-fit: contain;">
+      <div class="form-text">
+        <i class="bi bi-info-circle"></i>
+        The QR code appearance won't change, but the metadata will be updated.
+      </div>
+    </div>
+  </div>
+  
+  <div class="card-footer bg-light d-flex justify-content-end">
+    <div id="loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary me-3" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-check2 me-1"></i> Save Changes
+    </button>
+  </div>
+</form> 

@@ -1,0 +1,702 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - QR Code Generator{% endblock %}
+{% block description %}Comprehensive analytics for QR code - View scan statistics, device usage, and performance metrics{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js library will be added here -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .qr-preview-container {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .qr-preview-container img {
+    border: 1px solid #e9e9e9;
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Fixed chart container height to prevent expansion */
+  .chart-container {
+    height: 450px;
+    max-height: 450px;
+    position: relative;
+    overflow: hidden;
+    padding-bottom: 20px; /* Add padding at the bottom for x-axis labels */
+  }
+
+  .card-footer {
+    margin-top: 10px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Main content column -->
+<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <!-- Page-level loading indicator for HTMX operations -->
+    <div id="page-loading-indicator" class="htmx-indicator position-fixed top-0 start-0 end-0" style="z-index: 9999;">
+        <div class="progress" style="height: 3px; border-radius: 0;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width: 100%"></div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">QR Code Analytics</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="/qr-list" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>
+                    Back to List
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-download me-1"></i>
+                    Export
+                </button>
+            </div>
+            <!-- Alpine.js Date Range Selector -->
+            <div x-data="{ 
+                open: false,
+                range: 'last7days',
+                ranges: {
+                    'today': 'Today',
+                    'yesterday': 'Yesterday',
+                    'last7days': 'Last 7 Days',
+                    'last30days': 'Last 30 Days',
+                    'thisMonth': 'This Month',
+                    'lastMonth': 'Last Month',
+                    'allTime': 'All Time'
+                },
+                setRange(key) {
+                    this.range = key;
+                    this.open = false;
+                    // Trigger chart data refresh when range changes
+                    if (typeof fetchChartData === 'function') {
+                        fetchChartData(key);
+                    }
+                }
+            }">
+                <button type="button" 
+                        class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                        @click="open = !open">
+                    <i class="bi bi-calendar me-1"></i>
+                    <span x-text="ranges[range]">Last 7 Days</span>
+                </button>
+                <div class="dropdown-menu shadow-sm" 
+                     :class="{'show': open}"
+                     style="position: absolute; z-index: 1000;"
+                     @click.outside="open = false">
+                    <template x-for="(label, key) in ranges" :key="key">
+                        <a class="dropdown-item" 
+                           href="#" 
+                           @click.prevent="setRange(key)"
+                           :class="{'active': range === key}"
+                           :data-range="key">
+                            <span x-text="label"></span>
+                        </a>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Info Card -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <div class="flex-shrink-0 me-3">
+                            <img src="/api/v1/qr/{{ qr.id }}/image?size=150&include_logo=false" alt="QR Code" class="img-fluid" width="100">
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="card-title">{{ qr.title or "Untitled QR Code" }}</h5>
+                            <p class="card-text text-muted small mb-1">{{ qr.description or "No description" }}</p>
+                            {% if qr.qr_type == 'dynamic' %}
+                            <div class="input-group input-group-sm mt-2">
+                                <input type="text" class="form-control" value="{{ qr.content }}" readonly id="shortUrlInput">
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('shortUrlInput')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            {% else %}
+                            <div class="input-group input-group-sm mt-2">
+                                <input type="text" class="form-control" value="{{ qr.content }}" readonly id="contentInput">
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('contentInput')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <!-- QR Code Edit Button (only for dynamic QR codes) -->
+                    {% if qr.qr_type == 'dynamic' %}
+                    <div class="text-end">
+                        <button
+                          class="btn btn-outline-secondary btn-sm"
+                          hx-get="/api/v1/fragments/qr-edit-form/{{ qr.id }}"
+                          hx-target="#qr-edit-form-container"
+                          hx-swap="innerHTML"
+                          hx-indicator="#page-loading-indicator"
+                        >
+                          <i class="bi bi-pencil me-1"></i> Edit QR Details
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Summary Cards -->
+        <div class="col-md-8">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <div class="card border h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 bg-primary text-white rounded-circle p-2 me-3">
+                                    <i class="bi bi-eye"></i>
+                                </div>
+                                <div>
+                                    <h2 class="fs-4 fw-bold mb-0">{{ qr.scan_count or 0 }}</h2>
+                                    <p class="text-muted small mb-0">Total Scans</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 bg-success text-white rounded-circle p-2 me-3">
+                                    <i class="bi bi-qr-code-scan"></i>
+                                </div>
+                                <div>
+                                    <h2 class="fs-4 fw-bold mb-0">{{ qr.genuine_scan_count or 0 }}</h2>
+                                    <p class="text-muted small mb-0">Genuine Scans</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 bg-info text-white rounded-circle p-2 me-3">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <div>
+                                    <h2 class="fs-4 fw-bold mb-0">{{ qr.last_genuine_scan_at|default("N/A") }}</h2>
+                                    <p class="text-muted small mb-0">Last Genuine Scan</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Form Container -->
+    <div id="qr-edit-form-container"></div>
+
+    <!-- QR Download Options -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <!-- QR Code Preview Card -->
+            <div class="card mb-3">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Preview</h6>
+                    <span class="badge rounded-pill text-bg-{{ 'primary' if qr.qr_type == 'dynamic' else 'secondary' }}">
+                        {{ qr.qr_type|title }}
+                    </span>
+                </div>
+                <div class="card-body text-center p-3">
+                    <!-- Add preview logo checkbox -->
+                    <div class="form-check form-switch d-flex justify-content-center align-items-center mb-2">
+                        <input class="form-check-input me-2" type="checkbox" id="previewIncludeLogo" checked>
+                        <label class="form-check-label" for="previewIncludeLogo">Show logo in preview</label>
+                    </div>
+                    <div class="qr-preview-container mb-2">
+                        <img id="qrPreviewImage" src="/api/v1/qr/{{ qr.id }}/image?format=png&size=20&include_logo=true&error_level=h" alt="QR Code" class="img-fluid" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <!-- Download Options - loaded dynamically via HTMX -->
+            <div id="download-options-container"
+                 hx-get="/api/v1/fragments/qr/{{ qr.id }}/download-options"
+                 hx-trigger="load"
+                 hx-indicator=".download-options-indicator">
+                <div class="download-options-indicator">
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Download Options</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                            <p class="text-center mt-3 text-muted">Loading download options...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Content -->
+    <div class="row g-4 mb-4">
+        <!-- Chart Area with Alpine.js State Management -->
+        <div class="col-md-8">
+            <div id="time-series-chart-container" 
+                 class="card border"
+                 x-data="{ 
+                    loading: true,
+                    chartType: 'line',
+                    showGenuineScans: true,
+                    showAllScans: true,
+                    toggleChart(type) {
+                        this.chartType = type;
+                        // In a real implementation, this would regenerate the chart
+                        console.log('Chart type changed to:', type);
+                    },
+                    toggleDataSeries(series) {
+                        if (series === 'genuine') {
+                            this.showGenuineScans = !this.showGenuineScans;
+                        } else {
+                            this.showAllScans = !this.showAllScans;
+                        }
+                        // In a real implementation, this would update visible datasets
+                        console.log('Data visibility updated:', { 
+                            genuine: this.showGenuineScans, 
+                            all: this.showAllScans 
+                        });
+                    }
+                 }">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Scan Activity Over Time</h5>
+                    <!-- Chart Controls -->
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" 
+                                class="btn btn-light" 
+                                :class="{ 'active': chartType === 'line' }"
+                                @click="toggleChart('line')">
+                            <i class="bi bi-graph-up"></i>
+                        </button>
+                        <button type="button" 
+                                class="btn btn-light" 
+                                :class="{ 'active': chartType === 'bar' }"
+                                @click="toggleChart('bar')">
+                            <i class="bi bi-bar-chart"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Only show the loading indicator when loading is true -->
+                    <div class="chart-container" x-show="$store.chartData.loading">
+                        <div class="d-flex justify-content-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <p class="text-center mt-3 text-muted">Loading chart data...</p>
+                    </div>
+                    
+                    <!-- Chart placeholder - would be initialized by Chart.js -->
+                    <div class="chart-container" x-show="!$store.chartData.loading">
+                        <div class="d-flex mb-3">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" x-model="$store.chartData.showAllScans" id="showAllScans" checked>
+                                <label class="form-check-label" for="showAllScans">
+                                    <span class="badge text-bg-primary">All Scans</span>
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" x-model="$store.chartData.showGenuineScans" id="showGenuineScans" checked>
+                                <label class="form-check-label" for="showGenuineScans">
+                                    <span class="badge text-bg-success">Genuine Scans</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Error message display -->
+                        <div class="alert" 
+                             x-show="$store.chartData.error" 
+                             x-text="$store.chartData.error"
+                             :class="{
+                                 'alert-danger': $store.chartData.errorType === 'danger',
+                                 'alert-warning': $store.chartData.errorType === 'warning'
+                             }"></div>
+                        
+                        <!-- Canvas for the chart -->
+                        <canvas id="scanActivityChart" height="400" x-show="!$store.chartData.error"></canvas>
+                    </div>
+                </div>
+                <div class="card-footer bg-light d-flex justify-content-between" x-show="!loading">
+                    <small class="text-muted">Chart Type: <span x-text="chartType === 'line' ? 'Line Chart' : 'Bar Chart'"></span></small>
+                    <small class="text-muted">Last Updated: <span>Just now</span></small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Device Stats Area - Will be populated by Task 1.3 (Device/Browser/OS Stats Fragment) -->
+        <div class="col-md-4">
+            <div id="device-stats-container"
+                 hx-get="/api/v1/fragments/qr/{{ qr.id }}/analytics/device-stats"
+                 hx-trigger="load delay:200ms"
+                 hx-indicator=".stats-indicator">
+                <div class="stats-indicator">
+                    <div class="card border">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">Device Breakdown</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                            <p class="text-center mt-3 text-muted">Loading device statistics...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Placeholder for additional analytics sections -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <!-- Scan Logs Container -->
+            <div id="scan-logs-container" 
+                 hx-get="/api/v1/fragments/qr/{{ qr.id }}/analytics/scan-logs" 
+                 hx-trigger="load"
+                 hx-indicator=".htmx-indicator">
+                <!-- Loading indicator -->
+                <div class="card border mb-4 htmx-indicator">
+                    <div class="card-header">
+                        <h5 class="mb-0">Scan Logs</h5>
+                    </div>
+                    <div class="card-body py-5">
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <p class="text-center mt-3 text-muted">Loading scan logs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Helper function to copy text to clipboard
+    function copyToClipboard(elementId) {
+        const copyText = document.getElementById(elementId);
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); // For mobile devices
+        
+        navigator.clipboard.writeText(copyText.value)
+            .then(() => {
+                // Show success toast
+                const toast = document.createElement('div');
+                toast.classList.add('toast', 'align-items-center', 'text-white', 'bg-success', 'border-0', 'position-fixed', 'top-0', 'end-0', 'm-3');
+                toast.setAttribute('role', 'alert');
+                toast.setAttribute('aria-live', 'assertive');
+                toast.setAttribute('aria-atomic', 'true');
+                toast.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="bi bi-check-circle me-2"></i>
+                            Copied to clipboard!
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                
+                const bsToast = new bootstrap.Toast(toast, { delay: 2000 });
+                bsToast.show();
+                
+                // Remove the toast after it's hidden
+                toast.addEventListener('hidden.bs.toast', function () {
+                    toast.remove();
+                });
+            })
+            .catch(err => {
+                console.error('Error copying text: ', err);
+            });
+    }
+
+    // QR Preview Image Handling
+    (function() {
+        console.log('QR Preview Image Handler loading...');
+        
+        // Make sure DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializePreviewImage);
+        } else {
+            // DOM already loaded, run directly
+            initializePreviewImage();
+        }
+        
+        function initializePreviewImage() {
+            console.log('Initializing QR preview image functionality');
+            
+            const previewLogoCheckbox = document.getElementById('previewIncludeLogo');
+            const previewImage = document.getElementById('qrPreviewImage');
+            
+            if (!previewLogoCheckbox || !previewImage) {
+                console.error('Missing preview elements');
+                return;
+            }
+            
+            // Initial update
+            updatePreviewImage();
+            
+            // Add event listener
+            previewLogoCheckbox.addEventListener('change', function() {
+                console.log('Preview logo checkbox changed:', this.checked);
+                updatePreviewImage();
+            });
+        }
+        
+        function updatePreviewImage() {
+            const logoCheckbox = document.getElementById('previewIncludeLogo');
+            const previewImg = document.getElementById('qrPreviewImage');
+            
+            if (!logoCheckbox || !previewImg) {
+                console.error('Missing preview elements');
+                return;
+            }
+            
+            const includeLogo = logoCheckbox.checked;
+            console.log('Updating preview image with logo:', includeLogo);
+            
+            const basePreviewUrl = `/api/v1/qr/{{ qr.id }}/image?format=png&size=20`;
+            const logoParam = includeLogo ? '&include_logo=true' : '';
+            // Set error level to H when including logo
+            const errorParam = includeLogo ? '&error_level=h' : '';
+            const fullUrl = basePreviewUrl + logoParam + errorParam;
+            
+            console.log('Setting preview image URL to:', fullUrl);
+            previewImg.src = fullUrl;
+        }
+    })();
+
+    // Alpine JS and Chart JS Integration
+    document.addEventListener('alpine:init', () => {
+        // Add Alpine data stores and initialization here
+        Alpine.store('chartData', {
+            labels: [],
+            allScans: [],
+            genuineScans: [],
+            loading: true,
+            error: null,
+            errorType: null,
+            timeRange: 'last7days',
+            showAllScans: true,
+            showGenuineScans: true
+        });
+    });
+
+    // Initialize the chart and fetch real data
+    document.addEventListener('DOMContentLoaded', function() {
+        // Access Alpine data component
+        const chartContainer = document.getElementById('time-series-chart-container');
+        if (!chartContainer) return;
+        
+        // Create chart context
+        const chartElement = document.getElementById('scanActivityChart');
+        if (!chartElement) return;
+        const ctx = chartElement.getContext('2d');
+        
+        // Initialize the chart with empty data
+        const scanChart = new Chart(ctx, {
+            type: 'line', // Default type, will be changed by Alpine
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'All Scans',
+                        data: [],
+                        backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                        borderColor: 'rgba(13, 110, 253, 1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Genuine Scans',
+                        data: [],
+                        backgroundColor: 'rgba(25, 135, 84, 0.2)',
+                        borderColor: 'rgba(25, 135, 84, 1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        bottom: 15 // Add padding at the bottom
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            borderDash: [2, 4],
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            padding: 10 // Add padding to x-axis ticks
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                }
+            }
+        });
+        
+        // Store the chart instance for future reference
+        window.scanChart = scanChart;
+        
+        // Function to fetch chart data - make it globally accessible
+        window.fetchChartData = function(timeRange) {
+            // Set loading state
+            Alpine.store('chartData').loading = true;
+            
+            // Fetch data from API
+            fetch(`/api/v1/fragments/qr/{{ qr.id }}/analytics/scan-timeseries?time_range=${timeRange}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Chart data received:', data);
+                    
+                    // Check if there's any data
+                    const hasData = data.datasets.all_scans.some(val => val > 0) || 
+                                   data.datasets.genuine_scans.some(val => val > 0);
+                    
+                    if (!hasData) {
+                        // Show no data message with warning style
+                        Alpine.store('chartData').error = 'No scan data available for the selected time period';
+                        Alpine.store('chartData').errorType = 'warning';
+                    } else {
+                        // Update Alpine store
+                        Alpine.store('chartData').labels = data.labels;
+                        Alpine.store('chartData').allScans = data.datasets.all_scans;
+                        Alpine.store('chartData').genuineScans = data.datasets.genuine_scans;
+                        Alpine.store('chartData').timeRange = data.time_range;
+                        Alpine.store('chartData').error = null;
+                        Alpine.store('chartData').errorType = null;
+                        
+                        // Update chart data
+                        scanChart.data.labels = data.labels;
+                        scanChart.data.datasets[0].data = data.datasets.all_scans;
+                        scanChart.data.datasets[1].data = data.datasets.genuine_scans;
+                        scanChart.update();
+                    }
+                    
+                    // Hide loading indicator
+                    Alpine.store('chartData').loading = false;
+                })
+                .catch(error => {
+                    console.error('Error fetching chart data:', error);
+                    
+                    // Update Alpine store with error and error type
+                    Alpine.store('chartData').error = 'Failed to load chart data';
+                    Alpine.store('chartData').errorType = 'danger';
+                    Alpine.store('chartData').loading = false;
+                });
+        };
+        
+        // Set up Alpine.js event listeners
+        const alpine = Alpine.evaluate(chartContainer, 'chartType');
+        if (alpine) {
+            // Update the chart type when the Alpine property changes
+            Alpine.effect(() => {
+                const newType = Alpine.evaluate(chartContainer, 'chartType');
+                scanChart.config.type = newType;
+                scanChart.update();
+            });
+            
+            // Update dataset visibility based on checkboxes
+            Alpine.effect(() => {
+                const showAll = Alpine.store('chartData').showAllScans;
+                scanChart.data.datasets[0].hidden = !showAll;
+                scanChart.update();
+            });
+            
+            Alpine.effect(() => {
+                const showGenuine = Alpine.store('chartData').showGenuineScans;
+                scanChart.data.datasets[1].hidden = !showGenuine;
+                scanChart.update();
+            });
+        }
+        
+        // Fetch initial data
+        fetchChartData('last7days');
+        
+        // Set up date range dropdown listener
+        document.addEventListener('click', function(e) {
+            // Check if clicked element is a date range dropdown item
+            if (e.target && e.target.closest('.dropdown-item') && e.target.closest('.dropdown-menu')) {
+                const rangeKey = e.target.closest('.dropdown-item').getAttribute('x-data-range');
+                if (rangeKey) {
+                    fetchChartData(rangeKey);
+                }
+            }
+        });
+        
+        // Add data-range attributes to dropdown items
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            const rangeText = item.textContent.trim();
+            let rangeKey = '';
+            
+            // Map text to range key
+            switch (rangeText) {
+                case 'Today': rangeKey = 'today'; break;
+                case 'Yesterday': rangeKey = 'yesterday'; break;
+                case 'Last 7 Days': rangeKey = 'last7days'; break;
+                case 'Last 30 Days': rangeKey = 'last30days'; break;
+                case 'This Month': rangeKey = 'thisMonth'; break;
+                case 'Last Month': rangeKey = 'lastMonth'; break;
+                case 'All Time': rangeKey = 'allTime'; break;
+            }
+            
+            if (rangeKey) {
+                item.setAttribute('x-data-range', rangeKey);
+            }
+        });
+    });
+</script>
+{% endblock %} 

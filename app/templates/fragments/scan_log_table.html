@@ -1,0 +1,130 @@
+<!-- Scan log table fragment for QR Analytics Page -->
+<div class="card border mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Scan Logs</h5>
+        <div>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-primary {% if not genuine_only %}active{% endif %}" id="all-scans-btn"
+                        hx-get="/api/v1/fragments/qr/{{ qr_id }}/analytics/scan-logs"
+                        hx-target="#scan-logs-container">
+                    All Scans
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary {% if genuine_only %}active{% endif %}" id="genuine-scans-btn"
+                        hx-get="/api/v1/fragments/qr/{{ qr_id }}/analytics/scan-logs?genuine_only=true"
+                        hx-target="#scan-logs-container">
+                    Genuine Scans Only
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Device</th>
+                        <th>OS</th>
+                        <th>Browser</th>
+                        <th>Type</th>
+                        <th>Genuine</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if scan_logs %}
+                        {% for log in scan_logs %}
+                            <tr>
+                                <td>{{ log.scanned_at }}</td>
+                                <td>
+                                    {% if log.is_mobile %}
+                                        <i class="bi bi-phone me-1" title="Mobile"></i>
+                                    {% elif log.is_tablet %}
+                                        <i class="bi bi-tablet me-1" title="Tablet"></i>
+                                    {% elif log.is_pc %}
+                                        <i class="bi bi-laptop me-1" title="PC"></i>
+                                    {% elif log.is_bot %}
+                                        <i class="bi bi-robot me-1" title="Bot"></i>
+                                    {% else %}
+                                        <i class="bi bi-question-circle me-1" title="Unknown"></i>
+                                    {% endif %}
+                                    {{ log.device_family }}
+                                </td>
+                                <td>{{ log.os_family }} {{ log.os_version }}</td>
+                                <td>{{ log.browser_family }} {{ log.browser_version }}</td>
+                                <td>
+                                    {% if log.is_mobile %}
+                                        <span class="badge bg-primary">Mobile</span>
+                                    {% elif log.is_tablet %}
+                                        <span class="badge bg-info">Tablet</span>
+                                    {% elif log.is_pc %}
+                                        <span class="badge bg-secondary">PC</span>
+                                    {% elif log.is_bot %}
+                                        <span class="badge bg-warning">Bot</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">Unknown</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if log.is_genuine_scan %}
+                                        <span class="badge bg-success">Yes</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-3">No scan logs found.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if total_logs > 0 and total_pages > 1 %}
+    <div class="card-footer bg-white border-top-0">
+        <nav aria-label="Scan log pagination">
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+                <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                    <a class="page-link" 
+                       hx-get="/api/v1/fragments/qr/{{ qr_id }}/analytics/scan-logs?page={{ page - 1 }}{% if genuine_only %}&genuine_only=true{% endif %}"
+                       hx-target="#scan-logs-container"
+                       {% if page == 1 %}tabindex="-1" aria-disabled="true"{% endif %}>
+                        Previous
+                    </a>
+                </li>
+                
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p == page %}
+                        <li class="page-item active" aria-current="page">
+                            <span class="page-link">{{ p }}</span>
+                        </li>
+                    {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+                        <li class="page-item">
+                            <a class="page-link" 
+                               hx-get="/api/v1/fragments/qr/{{ qr_id }}/analytics/scan-logs?page={{ p }}{% if genuine_only %}&genuine_only=true{% endif %}"
+                               hx-target="#scan-logs-container">
+                                {{ p }}
+                            </a>
+                        </li>
+                    {% elif p == 4 and page > 4 or p == total_pages - 3 and page < total_pages - 3 %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                    <a class="page-link" 
+                       hx-get="/api/v1/fragments/qr/{{ qr_id }}/analytics/scan-logs?page={{ page + 1 }}{% if genuine_only %}&genuine_only=true{% endif %}"
+                       hx-target="#scan-logs-container"
+                       {% if page == total_pages %}tabindex="-1" aria-disabled="true"{% endif %}>
+                        Next
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div> 

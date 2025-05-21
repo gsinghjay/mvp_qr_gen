@@ -620,4 +620,283 @@ class QRCodeRepository(BaseRepository[QRCode]):
             }
         except SQLAlchemyError as e:
             logger.error(f"Database error retrieving OS statistics for QR code {qr_id}: {str(e)}")
-            raise DatabaseError(f"Database error retrieving OS statistics: {str(e)}") 
+            raise DatabaseError(f"Database error retrieving OS statistics: {str(e)}")
+
+    def get_scan_timeseries(
+        self,
+        qr_id: str,
+        time_range: str = "last7days",
+    ) -> Dict[str, Any]:
+        """
+        Get time series data for QR code scans.
+        
+        Args:
+            qr_id: ID of the QR code to get time series data for
+            time_range: Time range for data ("today", "yesterday", "last7days", 
+                       "last30days", "thisMonth", "lastMonth", "allTime")
+            
+        Returns:
+            Dictionary with time series data for chart rendering
+            
+        Raises:
+            DatabaseError: If a database error occurs
+        """
+        try:
+            from sqlalchemy import func, extract, cast, Date, text
+            from datetime import datetime, timedelta, UTC
+            
+            # Verify QR code exists
+            qr = self.get_by_id(qr_id)
+            if not qr:
+                raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
+            
+            # Calculate date ranges based on time_range
+            now = datetime.now(UTC)
+            
+            if time_range == "today":
+                start_date = datetime(now.year, now.month, now.day, tzinfo=UTC)
+                end_date = now
+                interval = "hour"
+                format_str = "%H:00"  # Hour format
+            elif time_range == "yesterday":
+                yesterday = now - timedelta(days=1)
+                start_date = datetime(yesterday.year, yesterday.month, yesterday.day, tzinfo=UTC)
+                end_date = datetime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59, tzinfo=UTC)
+                interval = "hour"
+                format_str = "%H:00"  # Hour format
+            elif time_range == "last7days":
+                start_date = now - timedelta(days=7)
+                end_date = now
+                interval = "day"
+                format_str = "%m-%d"  # Month-day format
+            elif time_range == "last30days":
+                start_date = now - timedelta(days=30)
+                end_date = now
+                interval = "day"
+                format_str = "%m-%d"  # Month-day format
+            elif time_range == "thisMonth":
+                start_date = datetime(now.year, now.month, 1, tzinfo=UTC)
+                end_date = now
+                interval = "day"
+                format_str = "%d"  # Day format
+            elif time_range == "lastMonth":
+                last_month = now.month - 1 if now.month > 1 else 12
+                last_month_year = now.year if now.month > 1 else now.year - 1
+                start_date = datetime(last_month_year, last_month, 1, tzinfo=UTC)
+                # Last day of last month
+                if last_month == 12:
+                    end_date = datetime(last_month_year, 12, 31, 23, 59, 59, tzinfo=UTC)
+                else:
+                    end_date = datetime(now.year, now.month, 1, tzinfo=UTC) - timedelta(seconds=1)
+                interval = "day"
+                format_str = "%d"  # Day format
+            else:  # allTime or default
+                # Get first scan date or 90 days ago, whichever is more recent
+                first_scan = self.db.query(func.min(ScanLog.scanned_at)).filter(
+                    ScanLog.qr_code_id == qr_id
+                ).scalar()
+                
+                if first_scan:
+                    start_date = first_scan
+                else:
+                    start_date = now - timedelta(days=90)  # Default to 90 days if no scans
+                    
+                end_date = now
+                
+                # Choose interval based on date range
+                days_diff = (end_date - start_date).days
+                if days_diff <= 7:
+                    interval = "day"
+                    format_str = "%m-%d"
+                elif days_diff <= 60:
+                    interval = "week"
+                    format_str = "Week %W"
+                else:
+                    interval = "month"
+                    format_str = "%b %Y"
+            
+            # Build query based on interval
+            if interval == "hour":
+                # Group by hour
+                all_scans_query = self.db.query(
+                    extract('hour', ScanLog.scanned_at).label('time_unit'),
+                    func.count().label('count')
+                ).filter(
+                    ScanLog.qr_code_id == qr_id,
+                    ScanLog.scanned_at >= start_date,
+                    ScanLog.scanned_at <= end_date
+                ).group_by('time_unit').order_by('time_unit')
+                
+                genuine_scans_query = self.db.query(
+                    extract('hour', ScanLog.scanned_at).label('time_unit'),
+                    func.count().label('count')
+                ).filter(
+                    ScanLog.qr_code_id == qr_id,
+                    ScanLog.scanned_at >= start_date,
+                    ScanLog.scanned_at <= end_date,
+                    ScanLog.is_genuine_scan == True
+                ).group_by('time_unit').order_by('time_unit')
+                
+                # Generate all hours in range for complete dataset
+                all_hours = list(range(24))
+                labels = [f"{h:02d}:00" for h in all_hours]
+                
+            elif interval == "day":
+                # Group by day
+                all_scans_query = self.db.query(
+                    cast(ScanLog.scanned_at, Date).label('time_unit'),
+                    func.count().label('count')
+                ).filter(
+                    ScanLog.qr_code_id == qr_id,
+                    ScanLog.scanned_at >= start_date,
+                    ScanLog.scanned_at <= end_date
+                ).group_by('time_unit').order_by('time_unit')
+                
+                genuine_scans_query = self.db.query(
+                    cast(ScanLog.scanned_at, Date).label('time_unit'),
+                    func.count().label('count')
+                ).filter(
+                    ScanLog.qr_code_id == qr_id,
+                    ScanLog.scanned_at >= start_date,
+                    ScanLog.scanned_at <= end_date,
+                    ScanLog.is_genuine_scan == True
+                ).group_by('time_unit').order_by('time_unit')
+                
+                # Generate all days in range for complete dataset
+                days_diff = (end_date - start_date).days + 1
+                labels = [(start_date + timedelta(days=i)).strftime(format_str) for i in range(days_diff)]
+                
+            elif interval == "week":
+                # Group by week
+                all_scans_query = self.db.query(
+                    extract('year', ScanLog.scanned_at).label('year'),
+                    extract('week', ScanLog.scanned_at).label('week'),
+                    func.count().label('count')
+                ).filter(
+                    ScanLog.qr_code_id == qr_id,
+                    ScanLog.scanned_at >= start_date,
+                    ScanLog.scanned_at <= end_date
+                ).group_by('year', 'week').order_by('year', 'week')
+                
+                genuine_scans_query = self.db.query(
+                    extract('year', ScanLog.scanned_at).label('year'),
+                    extract('week', ScanLog.scanned_at).label('week'),
+                    func.count().label('count')
+                ).filter(
+                    ScanLog.qr_code_id == qr_id,
+                    ScanLog.scanned_at >= start_date,
+                    ScanLog.scanned_at <= end_date,
+                    ScanLog.is_genuine_scan == True
+                ).group_by('year', 'week').order_by('year', 'week')
+                
+                # Generate week labels
+                # This is simplified and might need adjustment for exact week boundaries
+                weeks_diff = (end_date - start_date).days // 7 + 1
+                labels = [f"Week {i+1}" for i in range(weeks_diff)]
+                
+            else:  # month
+                # Group by month
+                all_scans_query = self.db.query(
+                    extract('year', ScanLog.scanned_at).label('year'),
+                    extract('month', ScanLog.scanned_at).label('month'),
+                    func.count().label('count')
+                ).filter(
+                    ScanLog.qr_code_id == qr_id,
+                    ScanLog.scanned_at >= start_date,
+                    ScanLog.scanned_at <= end_date
+                ).group_by('year', 'month').order_by('year', 'month')
+                
+                genuine_scans_query = self.db.query(
+                    extract('year', ScanLog.scanned_at).label('year'),
+                    extract('month', ScanLog.scanned_at).label('month'),
+                    func.count().label('count')
+                ).filter(
+                    ScanLog.qr_code_id == qr_id,
+                    ScanLog.scanned_at >= start_date,
+                    ScanLog.scanned_at <= end_date,
+                    ScanLog.is_genuine_scan == True
+                ).group_by('year', 'month').order_by('year', 'month')
+                
+                # Generate month labels
+                months_diff = (end_date.year - start_date.year) * 12 + end_date.month - start_date.month + 1
+                current_date = datetime(start_date.year, start_date.month, 1, tzinfo=UTC)
+                labels = []
+                for _ in range(months_diff):
+                    labels.append(current_date.strftime("%b %Y"))
+                    # Move to next month
+                    if current_date.month == 12:
+                        current_date = datetime(current_date.year + 1, 1, 1, tzinfo=UTC)
+                    else:
+                        current_date = datetime(current_date.year, current_date.month + 1, 1, tzinfo=UTC)
+            
+            # Execute queries
+            all_scans_results = all_scans_query.all()
+            genuine_scans_results = genuine_scans_query.all()
+            
+            # Process results into datasets
+            all_scans_data = [0] * len(labels)
+            genuine_scans_data = [0] * len(labels)
+            
+            # Map results to appropriate indices
+            if interval == "hour":
+                for result in all_scans_results:
+                    hour = int(result.time_unit)
+                    if 0 <= hour < len(all_scans_data):
+                        all_scans_data[hour] = result.count
+                
+                for result in genuine_scans_results:
+                    hour = int(result.time_unit)
+                    if 0 <= hour < len(genuine_scans_data):
+                        genuine_scans_data[hour] = result.count
+                        
+            elif interval == "day":
+                # Create a mapping of date strings to indices
+                date_to_index = {date: i for i, date in enumerate(labels)}
+                
+                for result in all_scans_results:
+                    date_str = result.time_unit.strftime(format_str)
+                    if date_str in date_to_index:
+                        all_scans_data[date_to_index[date_str]] = result.count
+                
+                for result in genuine_scans_results:
+                    date_str = result.time_unit.strftime(format_str)
+                    if date_str in date_to_index:
+                        genuine_scans_data[date_to_index[date_str]] = result.count
+                        
+            elif interval == "week":
+                # For week data, we'll use simple index matching
+                # This is simplified and might need adjustment
+                for i, result in enumerate(all_scans_results):
+                    if i < len(all_scans_data):
+                        all_scans_data[i] = result.count
+                
+                for i, result in enumerate(genuine_scans_results):
+                    if i < len(genuine_scans_data):
+                        genuine_scans_data[i] = result.count
+                        
+            else:  # month
+                # For month data, we'll use simple index matching
+                # This is simplified and might need adjustment
+                for i, result in enumerate(all_scans_results):
+                    if i < len(all_scans_data):
+                        all_scans_data[i] = result.count
+                
+                for i, result in enumerate(genuine_scans_results):
+                    if i < len(genuine_scans_data):
+                        genuine_scans_data[i] = result.count
+            
+            return {
+                "labels": labels,
+                "datasets": {
+                    "all_scans": all_scans_data,
+                    "genuine_scans": genuine_scans_data
+                },
+                "interval": interval,
+                "time_range": time_range,
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat()
+            }
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Database error retrieving time series data for QR code {qr_id}: {str(e)}")
+            raise DatabaseError(f"Database error retrieving time series data: {str(e)}") 
