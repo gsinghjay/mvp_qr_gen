@@ -90,43 +90,11 @@
         </div>
     </div>
 </main>
-
-<!-- Modal for QR Code Detail -->
-<div id="qr-detail-modal" class="modal fade modal-lg" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <!-- Modal content will be loaded here by HTMX -->
-            <div class="modal-body">
-                <div class="d-flex justify-content-center">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Get the modal element
-        const modalElement = document.getElementById('qr-detail-modal');
-        
-        // Create a Bootstrap modal instance
-        const modalInstance = new bootstrap.Modal(modalElement);
-        
-        // Use event delegation to handle clicks on view buttons
-        document.addEventListener('click', function(event) {
-            // Find button with hx-get for fragment details
-            const viewButton = event.target.closest('[hx-get^="/api/v1/fragments/qr-detail/"]');
-            if (viewButton) {
-                // Show the modal before HTMX loads the content
-                modalInstance.show();
-            }
-        });
-        
         // Handle loading indicators during HTMX requests
         document.body.addEventListener('htmx:beforeRequest', function(event) {
             var loadingIndicator = document.querySelector('.spinner-border');
