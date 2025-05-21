@@ -1,6 +1,85 @@
 # CHANGELOG
 
 
+## v0.27.0 (2025-05-21)
+
+### Bug Fixes
+
+- Add missing model_class parameter to ScanLogRepository.__init__
+  ([`4249da3`](https://github.com/gsinghjay/mvp_qr_gen/commit/4249da376221d9e05be3a441370140ce2724d812))
+
+- Update integration test package initialization
+  ([`04467b5`](https://github.com/gsinghjay/mvp_qr_gen/commit/04467b57f22e51462f6a703e6afdb6b835b9c2cc))
+
+### Chores
+
+- Update .gitignore file
+  ([`35bb6e4`](https://github.com/gsinghjay/mvp_qr_gen/commit/35bb6e4d51793c3ea996dd73e68074678cc97eab))
+
+### Features
+
+- Implement QRCodeRepository in dedicated file per phase-1 plan
+  ([`88a3458`](https://github.com/gsinghjay/mvp_qr_gen/commit/88a34584e93ba64dc0f089fdbc6c9fcb105f0aa5))
+
+- Implement ScanLogRepository for specialized scan log operations
+  ([`0adb494`](https://github.com/gsinghjay/mvp_qr_gen/commit/0adb494fa092a73b233890181f49f0edbdcc52ba))
+
+- Implement service layer coordination between repositories
+  ([`168d2f4`](https://github.com/gsinghjay/mvp_qr_gen/commit/168d2f426169eca08e94f9f631e95183fca5c4e2))
+
+- Update repository exports to include ScanLogRepository
+  ([`36e7fa0`](https://github.com/gsinghjay/mvp_qr_gen/commit/36e7fa002e2b08fe7572d381979ee589d71eb70a))
+
+### Refactoring
+
+- Consolidate security headers to Traefik
+  ([`a043411`](https://github.com/gsinghjay/mvp_qr_gen/commit/a0434112620e7f59fd037b439bc3644fff10de41))
+
+- Modify existing QRRepository for backward compatibility
+  ([`56d2186`](https://github.com/gsinghjay/mvp_qr_gen/commit/56d218688ae98afdb93679772b2d0245c6f8e531))
+
+- Update dependencies to use new repository structure
+  ([`96a1626`](https://github.com/gsinghjay/mvp_qr_gen/commit/96a1626c210c96e694e91f5143c92751e7726c1e))
+
+- Update repository exports for clearer naming
+  ([`a2b62af`](https://github.com/gsinghjay/mvp_qr_gen/commit/a2b62afd4566e5708727a817a427d29f59a4b490))
+
+- Update repository exports to include new QRCodeRepository
+  ([`9480e28`](https://github.com/gsinghjay/mvp_qr_gen/commit/9480e2884b7f3c157f451ec1d2b2af858205a222))
+
+- Update type aliases for new repository naming
+  ([`d9b0b83`](https://github.com/gsinghjay/mvp_qr_gen/commit/d9b0b832dfac4d14be2ac8e354a6b6f12ae4f8bc))
+
+- **api**: Update fragments endpoints to use specialized repositories
+  ([`38ca2ee`](https://github.com/gsinghjay/mvp_qr_gen/commit/38ca2eef62a6567ab1bfbd2e58e9f7e19cef93ae))
+
+- **deps**: Update dependencies to use specialized repositories
+  ([`7ba3d01`](https://github.com/gsinghjay/mvp_qr_gen/commit/7ba3d01a59069129f07a612dc342e8ea6ff525f0))
+
+- **main**: Update imports to use specialized repositories
+  ([`64ffef0`](https://github.com/gsinghjay/mvp_qr_gen/commit/64ffef07833f3fe491a7db6ac0a54ed7dc5f9170))
+
+- **repos**: Remove deprecated qr_repository.py
+  ([`b6bcf62`](https://github.com/gsinghjay/mvp_qr_gen/commit/b6bcf6259850a99e34202ffb7e13126cf9d80a8d))
+
+- **repos**: Update __init__.py to export only specialized repositories
+  ([`97fe612`](https://github.com/gsinghjay/mvp_qr_gen/commit/97fe612def15d160b9e5d9d72d6b9e258c651aa0))
+
+- **service**: Update QRCodeService to use specialized repositories
+  ([`3c0573d`](https://github.com/gsinghjay/mvp_qr_gen/commit/3c0573df842442f4e40bb1e0cfb9ec06ed82ce9d))
+
+- **types**: Update type definitions to use specialized repositories
+  ([`de22c7e`](https://github.com/gsinghjay/mvp_qr_gen/commit/de22c7ed8a53df296a613b3338f3c1ed094cf072))
+
+### Testing
+
+- Add integration test directory structure for repositories
+  ([`be295de`](https://github.com/gsinghjay/mvp_qr_gen/commit/be295deb762203148a48d0419eb716c206f3b658))
+
+- Add unit tests for new QRCodeRepository implementation
+  ([`a8c0835`](https://github.com/gsinghjay/mvp_qr_gen/commit/a8c0835946a20720c6c0836e89ffff57757a2f48))
+
+
 ## v0.26.2 (2025-05-21)
 
 ### Bug Fixes
