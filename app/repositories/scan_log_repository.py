@@ -17,6 +17,15 @@ logger = logging.getLogger(__name__)
 
 class ScanLogRepository(BaseRepository[ScanLog]):
     """Repository for scan log database operations."""
+    
+    def __init__(self, db):
+        """
+        Initialize the scan log repository with a database session.
+        
+        Args:
+            db: SQLAlchemy database session
+        """
+        super().__init__(db, ScanLog)
 
     def create_scan_log(
         self, 
