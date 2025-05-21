@@ -212,7 +212,7 @@ async def qr_detail(
         ) 
 
 
-@router.get("/qr-analytics/{qr_id}", response_class=HTMLResponse)
+@router.get("/qr/{qr_id}/analytics", response_class=HTMLResponse)
 async def qr_analytics_page(
     request: Request, 
     qr_id: str, 
