@@ -31,6 +31,16 @@
 The script uses Basic Authentication to access the API endpoints:
 - Username and Password are configurable in the `.env` file.
 
+## Host Header Requirement
+
+The script adds a `Host: web.hccc.edu` header to all requests that interact with the `/r/` endpoints. This is necessary because:
+
+- Traefik routing is configured to use host-based rules for the QR redirect endpoints
+- The router configuration requires the host header to match either `web.hccc.edu` or `130.156.44.52`
+- Without the correct host header, Traefik might route the request to a different handler that requires authentication
+
+If you're running tests in a different environment, you may need to modify the host header to match your configuration.
+
 ## What the Script Tests
 
 The script performs comprehensive testing of your QR Code Generator API endpoints:
@@ -170,4 +180,8 @@ After running all tests, the script automatically cleans up:
 - Check that your application is accessible at the configured URL
 - Make sure `curl`, `jq`, and `bc` are installed
 - If authentication fails, verify the credentials in the script
+- If redirection tests fail with 401 errors, check that:
+  - The Host header is correctly set to match Traefik router rules
+  - The API_URL is properly configured
+  - Your Traefik configuration is routing `/r/` paths correctly
 - If SVG tests fail, check that your segno library is properly configured

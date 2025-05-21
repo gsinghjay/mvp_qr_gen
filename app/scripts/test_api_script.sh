@@ -181,7 +181,7 @@ test_qr_redirection() {
     fi
     
     # Check redirection
-    local redirect_response=$(curl -k -s -L -o /dev/null -w "%{http_code}" $API_URL/r/$SHORT_ID)
+    local redirect_response=$(curl -k -s -o /dev/null -w "%{http_code}" -H "Host: web.hccc.edu" $API_URL/r/$SHORT_ID)
     
     if [ "$redirect_response" == "302" ]; then
         echo -e "${GREEN}✓ PASS:${NC} QR code redirection successful (302 status)"
@@ -264,7 +264,7 @@ test_background_tasks_scan_statistics() {
     # Test 1: Measure response time for redirection (should be fast if using background tasks)
     echo -e "${YELLOW}Testing redirection response time...${NC}"
     local start_time=$(date +%s.%N)
-    local redirect_status=$(curl -k -s -o /dev/null -w "%{http_code}" $API_URL/r/$SHORT_ID)
+    local redirect_status=$(curl -k -s -o /dev/null -w "%{http_code}" -H "Host: web.hccc.edu" $API_URL/r/$SHORT_ID)
     local end_time=$(date +%s.%N)
     local response_time=$(echo "$end_time - $start_time" | bc)
     
@@ -382,7 +382,7 @@ test_qr_with_logo() {
     # Test redirection for dynamic QR with logo
     local CONTENT=$(echo "$dynamic_response" | jq -r '.content')
     local SHORT_ID=$(echo "$CONTENT" | sed 's/.*\/r\///')
-    local redirect_response=$(curl -k -s -L -o /dev/null -w "%{http_code}" $API_URL/r/$SHORT_ID)
+    local redirect_response=$(curl -k -s -L -o /dev/null -w "%{http_code}" -H "Host: web.hccc.edu" $API_URL/r/$SHORT_ID)
     
     if [ "$redirect_response" == "302" ] || [ "$redirect_response" == "200" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Dynamic QR code with logo redirects successfully (status: $redirect_response)"
@@ -558,6 +558,7 @@ test_enhanced_user_agent_tracking() {
     echo -e "\n${YELLOW}Test 1: Simulating direct URL access (non-genuine scan)...${NC}"
     local non_genuine_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
         -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" \
+        -H "Host: web.hccc.edu" \
         $API_URL/r/$SHORT_ID)
     
     if [ "$non_genuine_status" == "302" ]; then
@@ -571,6 +572,7 @@ test_enhanced_user_agent_tracking() {
     echo -e "\n${YELLOW}Test 2: Simulating genuine QR scan with mobile device...${NC}"
     local genuine_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
         -A "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1" \
+        -H "Host: web.hccc.edu" \
         "$API_URL/r/$SHORT_ID?scan_ref=qr")
     
     if [ "$genuine_status" == "302" ]; then
@@ -584,6 +586,7 @@ test_enhanced_user_agent_tracking() {
     echo -e "\n${YELLOW}Test 3: Simulating QR scan with Android device...${NC}"
     local android_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
         -A "Mozilla/5.0 (Linux; Android 12; SM-G991U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Mobile Safari/537.36" \
+        -H "Host: web.hccc.edu" \
         "$API_URL/r/$SHORT_ID?scan_ref=qr")
     
     if [ "$android_status" == "302" ]; then
