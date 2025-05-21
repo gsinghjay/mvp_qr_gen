@@ -298,7 +298,7 @@ async def get_scan_logs_fragment(
         skip = (page - 1) * limit
         
         # Get scan logs from repository
-        scan_logs, total_logs = qr_service.repository.get_scan_logs_for_qr(
+        scan_logs, total_logs = qr_service.scan_log_repo.get_scan_logs_for_qr(
             qr_id=qr_id,
             skip=skip,
             limit=limit,
@@ -560,13 +560,13 @@ async def get_device_stats_fragment(
     """
     try:
         # Get device statistics from repository
-        device_stats = qr_service.repository.get_device_statistics(qr_id)
+        device_stats = qr_service.scan_log_repo.get_device_statistics(qr_id)
         
         # Get browser statistics from repository
-        browser_stats = qr_service.repository.get_browser_statistics(qr_id)
+        browser_stats = qr_service.scan_log_repo.get_browser_statistics(qr_id)
         
         # Get OS statistics from repository
-        os_stats = qr_service.repository.get_os_statistics(qr_id)
+        os_stats = qr_service.scan_log_repo.get_os_statistics(qr_id)
         
         # Combine all statistics
         stats = {
@@ -629,7 +629,7 @@ async def get_scan_timeseries(
     """
     try:
         # Get time series data from repository
-        time_series_data = qr_service.repository.get_scan_timeseries(
+        time_series_data = qr_service.scan_log_repo.get_scan_timeseries(
             qr_id=qr_id,
             time_range=time_range
         )
