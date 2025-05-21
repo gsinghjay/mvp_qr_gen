@@ -21,10 +21,15 @@
   
   /* Fixed chart container height to prevent expansion */
   .chart-container {
-    height: 300px;
-    max-height: 300px;
+    height: 450px;
+    max-height: 450px;
     position: relative;
     overflow: hidden;
+    padding-bottom: 20px; /* Add padding at the bottom for x-axis labels */
+  }
+
+  .card-footer {
+    margin-top: 10px;
   }
 </style>
 {% endblock %}
@@ -64,6 +69,14 @@
                     'thisMonth': 'This Month',
                     'lastMonth': 'Last Month',
                     'allTime': 'All Time'
+                },
+                setRange(key) {
+                    this.range = key;
+                    this.open = false;
+                    // Trigger chart data refresh when range changes
+                    if (typeof fetchChartData === 'function') {
+                        fetchChartData(key);
+                    }
                 }
             }">
                 <button type="button" 
@@ -79,8 +92,9 @@
                     <template x-for="(label, key) in ranges" :key="key">
                         <a class="dropdown-item" 
                            href="#" 
-                           @click.prevent="range = key; open = false"
-                           :class="{'active': range === key}">
+                           @click.prevent="setRange(key)"
+                           :class="{'active': range === key}"
+                           :data-range="key">
                             <span x-text="label"></span>
                         </a>
                     </template>
@@ -288,7 +302,7 @@
                 </div>
                 <div class="card-body">
                     <!-- Only show the loading indicator when loading is true -->
-                    <div class="chart-container" x-show="loading">
+                    <div class="chart-container" x-show="$store.chartData.loading">
                         <div class="d-flex justify-content-center py-5">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Loading...</span>
@@ -298,24 +312,33 @@
                     </div>
                     
                     <!-- Chart placeholder - would be initialized by Chart.js -->
-                    <div class="chart-container" x-show="!loading">
+                    <div class="chart-container" x-show="!$store.chartData.loading">
                         <div class="d-flex mb-3">
                             <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" x-model="showAllScans" id="showAllScans">
+                                <input class="form-check-input" type="checkbox" x-model="$store.chartData.showAllScans" id="showAllScans" checked>
                                 <label class="form-check-label" for="showAllScans">
                                     <span class="badge text-bg-primary">All Scans</span>
                                 </label>
                             </div>
                             <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" x-model="showGenuineScans" id="showGenuineScans">
+                                <input class="form-check-input" type="checkbox" x-model="$store.chartData.showGenuineScans" id="showGenuineScans" checked>
                                 <label class="form-check-label" for="showGenuineScans">
                                     <span class="badge text-bg-success">Genuine Scans</span>
                                 </label>
                             </div>
                         </div>
                         
+                        <!-- Error message display -->
+                        <div class="alert" 
+                             x-show="$store.chartData.error" 
+                             x-text="$store.chartData.error"
+                             :class="{
+                                 'alert-danger': $store.chartData.errorType === 'danger',
+                                 'alert-warning': $store.chartData.errorType === 'warning'
+                             }"></div>
+                        
                         <!-- Canvas for the chart -->
-                        <canvas id="scanActivityChart" height="250"></canvas>
+                        <canvas id="scanActivityChart" height="400" x-show="!$store.chartData.error"></canvas>
                     </div>
                 </div>
                 <div class="card-footer bg-light d-flex justify-content-between" x-show="!loading">
@@ -478,101 +501,202 @@
     document.addEventListener('alpine:init', () => {
         // Add Alpine data stores and initialization here
         Alpine.store('chartData', {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            allScans: [12, 19, 3, 5, 2, 3, 9],
-            genuineScans: [8, 15, 2, 4, 1, 2, 7]
+            labels: [],
+            allScans: [],
+            genuineScans: [],
+            loading: true,
+            error: null,
+            errorType: null,
+            timeRange: 'last7days',
+            showAllScans: true,
+            showGenuineScans: true
         });
     });
 
-    // Initialize the chart and simulate data loading
+    // Initialize the chart and fetch real data
     document.addEventListener('DOMContentLoaded', function() {
         // Access Alpine data component
         const chartContainer = document.getElementById('time-series-chart-container');
         if (!chartContainer) return;
         
-        // Simulate loading data (in real implementation, this would be an API call)
-        setTimeout(() => {
-            const chartElement = document.getElementById('scanActivityChart');
-            if (!chartElement) return;
-            
-            // Create chart context
-            const ctx = chartElement.getContext('2d');
-            
-            // Initialize the chart
-            const scanChart = new Chart(ctx, {
-                type: 'line', // Default type, will be changed by Alpine
-                data: {
-                    labels: Alpine.store('chartData').labels,
-                    datasets: [
-                        {
-                            label: 'All Scans',
-                            data: Alpine.store('chartData').allScans,
-                            backgroundColor: 'rgba(13, 110, 253, 0.2)',
-                            borderColor: 'rgba(13, 110, 253, 1)',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            fill: true
-                        },
-                        {
-                            label: 'Genuine Scans',
-                            data: Alpine.store('chartData').genuineScans,
-                            backgroundColor: 'rgba(25, 135, 84, 0.2)',
-                            borderColor: 'rgba(25, 135, 84, 1)',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            fill: true
-                        }
-                    ]
+        // Create chart context
+        const chartElement = document.getElementById('scanActivityChart');
+        if (!chartElement) return;
+        const ctx = chartElement.getContext('2d');
+        
+        // Initialize the chart with empty data
+        const scanChart = new Chart(ctx, {
+            type: 'line', // Default type, will be changed by Alpine
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'All Scans',
+                        data: [],
+                        backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                        borderColor: 'rgba(13, 110, 253, 1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Genuine Scans',
+                        data: [],
+                        backgroundColor: 'rgba(25, 135, 84, 0.2)',
+                        borderColor: 'rgba(25, 135, 84, 1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        bottom: 15 // Add padding at the bottom
+                    }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                borderDash: [2, 4],
-                            }
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            borderDash: [2, 4],
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
                         },
-                        x: {
-                            grid: {
-                                display: false
-                            }
+                        ticks: {
+                            padding: 10 // Add padding to x-axis ticks
                         }
                     }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
                 }
+            }
+        });
+        
+        // Store the chart instance for future reference
+        window.scanChart = scanChart;
+        
+        // Function to fetch chart data - make it globally accessible
+        window.fetchChartData = function(timeRange) {
+            // Set loading state
+            Alpine.store('chartData').loading = true;
+            
+            // Fetch data from API
+            fetch(`/api/v1/fragments/qr/{{ qr.id }}/analytics/scan-timeseries?time_range=${timeRange}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Chart data received:', data);
+                    
+                    // Check if there's any data
+                    const hasData = data.datasets.all_scans.some(val => val > 0) || 
+                                   data.datasets.genuine_scans.some(val => val > 0);
+                    
+                    if (!hasData) {
+                        // Show no data message with warning style
+                        Alpine.store('chartData').error = 'No scan data available for the selected time period';
+                        Alpine.store('chartData').errorType = 'warning';
+                    } else {
+                        // Update Alpine store
+                        Alpine.store('chartData').labels = data.labels;
+                        Alpine.store('chartData').allScans = data.datasets.all_scans;
+                        Alpine.store('chartData').genuineScans = data.datasets.genuine_scans;
+                        Alpine.store('chartData').timeRange = data.time_range;
+                        Alpine.store('chartData').error = null;
+                        Alpine.store('chartData').errorType = null;
+                        
+                        // Update chart data
+                        scanChart.data.labels = data.labels;
+                        scanChart.data.datasets[0].data = data.datasets.all_scans;
+                        scanChart.data.datasets[1].data = data.datasets.genuine_scans;
+                        scanChart.update();
+                    }
+                    
+                    // Hide loading indicator
+                    Alpine.store('chartData').loading = false;
+                })
+                .catch(error => {
+                    console.error('Error fetching chart data:', error);
+                    
+                    // Update Alpine store with error and error type
+                    Alpine.store('chartData').error = 'Failed to load chart data';
+                    Alpine.store('chartData').errorType = 'danger';
+                    Alpine.store('chartData').loading = false;
+                });
+        };
+        
+        // Set up Alpine.js event listeners
+        const alpine = Alpine.evaluate(chartContainer, 'chartType');
+        if (alpine) {
+            // Update the chart type when the Alpine property changes
+            Alpine.effect(() => {
+                const newType = Alpine.evaluate(chartContainer, 'chartType');
+                scanChart.config.type = newType;
+                scanChart.update();
             });
             
-            // Store the chart instance for future reference
-            window.scanChart = scanChart;
+            // Update dataset visibility based on checkboxes
+            Alpine.effect(() => {
+                const showAll = Alpine.store('chartData').showAllScans;
+                scanChart.data.datasets[0].hidden = !showAll;
+                scanChart.update();
+            });
             
-            // Set up Alpine.js event listeners
-            const alpine = Alpine.evaluate(chartContainer, 'chartType');
-            if (alpine) {
-                // Update the chart type when the Alpine property changes
-                Alpine.effect(() => {
-                    const newType = Alpine.evaluate(chartContainer, 'chartType');
-                    scanChart.config.type = newType;
-                    scanChart.update();
-                });
-                
-                // Update dataset visibility based on checkboxes
-                Alpine.effect(() => {
-                    const showAll = Alpine.evaluate(chartContainer, 'showAllScans');
-                    scanChart.data.datasets[0].hidden = !showAll;
-                    scanChart.update();
-                });
-                
-                Alpine.effect(() => {
-                    const showGenuine = Alpine.evaluate(chartContainer, 'showGenuineScans');
-                    scanChart.data.datasets[1].hidden = !showGenuine;
-                    scanChart.update();
-                });
+            Alpine.effect(() => {
+                const showGenuine = Alpine.store('chartData').showGenuineScans;
+                scanChart.data.datasets[1].hidden = !showGenuine;
+                scanChart.update();
+            });
+        }
+        
+        // Fetch initial data
+        fetchChartData('last7days');
+        
+        // Set up date range dropdown listener
+        document.addEventListener('click', function(e) {
+            // Check if clicked element is a date range dropdown item
+            if (e.target && e.target.closest('.dropdown-item') && e.target.closest('.dropdown-menu')) {
+                const rangeKey = e.target.closest('.dropdown-item').getAttribute('x-data-range');
+                if (rangeKey) {
+                    fetchChartData(rangeKey);
+                }
+            }
+        });
+        
+        // Add data-range attributes to dropdown items
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            const rangeText = item.textContent.trim();
+            let rangeKey = '';
+            
+            // Map text to range key
+            switch (rangeText) {
+                case 'Today': rangeKey = 'today'; break;
+                case 'Yesterday': rangeKey = 'yesterday'; break;
+                case 'Last 7 Days': rangeKey = 'last7days'; break;
+                case 'Last 30 Days': rangeKey = 'last30days'; break;
+                case 'This Month': rangeKey = 'thisMonth'; break;
+                case 'Last Month': rangeKey = 'lastMonth'; break;
+                case 'All Time': rangeKey = 'allTime'; break;
             }
             
-            // After chart is initialized, set loading to false
-            Alpine.evaluate(chartContainer, '$data.loading = false');
-        }, 1500); // Simulate loading delay
+            if (rangeKey) {
+                item.setAttribute('x-data-range', rangeKey);
+            }
+        });
     });
 </script>
 {% endblock %} 
