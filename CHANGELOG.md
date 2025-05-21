@@ -1,6 +1,102 @@
 # CHANGELOG
 
 
+## v0.26.0 (2025-05-21)
+
+### Bug Fixes
+
+- Update Content Security Policy to allow unsafe-eval for Alpine.js compatibility
+  ([`aa84d4c`](https://github.com/gsinghjay/mvp_qr_gen/commit/aa84d4c060b7629d4dcfc3be7a4b51d8225b9b15))
+
+- **analytics**: Update device stats container to remove unnecessary borders
+  ([`ab3aa55`](https://github.com/gsinghjay/mvp_qr_gen/commit/ab3aa5523b0ec32933c4e9b0835f5d481cec4b9e))
+
+### Features
+
+- Add Alpine.js v3 via CDN to enable reactive UI components
+  ([`0b6770f`](https://github.com/gsinghjay/mvp_qr_gen/commit/0b6770fac164a04f7859a16d960951f63d0eacaf))
+
+- Add in-page edit form endpoints for QR analytics page
+  ([`e8d6ae4`](https://github.com/gsinghjay/mvp_qr_gen/commit/e8d6ae4e4ae992bb1d155816b25ae6620ba11835))
+
+- Add scan-timeseries endpoint for QR analytics chart data
+  ([`a671b33`](https://github.com/gsinghjay/mvp_qr_gen/commit/a671b330db8ee8cb0453f981111f6ef4a029e4b9))
+
+- Connect chart.js to real time series data from API endpoint
+  ([`7c586de`](https://github.com/gsinghjay/mvp_qr_gen/commit/7c586de4ea6efd94d43ce4624c14973049c981f5))
+
+- Create dedicated edit form fragment for in-page editing
+  ([`aedc92b`](https://github.com/gsinghjay/mvp_qr_gen/commit/aedc92bed7fc974e329776e3e64ec52737fd2e6b))
+
+- Create QR download options fragment template with customization notice
+  ([`56a7234`](https://github.com/gsinghjay/mvp_qr_gen/commit/56a72347b7a1f97b67905b83c96de23457dd4ec8))
+
+- Implement Alpine.js components for chart controls and fix container height
+  ([`266a824`](https://github.com/gsinghjay/mvp_qr_gen/commit/266a82457a63168ecacd927753003824402480ef))
+
+- Implement endpoint to serve QR download options fragment
+  ([`63374ad`](https://github.com/gsinghjay/mvp_qr_gen/commit/63374adcc7b23588fa8e3852a4669e4d36042824))
+
+- Implement get_scan_timeseries repository method for chart data
+  ([`9d2abea`](https://github.com/gsinghjay/mvp_qr_gen/commit/9d2abea671b2a7f27dafd3f41be6085a2e866134))
+
+- Integrate download options fragment into analytics page
+  ([`c6a127d`](https://github.com/gsinghjay/mvp_qr_gen/commit/c6a127d72133d91160fd3b7684b51b4a219ee637))
+
+- Integrate edit button and form container in analytics page
+  ([`7c96602`](https://github.com/gsinghjay/mvp_qr_gen/commit/7c96602dbd652879914ca05de11ec745acc43f85))
+
+- Replace modal view button with direct link to analytics page
+  ([`3dbd45e`](https://github.com/gsinghjay/mvp_qr_gen/commit/3dbd45ef2360812671e82750c697432c9671bca4))
+
+- **analytics**: Add QR analytics page endpoint
+  ([`5021493`](https://github.com/gsinghjay/mvp_qr_gen/commit/5021493b69934f01cfc1fa6e75924efe148006a7))
+
+- **analytics**: Add QR ID in response headers to support post-creation redirect
+  ([`021a84e`](https://github.com/gsinghjay/mvp_qr_gen/commit/021a84ea571c5b3c0d9f5368e4abbe44f56a5c1c))
+
+- **analytics**: Add scan log table fragment template with filtering and pagination
+  ([`c7c0d2d`](https://github.com/gsinghjay/mvp_qr_gen/commit/c7c0d2d42279769391c97a4ec0b2b86ad68043f8))
+
+- **analytics**: Create device/browser/OS stats fragment template with visualization components
+  ([`717294f`](https://github.com/gsinghjay/mvp_qr_gen/commit/717294f327d4e8ab164846ba32926046e5eadeb4))
+
+- **analytics**: Create QR analytics page template with chart placeholders
+  ([`679a954`](https://github.com/gsinghjay/mvp_qr_gen/commit/679a954d12f9ed11b39281d0372c07406c906cba))
+
+- **analytics**: Implement device/browser/OS stats endpoint for QR analytics
+  ([`61c280f`](https://github.com/gsinghjay/mvp_qr_gen/commit/61c280fffe68cbcb56a96fe65d908eb75c45d8fb))
+
+- **analytics**: Update toast message and implement redirect to analytics page
+  ([`2131701`](https://github.com/gsinghjay/mvp_qr_gen/commit/2131701849c85cede117dd07a0887c34b155caef))
+
+- **api**: Implement scan log fragment endpoint with filtering capabilities
+  ([`08464bd`](https://github.com/gsinghjay/mvp_qr_gen/commit/08464bdac37529071751cb793642bec7345b9866))
+
+- **navigation**: Add redirect from /qr to /qr-list for consistent URL structure
+  ([`7676a0d`](https://github.com/gsinghjay/mvp_qr_gen/commit/7676a0d4d0b17eb869be50b2f53a85322198323c))
+
+- **ui**: Add Analytics button to QR list items for direct access to analytics page
+  ([`18c9f3d`](https://github.com/gsinghjay/mvp_qr_gen/commit/18c9f3d9f6a7c46147482e468222f897fc27ef9f))
+
+- **ui**: Update analytics page to load scan logs with proper HTMX integration
+  ([`f796829`](https://github.com/gsinghjay/mvp_qr_gen/commit/f796829c21c24b734c072f9376570cda31f3a7df))
+
+### Refactoring
+
+- Remove QR detail modal HTML and related JavaScript
+  ([`41442ab`](https://github.com/gsinghjay/mvp_qr_gen/commit/41442ab3c0f210f7c4a92353118a3886b19921fa))
+
+- Update fragment endpoints to redirect to analytics page
+  ([`38fe942`](https://github.com/gsinghjay/mvp_qr_gen/commit/38fe9429936e3c921021262d190ed8019c2a877d))
+
+- **api**: Change QR analytics endpoint to follow RESTful convention
+  ([`94fde88`](https://github.com/gsinghjay/mvp_qr_gen/commit/94fde8893072514c5222de574f49ed0a91666e82))
+
+- **ui**: Rename Home to Dashboard in sidebar and consolidate navigation
+  ([`574b617`](https://github.com/gsinghjay/mvp_qr_gen/commit/574b61785ad255ea0710212449bb13445180ceee))
+
+
 ## v0.25.0 (2025-05-21)
 
 ### Features
