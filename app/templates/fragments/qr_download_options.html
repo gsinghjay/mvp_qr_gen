@@ -1,0 +1,260 @@
+<!-- QR Download Options Fragment -->
+<style>
+  .download-size-controls .form-label {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+
+  .size-preset-btn {
+    font-size: 0.8rem;
+    padding: 0.1rem 0.5rem;
+  }
+
+  #physicalDimensionsForm label {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+  }
+
+  #downloadLinks .dropdown-item {
+    font-size: 0.9rem;
+    padding: 0.25rem 1rem;
+  }
+</style>
+
+<div class="card mb-3">
+  <div class="card-header bg-light">
+    <h6 class="mb-0">Download Options</h6>
+  </div>
+  <div class="card-body">
+    <form id="physicalDimensionsForm" class="mb-3">
+      <div class="row g-2">
+        <div class="col-6 mb-2">
+          <label for="downloadSize" class="form-label">Physical Size:</label>
+          <div class="input-group input-group-sm">
+            <input type="number" class="form-control" id="downloadSize" value="2" min="0.1" max="500" step="0.1">
+            <select class="form-select" id="downloadUnit">
+              <option value="in" selected>inches</option>
+              <option value="cm">cm</option>
+              <option value="mm">mm</option>
+              <option value="px">pixels</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-6 mb-2" id="dpiContainer">
+          <label for="downloadDPI" class="form-label">DPI:</label>
+          <input type="number" class="form-control form-control-sm" id="downloadDPI" value="300" min="72" max="1200">
+        </div>
+      </div>
+      
+      <div class="size-presets mb-3">
+        <label class="form-label">Size Presets:</label>
+        <div>
+          <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="1" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Business Card</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="3" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Small</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="12" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Poster</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn" data-size="500" data-unit="px" data-dpi="0" onclick="event.preventDefault(); applyPreset(this);">500px</button>
+        </div>
+      </div>
+      
+      <!-- Add logo checkbox -->
+      <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="downloadIncludeLogo">
+        <label class="form-check-label" for="downloadIncludeLogo">Include Organization Logo</label>
+        <div class="form-text">
+          Adds the organization logo to the center of the QR code for better branding.
+        </div>
+      </div>
+      <!-- SVG format note - shown only when logo is enabled -->
+      <div id="formatNote" class="form-text text-warning mb-3" style="display: none;">
+        <i class="bi bi-info-circle me-1"></i> SVG format has limited support for logo embedding. For best results with logos, use PNG or JPEG formats.
+      </div>
+    </form>
+    
+    <!-- Download Button -->
+    <div class="dropdown">
+      <button class="btn btn-primary dropdown-toggle w-100" type="button" id="downloadDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-download me-1"></i> Download
+      </button>
+      <ul class="dropdown-menu w-100" id="downloadLinks" aria-labelledby="downloadDropdown">
+        <li><a class="dropdown-item download-link" href="/api/v1/qr/{{ qr.id }}/image?format=png" data-format="png" download="qr-{{ qr.id }}.png">PNG Image</a></li>
+        <li><a class="dropdown-item download-link" href="/api/v1/qr/{{ qr.id }}/image?format=svg" data-format="svg" download="qr-{{ qr.id }}.svg">SVG Vector</a></li>
+        <li><a class="dropdown-item download-link" href="/api/v1/qr/{{ qr.id }}/image?format=jpg" data-format="jpg" download="qr-{{ qr.id }}.jpg">JPEG Image</a></li>
+        <li><a class="dropdown-item download-link" href="/api/v1/qr/{{ qr.id }}/image?format=webp" data-format="webp" download="qr-{{ qr.id }}.webp">WebP Image</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Coming Soon Box -->
+<div class="alert alert-info mb-0 mt-3">
+  <div class="d-flex align-items-center">
+    <i class="bi bi-stars me-2"></i>
+    <div>
+      <strong>More Customization Coming Soon!</strong>
+      <div class="small mt-1">Advanced customization options including custom colors, multi-color QR codes, shape styles, and more will be available soon.</div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript for QR Download Options -->
+<script>
+// Immediately execute to ensure the script runs
+(function() {
+  console.log('QR Download Options script loading...');
+  
+  // Make sure DOM is loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDownloadOptions);
+  } else {
+    // DOM already loaded, run directly
+    initializeDownloadOptions();
+  }
+  
+  // Main initialization function
+  function initializeDownloadOptions() {
+    console.log('Initializing QR download options functionality');
+    
+    // Get references to key elements
+    const downloadLogoCheckbox = document.getElementById('downloadIncludeLogo');
+    const formatNote = document.getElementById('formatNote');
+    const unitSelect = document.getElementById('downloadUnit');
+    const dpiContainer = document.getElementById('dpiContainer');
+    
+    console.log('Download logo checkbox:', downloadLogoCheckbox ? 'Found' : 'Missing');
+    
+    // Check if pixels are selected and hide DPI field if needed
+    if (unitSelect && dpiContainer) {
+      if (unitSelect.value === 'px') {
+        dpiContainer.style.display = 'none';
+      }
+    }
+    
+    // Initial updates
+    updateDownloadLinks();
+    
+    // Initial format note visibility
+    if (formatNote) {
+      formatNote.style.display = downloadLogoCheckbox && downloadLogoCheckbox.checked ? 'block' : 'none';
+    }
+    
+    // Set up event listeners for form controls
+    if (downloadLogoCheckbox) {
+      downloadLogoCheckbox.addEventListener('change', function() {
+        console.log('Download logo checkbox changed:', this.checked);
+        updateDownloadLinks();
+        if (formatNote) {
+          formatNote.style.display = this.checked ? 'block' : 'none';
+        }
+      });
+    }
+    
+    // Add unit change event listener
+    if (unitSelect) {
+      unitSelect.addEventListener('change', function() {
+        if (dpiContainer) {
+          dpiContainer.style.display = this.value === 'px' ? 'none' : 'block';
+        }
+        updateDownloadLinks();
+      });
+    }
+    
+    // Other form control listeners
+    document.querySelectorAll('#downloadSize, #downloadUnit, #downloadDPI').forEach(el => {
+      if (el) {
+        el.addEventListener('change', updateDownloadLinks);
+      }
+    });
+    
+    // Set up preset buttons
+    document.querySelectorAll('.size-preset-btn').forEach(button => {
+      if (button) {
+        button.onclick = function(event) {
+          event.preventDefault();
+          applyPreset(this);
+        };
+      }
+    });
+  }
+}());
+
+// Apply size preset values
+function applyPreset(button) {
+  console.log('Applying preset:', button.textContent);
+  const size = button.getAttribute('data-size');
+  const unit = button.getAttribute('data-unit');
+  const dpi = button.getAttribute('data-dpi');
+  
+  const sizeInput = document.getElementById('downloadSize');
+  const unitSelect = document.getElementById('downloadUnit');
+  const dpiInput = document.getElementById('downloadDPI');
+  const dpiContainer = document.getElementById('dpiContainer');
+  
+  if (sizeInput) sizeInput.value = size;
+  if (unitSelect) unitSelect.value = unit;
+  if (dpiInput) dpiInput.value = dpi;
+  
+  // Hide or show DPI field based on the unit
+  if (dpiContainer) {
+    dpiContainer.style.display = unit === 'px' ? 'none' : 'block';
+  }
+  
+  updateDownloadLinks();
+}
+
+function updateDownloadLinks() {
+  const sizeInput = document.getElementById('downloadSize');
+  const unitSelect = document.getElementById('downloadUnit');
+  const dpiInput = document.getElementById('downloadDPI');
+  const logoCheckbox = document.getElementById('downloadIncludeLogo');
+  
+  if (!sizeInput || !unitSelect || !dpiInput || !logoCheckbox) {
+    console.error('Missing download form elements');
+    return;
+  }
+  
+  const size = sizeInput.value;
+  const unit = unitSelect.value;
+  const dpi = dpiInput.value;
+  const includeLogo = logoCheckbox.checked;
+  
+  console.log('Updating download links with:');
+  console.log('- Size:', size, unit);
+  console.log('- DPI:', unit === 'px' ? 'N/A' : dpi);
+  console.log('- Include Logo:', includeLogo);
+  
+  document.querySelectorAll('.download-link').forEach(link => {
+    if (link) {
+      const format = link.getAttribute('data-format');
+      const baseUrl = `/api/v1/qr/{{ qr.id }}/image?format=${format}`;
+      
+      // If pixels are selected, divide by 25 to counteract the multiplication in the backend
+      let sizeParams = '';
+      if (unit === 'px') {
+        const adjustedSize = Math.max(1, Math.round(size / 25));
+        sizeParams = `&size=${adjustedSize}`;
+      } else {
+        sizeParams = `&physical_size=${size}&physical_unit=${unit}&dpi=${dpi}`;
+      }
+      
+      // Only add logo parameter if checkbox is checked
+      const logoParam = includeLogo ? '&include_logo=true' : '';
+      // Add error_level=h when including logo for better reliability
+      const errorParam = includeLogo ? '&error_level=h' : '';
+      const fullUrl = baseUrl + sizeParams + logoParam + errorParam;
+      console.log(`Setting ${format} download URL to:`, fullUrl);
+      link.setAttribute('href', fullUrl);
+      
+      // Create a descriptive filename based on physical size and logo
+      let filename = `qr-{{ qr.id }}`;
+      if (size && unit) {
+        filename += `-${size}${unit}`;
+      }
+      if (includeLogo) {
+        filename += '-logo';
+      }
+      filename += `.${format}`;
+      link.setAttribute('download', filename);
+    }
+  });
+}
+</script> 
