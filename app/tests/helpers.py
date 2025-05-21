@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models.qr import QRCode
+from ..models.scan_log import ScanLog
 
 # Type variable for Pydantic models
 ModelType = TypeVar("ModelType", bound=BaseModel)
@@ -165,6 +166,81 @@ def assert_qr_code_fields(
             qr_data[field] == expected_value
         ), f"QR code field '{field}' mismatch. Expected: '{expected_value}', Got: '{qr_data[field]}'"
 
+    return True
+
+
+def assert_scan_log_fields(
+    scan_log: ScanLog | dict[str, Any], expected_values: dict[str, Any]
+) -> bool:
+    """
+    Validate that a scan log (model or dict) has the expected field values.
+    
+    Args:
+        scan_log: ScanLog instance or dictionary with scan log data
+        expected_values: Dictionary mapping field names to expected values
+        
+    Returns:
+        bool: True if validation succeeds, raises AssertionError otherwise
+        
+    Raises:
+        AssertionError: If any field value doesn't match the expected value
+    """
+    # Convert ScanLog instance to dict if needed
+    scan_data = scan_log
+    if isinstance(scan_log, ScanLog):
+        # Convert to dict for consistent access
+        scan_data = {
+            "id": str(scan_log.id),
+            "qr_code_id": str(scan_log.qr_code_id),
+            "scanned_at": scan_log.scanned_at,
+            "ip_address": scan_log.ip_address,
+            "raw_user_agent": scan_log.raw_user_agent,
+            "is_genuine_scan": scan_log.is_genuine_scan,
+            "device_family": scan_log.device_family,
+            "os_family": scan_log.os_family,
+            "os_version": scan_log.os_version,
+            "browser_family": scan_log.browser_family,
+            "browser_version": scan_log.browser_version,
+            "is_mobile": scan_log.is_mobile,
+            "is_tablet": scan_log.is_tablet,
+            "is_pc": scan_log.is_pc,
+            "is_bot": scan_log.is_bot,
+        }
+    
+    # Check each expected field
+    for field, expected_value in expected_values.items():
+        assert field in scan_data, f"Scan log missing field: {field}"
+        assert (
+            scan_data[field] == expected_value
+        ), f"Scan log field '{field}' mismatch. Expected: '{expected_value}', Got: '{scan_data[field]}'"
+    
+    return True
+
+
+def assert_scan_log_in_database(db: Session, scan_id: str, expected_values: dict[str, Any] = None) -> bool:
+    """
+    Validate that a scan log exists in the database and optionally has expected values.
+    
+    Args:
+        db: SQLAlchemy session
+        scan_id: ID of the scan log to check
+        expected_values: Optional dictionary mapping field names to expected values
+        
+    Returns:
+        bool: True if validation succeeds, raises AssertionError otherwise
+        
+    Raises:
+        AssertionError: If the scan log doesn't exist or has unexpected field values
+    """
+    # Query for the scan log
+    scan_log = db.scalar(select(ScanLog).where(ScanLog.id == scan_id))
+    
+    assert scan_log is not None, f"Scan log with id '{scan_id}' not found in database"
+    
+    # Check expected values if provided
+    if expected_values:
+        return assert_scan_log_fields(scan_log, expected_values)
+    
     return True
 
 
