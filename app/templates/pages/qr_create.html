@@ -87,7 +87,7 @@
         <div class="d-flex">
             <div class="toast-body">
                 <i class="bi bi-check-circle-fill me-2"></i>
-                QR code created successfully! Redirecting to QR list...
+                QR code created successfully! Redirecting to analytics page...
             </div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
@@ -111,7 +111,30 @@
                 // Show the toast notification
                 toast.show();
                 
-                // Automatically redirect to QR list page after 1.5 seconds
+                // Update toast text to show we're redirecting to the analytics page
+                const toastBody = toastElement.querySelector('.toast-body');
+                if (toastBody) {
+                    toastBody.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>QR code created successfully! Redirecting to analytics page...';
+                }
+                
+                // Get the QR ID from the HX-Trigger header
+                const triggerHeader = event.detail.headers['HX-Trigger'];
+                if (triggerHeader) {
+                    try {
+                        const triggerData = JSON.parse(triggerHeader);
+                        if (triggerData.qrCreated && triggerData.qrCreated.id) {
+                            // Redirect to the analytics page for the new QR code
+                            setTimeout(function() {
+                                window.location.href = `/qr/${triggerData.qrCreated.id}/analytics`;
+                            }, 1500);
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing HX-Trigger header:', e);
+                    }
+                }
+                
+                // Fallback to the old behavior if we couldn't get the QR ID
                 setTimeout(function() {
                     window.location.href = '/qr-list';
                 }, 1500);
