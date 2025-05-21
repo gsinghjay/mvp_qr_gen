@@ -609,6 +609,44 @@ async def get_device_stats_fragment(
             status_code=500,
         )
 
+@router.get("/qr/{qr_id}/analytics/scan-timeseries")
+async def get_scan_timeseries(
+    qr_id: str,
+    qr_service: QRServiceDep,
+    time_range: str = "last7days",
+):
+    """
+    Get time series data for QR code scans for chart visualization.
+    
+    Args:
+        qr_id: The ID of the QR code to get time series data for.
+        qr_service: The QR code service.
+        time_range: Time range for data ("today", "yesterday", "last7days", 
+                   "last30days", "thisMonth", "lastMonth", "allTime")
+        
+    Returns:
+        JSON response with time series data for chart rendering.
+    """
+    try:
+        # Get time series data from repository
+        time_series_data = qr_service.repository.get_scan_timeseries(
+            qr_id=qr_id,
+            time_range=time_range
+        )
+        
+        return time_series_data
+    except QRCodeNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"QR code with ID {qr_id} not found"
+        )
+    except DatabaseError as e:
+        logger.error(f"Database error retrieving time series data for QR {qr_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while retrieving time series data"
+        )
+
 @router.get("/qr/{qr_id}/download-options", response_class=HTMLResponse)
 async def get_qr_download_options_fragment(
     request: Request,
