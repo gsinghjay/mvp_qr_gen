@@ -18,6 +18,14 @@
     max-width: 100%;
     height: auto;
   }
+  
+  /* Fixed chart container height to prevent expansion */
+  .chart-container {
+    height: 300px;
+    max-height: 300px;
+    position: relative;
+    overflow: hidden;
+  }
 </style>
 {% endblock %}
 
@@ -28,19 +36,49 @@
         <h1 class="h2">QR Code Analytics</h1>
         <div class="btn-toolbar mb-2 mb-md-0">
             <div class="btn-group me-2">
-                <a href="/qr-detail/{{ qr.id }}" class="btn btn-sm btn-outline-secondary">
+                <a href="/qr-list" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-arrow-left me-1"></i>
-                    Back to Details
+                    Back to List
                 </a>
                 <button type="button" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-download me-1"></i>
                     Export
                 </button>
             </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle">
-                <i class="bi bi-calendar me-1"></i>
-                Time Range
-            </button>
+            <!-- Alpine.js Date Range Selector -->
+            <div x-data="{ 
+                open: false,
+                range: 'last7days',
+                ranges: {
+                    'today': 'Today',
+                    'yesterday': 'Yesterday',
+                    'last7days': 'Last 7 Days',
+                    'last30days': 'Last 30 Days',
+                    'thisMonth': 'This Month',
+                    'lastMonth': 'Last Month',
+                    'allTime': 'All Time'
+                }
+            }">
+                <button type="button" 
+                        class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                        @click="open = !open">
+                    <i class="bi bi-calendar me-1"></i>
+                    <span x-text="ranges[range]">Last 7 Days</span>
+                </button>
+                <div class="dropdown-menu shadow-sm" 
+                     :class="{'show': open}"
+                     style="position: absolute; z-index: 1000;"
+                     @click.outside="open = false">
+                    <template x-for="(label, key) in ranges" :key="key">
+                        <a class="dropdown-item" 
+                           href="#" 
+                           @click.prevent="range = key; open = false"
+                           :class="{'active': range === key}">
+                            <span x-text="label"></span>
+                        </a>
+                    </template>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -179,23 +217,86 @@
 
     <!-- Analytics Content -->
     <div class="row g-4 mb-4">
-        <!-- Chart Area - Will be populated by Task 1.4 (Chart Data Fragment) -->
+        <!-- Chart Area with Alpine.js State Management -->
         <div class="col-md-8">
             <div id="time-series-chart-container" 
                  class="card border"
-                 hx-get="/api/v1/fragments/qr/{{ qr.id }}/analytics/chart-data" 
-                 hx-trigger="load delay:100ms"
-                 hx-indicator=".chart-indicator">
-                <div class="card-header bg-light">
+                 x-data="{ 
+                    loading: true,
+                    chartType: 'line',
+                    showGenuineScans: true,
+                    showAllScans: true,
+                    toggleChart(type) {
+                        this.chartType = type;
+                        // In a real implementation, this would regenerate the chart
+                        console.log('Chart type changed to:', type);
+                    },
+                    toggleDataSeries(series) {
+                        if (series === 'genuine') {
+                            this.showGenuineScans = !this.showGenuineScans;
+                        } else {
+                            this.showAllScans = !this.showAllScans;
+                        }
+                        // In a real implementation, this would update visible datasets
+                        console.log('Data visibility updated:', { 
+                            genuine: this.showGenuineScans, 
+                            all: this.showAllScans 
+                        });
+                    }
+                 }">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">Scan Activity Over Time</h5>
-                </div>
-                <div class="card-body chart-indicator">
-                    <div class="d-flex justify-content-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
+                    <!-- Chart Controls -->
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" 
+                                class="btn btn-light" 
+                                :class="{ 'active': chartType === 'line' }"
+                                @click="toggleChart('line')">
+                            <i class="bi bi-graph-up"></i>
+                        </button>
+                        <button type="button" 
+                                class="btn btn-light" 
+                                :class="{ 'active': chartType === 'bar' }"
+                                @click="toggleChart('bar')">
+                            <i class="bi bi-bar-chart"></i>
+                        </button>
                     </div>
-                    <p class="text-center mt-3 text-muted">Loading chart data...</p>
+                </div>
+                <div class="card-body">
+                    <!-- Only show the loading indicator when loading is true -->
+                    <div class="chart-container" x-show="loading">
+                        <div class="d-flex justify-content-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <p class="text-center mt-3 text-muted">Loading chart data...</p>
+                    </div>
+                    
+                    <!-- Chart placeholder - would be initialized by Chart.js -->
+                    <div class="chart-container" x-show="!loading">
+                        <div class="d-flex mb-3">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" x-model="showAllScans" id="showAllScans">
+                                <label class="form-check-label" for="showAllScans">
+                                    <span class="badge text-bg-primary">All Scans</span>
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" x-model="showGenuineScans" id="showGenuineScans">
+                                <label class="form-check-label" for="showGenuineScans">
+                                    <span class="badge text-bg-success">Genuine Scans</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Canvas for the chart -->
+                        <canvas id="scanActivityChart" height="250"></canvas>
+                    </div>
+                </div>
+                <div class="card-footer bg-light d-flex justify-content-between" x-show="!loading">
+                    <small class="text-muted">Chart Type: <span x-text="chartType === 'line' ? 'Line Chart' : 'Bar Chart'"></span></small>
+                    <small class="text-muted">Last Updated: <span>Just now</span></small>
                 </div>
             </div>
         </div>
@@ -349,6 +450,105 @@
         }
     })();
 
-    // Future chart initialization will be handled by the chart fragment
+    // Alpine JS and Chart JS Integration
+    document.addEventListener('alpine:init', () => {
+        // Add Alpine data stores and initialization here
+        Alpine.store('chartData', {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            allScans: [12, 19, 3, 5, 2, 3, 9],
+            genuineScans: [8, 15, 2, 4, 1, 2, 7]
+        });
+    });
+
+    // Initialize the chart and simulate data loading
+    document.addEventListener('DOMContentLoaded', function() {
+        // Access Alpine data component
+        const chartContainer = document.getElementById('time-series-chart-container');
+        if (!chartContainer) return;
+        
+        // Simulate loading data (in real implementation, this would be an API call)
+        setTimeout(() => {
+            const chartElement = document.getElementById('scanActivityChart');
+            if (!chartElement) return;
+            
+            // Create chart context
+            const ctx = chartElement.getContext('2d');
+            
+            // Initialize the chart
+            const scanChart = new Chart(ctx, {
+                type: 'line', // Default type, will be changed by Alpine
+                data: {
+                    labels: Alpine.store('chartData').labels,
+                    datasets: [
+                        {
+                            label: 'All Scans',
+                            data: Alpine.store('chartData').allScans,
+                            backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                            borderColor: 'rgba(13, 110, 253, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Genuine Scans',
+                            data: Alpine.store('chartData').genuineScans,
+                            backgroundColor: 'rgba(25, 135, 84, 0.2)',
+                            borderColor: 'rgba(25, 135, 84, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                borderDash: [2, 4],
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Store the chart instance for future reference
+            window.scanChart = scanChart;
+            
+            // Set up Alpine.js event listeners
+            const alpine = Alpine.evaluate(chartContainer, 'chartType');
+            if (alpine) {
+                // Update the chart type when the Alpine property changes
+                Alpine.effect(() => {
+                    const newType = Alpine.evaluate(chartContainer, 'chartType');
+                    scanChart.config.type = newType;
+                    scanChart.update();
+                });
+                
+                // Update dataset visibility based on checkboxes
+                Alpine.effect(() => {
+                    const showAll = Alpine.evaluate(chartContainer, 'showAllScans');
+                    scanChart.data.datasets[0].hidden = !showAll;
+                    scanChart.update();
+                });
+                
+                Alpine.effect(() => {
+                    const showGenuine = Alpine.evaluate(chartContainer, 'showGenuineScans');
+                    scanChart.data.datasets[1].hidden = !showGenuine;
+                    scanChart.update();
+                });
+            }
+            
+            // After chart is initialized, set loading to false
+            Alpine.evaluate(chartContainer, '$data.loading = false');
+        }, 1500); // Simulate loading delay
+    });
 </script>
 {% endblock %} 
