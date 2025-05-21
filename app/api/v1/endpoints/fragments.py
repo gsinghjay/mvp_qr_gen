@@ -342,6 +342,95 @@ async def get_qr_detail_fragment(
             status_code=500,
         )
 
+@router.get("/qr/{qr_id}/analytics/scan-logs", response_class=HTMLResponse)
+async def get_scan_logs_fragment(
+    request: Request,
+    qr_id: str,
+    qr_service: QRServiceDep,
+    page: int = 1,
+    limit: int = 10,
+    genuine_only: bool = False,
+):
+    """
+    Get the scan logs fragment for a specific QR code.
+    
+    Args:
+        request: The FastAPI request object.
+        qr_id: The ID of the QR code to get scan logs for.
+        qr_service: The QR code service.
+        page: The page number (for pagination).
+        limit: The number of logs per page.
+        genuine_only: Whether to include only genuine scans.
+        
+    Returns:
+        HTMLResponse: The rendered scan logs fragment.
+    """
+    try:
+        # Calculate offset from page number
+        skip = (page - 1) * limit
+        
+        # Get scan logs from repository
+        scan_logs, total_logs = qr_service.repository.get_scan_logs_for_qr(
+            qr_id=qr_id,
+            skip=skip,
+            limit=limit,
+            genuine_only=genuine_only
+        )
+        
+        # Format scan log data for the template
+        formatted_logs = []
+        for log in scan_logs:
+            formatted_logs.append({
+                "id": log.id,
+                "scanned_at": log.scanned_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "is_genuine_scan": log.is_genuine_scan,
+                "device_family": log.device_family or "Unknown",
+                "os_family": log.os_family or "Unknown",
+                "os_version": log.os_version or "",
+                "browser_family": log.browser_family or "Unknown",
+                "browser_version": log.browser_version or "",
+                "is_mobile": log.is_mobile,
+                "is_tablet": log.is_tablet,
+                "is_pc": log.is_pc,
+                "is_bot": log.is_bot
+            })
+        
+        # Calculate total pages for pagination
+        total_pages = math.ceil(total_logs / limit) if total_logs > 0 else 1
+        
+        return templates.TemplateResponse(
+            "fragments/scan_log_table.html",
+            {
+                "request": request,
+                "qr_id": qr_id,
+                "scan_logs": formatted_logs,
+                "total_logs": total_logs,
+                "page": page,
+                "limit": limit,
+                "total_pages": total_pages,
+                "genuine_only": genuine_only
+            }
+        )
+    except QRCodeNotFoundError:
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": f"QR code with ID {qr_id} not found."
+            },
+            status_code=404,
+        )
+    except DatabaseError as e:
+        logger.error(f"Database error retrieving scan logs for QR {qr_id}: {str(e)}")
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": "An error occurred while retrieving scan logs."
+            },
+            status_code=500,
+        )
+
 @router.get("/qr-edit/{qr_id}", response_class=HTMLResponse)
 async def get_qr_edit_fragment(
     request: Request,
