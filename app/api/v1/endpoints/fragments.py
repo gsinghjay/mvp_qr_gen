@@ -231,9 +231,12 @@ async def create_qr_code(
             "success_message": "QR Code created successfully!"
         }
             
-        # For Option B, we return a simple 204 No Content response
-        # HTMX will handle the toast and redirect via event listeners
-        return Response(status_code=204)
+        # For Option 2.3.B, we return a 204 response with HX-Trigger header containing the QR ID
+        response = Response(status_code=204)
+        # Add HX-Trigger header with QR ID in JSON format
+        import json
+        response.headers["HX-Trigger"] = json.dumps({"qrCreated": {"id": qr.id}})
+        return response
     except ValidationError as e:
         # Return the form with validation errors
         return templates.TemplateResponse(
