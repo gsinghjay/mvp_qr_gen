@@ -7,8 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Annotated
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Request, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -276,3 +276,14 @@ async def qr_analytics_page(
             },
             status_code=404,
         ) 
+
+
+@router.get("/qr", response_class=RedirectResponse, include_in_schema=False)
+async def redirect_qr_to_qr_list():
+    """
+    Redirects general /qr path to the main QR list page.
+    
+    This simplifies the URL structure by ensuring that the /qr path
+    (without additional segments) redirects to the full QR list page.
+    """
+    return RedirectResponse(url="/qr-list", status_code=status.HTTP_301_MOVED_PERMANENTLY) 
