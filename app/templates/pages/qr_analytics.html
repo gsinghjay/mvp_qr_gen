@@ -32,6 +32,13 @@
 {% block content %}
 <!-- Main content column -->
 <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <!-- Page-level loading indicator for HTMX operations -->
+    <div id="page-loading-indicator" class="htmx-indicator position-fixed top-0 start-0 end-0" style="z-index: 9999;">
+        <div class="progress" style="height: 3px; border-radius: 0;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width: 100%"></div>
+        </div>
+    </div>
+
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h2">QR Code Analytics</h1>
         <div class="btn-toolbar mb-2 mb-md-0">
@@ -87,11 +94,11 @@
         <div class="col-md-4">
             <div class="card border">
                 <div class="card-body">
-                    <div class="d-flex">
+                    <div class="d-flex justify-content-between mb-2">
                         <div class="flex-shrink-0 me-3">
                             <img src="/api/v1/qr/{{ qr.id }}/image?size=150&include_logo=false" alt="QR Code" class="img-fluid" width="100">
                         </div>
-                        <div>
+                        <div class="flex-grow-1">
                             <h5 class="card-title">{{ qr.title or "Untitled QR Code" }}</h5>
                             <p class="card-text text-muted small mb-1">{{ qr.description or "No description" }}</p>
                             {% if qr.qr_type == 'dynamic' %}
@@ -111,6 +118,20 @@
                             {% endif %}
                         </div>
                     </div>
+                    <!-- QR Code Edit Button (only for dynamic QR codes) -->
+                    {% if qr.qr_type == 'dynamic' %}
+                    <div class="text-end">
+                        <button
+                          class="btn btn-outline-secondary btn-sm"
+                          hx-get="/api/v1/fragments/qr-edit-form/{{ qr.id }}"
+                          hx-target="#qr-edit-form-container"
+                          hx-swap="innerHTML"
+                          hx-indicator="#page-loading-indicator"
+                        >
+                          <i class="bi bi-pencil me-1"></i> Edit QR Details
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -166,6 +187,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Edit Form Container -->
+    <div id="qr-edit-form-container"></div>
 
     <!-- QR Download Options -->
     <div class="row mb-4">
