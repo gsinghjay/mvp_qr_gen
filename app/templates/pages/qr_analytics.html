@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - QR Code Generator{% endblock %}
+{% block description %}Comprehensive analytics for QR code - View scan statistics, device usage, and performance metrics{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js library will be added here -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Main content column -->
+<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">QR Code Analytics</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="/qr-detail/{{ qr.id }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>
+                    Back to Details
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-download me-1"></i>
+                    Export
+                </button>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle">
+                <i class="bi bi-calendar me-1"></i>
+                Time Range
+            </button>
+        </div>
+    </div>
+
+    <!-- QR Code Info Card -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0 me-3">
+                            <img src="/api/v1/qr/{{ qr.id }}/image?size=150&include_logo=false" alt="QR Code" class="img-fluid" width="100">
+                        </div>
+                        <div>
+                            <h5 class="card-title">{{ qr.title or "Untitled QR Code" }}</h5>
+                            <p class="card-text text-muted small mb-1">{{ qr.description or "No description" }}</p>
+                            {% if qr.qr_type == 'dynamic' %}
+                            <div class="input-group input-group-sm mt-2">
+                                <input type="text" class="form-control" value="{{ qr.content }}" readonly id="shortUrlInput">
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('shortUrlInput')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            {% else %}
+                            <div class="input-group input-group-sm mt-2">
+                                <input type="text" class="form-control" value="{{ qr.content }}" readonly id="contentInput">
+                                <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('contentInput')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Summary Cards -->
+        <div class="col-md-8">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <div class="card border h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 bg-primary text-white rounded-circle p-2 me-3">
+                                    <i class="bi bi-eye"></i>
+                                </div>
+                                <div>
+                                    <h2 class="fs-4 fw-bold mb-0">{{ qr.scan_count or 0 }}</h2>
+                                    <p class="text-muted small mb-0">Total Scans</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 bg-success text-white rounded-circle p-2 me-3">
+                                    <i class="bi bi-qr-code-scan"></i>
+                                </div>
+                                <div>
+                                    <h2 class="fs-4 fw-bold mb-0">{{ qr.genuine_scan_count or 0 }}</h2>
+                                    <p class="text-muted small mb-0">Genuine Scans</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0 bg-info text-white rounded-circle p-2 me-3">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <div>
+                                    <h2 class="fs-4 fw-bold mb-0">{{ qr.last_genuine_scan_at|default("N/A") }}</h2>
+                                    <p class="text-muted small mb-0">Last Genuine Scan</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Content -->
+    <div class="row g-4 mb-4">
+        <!-- This section will be populated with HTMX fragments in future tasks -->
+        <div class="col-md-8">
+            <div class="card border">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">Scan Activity Over Time</h5>
+                </div>
+                <div class="card-body">
+                    <div id="scan-activity-chart-container" class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="scanActivityChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card border h-100">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">Device Breakdown</h5>
+                </div>
+                <div class="card-body">
+                    <div id="device-chart-container" class="chart-container" style="position: relative; height:200px;">
+                        <canvas id="deviceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Placeholder for additional analytics sections -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Recent Scan Details</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary">
+                            <i class="bi bi-filter me-1"></i>
+                            Filter
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary">
+                            <i class="bi bi-download me-1"></i>
+                            Export
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <!-- This table will be populated with actual scan data in future tasks -->
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">Timestamp</th>
+                                    <th scope="col">Device</th>
+                                    <th scope="col">Browser</th>
+                                    <th scope="col">OS</th>
+                                    <th scope="col">Genuine</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Placeholder rows -->
+                                <tr>
+                                    <td colspan="5" class="text-center py-3">
+                                        <p class="text-muted mb-0">Scan detail data will be loaded here.</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Helper function to copy text to clipboard
+    function copyToClipboard(elementId) {
+        const copyText = document.getElementById(elementId);
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); // For mobile devices
+        
+        navigator.clipboard.writeText(copyText.value)
+            .then(() => {
+                // Show success toast
+                const toast = document.createElement('div');
+                toast.classList.add('toast', 'align-items-center', 'text-white', 'bg-success', 'border-0', 'position-fixed', 'top-0', 'end-0', 'm-3');
+                toast.setAttribute('role', 'alert');
+                toast.setAttribute('aria-live', 'assertive');
+                toast.setAttribute('aria-atomic', 'true');
+                toast.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="bi bi-check-circle me-2"></i>
+                            Copied to clipboard!
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                `;
+                document.body.appendChild(toast);
+                
+                const bsToast = new bootstrap.Toast(toast, { delay: 2000 });
+                bsToast.show();
+                
+                // Remove the toast after it's hidden
+                toast.addEventListener('hidden.bs.toast', function () {
+                    toast.remove();
+                });
+            })
+            .catch(err => {
+                console.error('Error copying text: ', err);
+            });
+    }
+
+    // Initialize placeholder charts 
+    document.addEventListener('DOMContentLoaded', function() {
+        // Scan Activity Chart (placeholder)
+        const scanActivityCanvas = document.getElementById('scanActivityChart');
+        if (scanActivityCanvas) {
+            const scanActivityChart = new Chart(scanActivityCanvas, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+                    datasets: [{
+                        label: 'Total Scans',
+                        data: [65, 59, 80, 81, 56, 55, 40],
+                        borderColor: 'rgba(13, 110, 253, 1)',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Genuine Scans',
+                        data: [28, 48, 40, 19, 86, 27, 90],
+                        borderColor: 'rgba(25, 135, 84, 1)',
+                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Device Breakdown Chart (placeholder)
+        const deviceCanvas = document.getElementById('deviceChart');
+        if (deviceCanvas) {
+            const deviceChart = new Chart(deviceCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Mobile', 'Desktop', 'Tablet', 'Other'],
+                    datasets: [{
+                        data: [65, 20, 10, 5],
+                        backgroundColor: [
+                            'rgba(13, 110, 253, 0.8)',
+                            'rgba(25, 135, 84, 0.8)',
+                            'rgba(255, 193, 7, 0.8)',
+                            'rgba(108, 117, 125, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(13, 110, 253, 1)',
+                            'rgba(25, 135, 84, 1)',
+                            'rgba(255, 193, 7, 1)',
+                            'rgba(108, 117, 125, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 
