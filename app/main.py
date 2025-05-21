@@ -32,7 +32,8 @@ from .core.exceptions import (
 )
 from .middleware import LoggingMiddleware, MetricsMiddleware, RequestIDMiddleware
 from .database import get_db_with_logging
-from .repositories.qr_repository import QRCodeRepository
+from .repositories.qr_code_repository import QRCodeRepository
+from .repositories.scan_log_repository import ScanLogRepository
 from .services.qr_service import QRCodeService
 
 # Configure logging
@@ -72,8 +73,9 @@ async def lifespan(app: FastAPI):
         logger.info("Database session created")
         
         # Initialize repositories and services
-        qr_repo = QRCodeRepository(db)
-        qr_service = QRCodeService(qr_repo)
+        qr_code_repo = QRCodeRepository(db)
+        scan_log_repo = ScanLogRepository(db)
+        qr_service = QRCodeService(qr_code_repo=qr_code_repo, scan_log_repo=scan_log_repo)
         logger.info("Repository and service layers initialized")
         
         # Explicitly import routing modules to load them
@@ -89,11 +91,11 @@ async def lifespan(app: FastAPI):
         # Try to warm up the most common code paths
         try:
             # Initialize database query paths
-            total = qr_repo.count()
+            total = qr_code_repo.count()
             logger.info(f"Database contains {total} QR codes")
             
             # Initialize API endpoints and template rendering
-            recent_qrs, _ = qr_repo.list_qr_codes(skip=0, limit=5)
+            recent_qrs, _ = qr_code_repo.list_qr_codes(skip=0, limit=5)
             
             if recent_qrs:
                 # Warm ORM model conversion paths
@@ -206,8 +208,8 @@ async def lifespan(app: FastAPI):
                 )
                 
                 # Clean up test QRs - using correct delete method
-                qr_repo.delete(test_static_qr.id)
-                qr_repo.delete(test_dynamic_qr.id)
+                qr_code_repo.delete(test_static_qr.id)
+                qr_code_repo.delete(test_dynamic_qr.id)
                 logger.info("Cleaned up test QRs after initialization")
                 
             # Warm up error handling code paths
