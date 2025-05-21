@@ -607,4 +607,74 @@ async def get_pagination_fragment(
             "total_pages": total_pages,
             "resource": resource
         }
-    ) 
+    )
+
+@router.get("/qr/{qr_id}/analytics/device-stats", response_class=HTMLResponse)
+async def get_device_stats_fragment(
+    request: Request,
+    qr_id: str,
+    qr_service: QRServiceDep,
+    genuine_only: bool = False,
+):
+    """
+    Get the device, browser, and OS statistics fragment for a specific QR code.
+    
+    Args:
+        request: The FastAPI request object.
+        qr_id: The ID of the QR code to get statistics for.
+        qr_service: The QR code service.
+        genuine_only: Whether to include only genuine scans in the statistics.
+        
+    Returns:
+        HTMLResponse: The rendered device/browser/OS statistics fragment.
+    """
+    try:
+        # Get device statistics from repository
+        device_stats = qr_service.repository.get_device_statistics(qr_id)
+        
+        # Get browser statistics from repository
+        browser_stats = qr_service.repository.get_browser_statistics(qr_id)
+        
+        # Get OS statistics from repository
+        os_stats = qr_service.repository.get_os_statistics(qr_id)
+        
+        # Combine all statistics
+        stats = {
+            "device_types": device_stats.get("device_types", {}),
+            "device_families": device_stats.get("device_families", {}),
+            "browser_families": browser_stats.get("browser_families", {}),
+            "os_families": os_stats.get("os_families", {})
+        }
+        
+        # Calculate totals for percentage calculations
+        device_total = sum(stats["device_types"].values())
+        
+        return templates.TemplateResponse(
+            "fragments/device_os_browser_stats.html",
+            {
+                "request": request,
+                "qr_id": qr_id,
+                "stats": stats,
+                "device_total": device_total,
+                "genuine_only": genuine_only
+            }
+        )
+    except QRCodeNotFoundError:
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": f"QR code with ID {qr_id} not found."
+            },
+            status_code=404,
+        )
+    except DatabaseError as e:
+        logger.error(f"Database error retrieving device statistics for QR {qr_id}: {str(e)}")
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": "An error occurred while retrieving device statistics."
+            },
+            status_code=500,
+        ) 
