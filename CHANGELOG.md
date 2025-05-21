@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.26.2 (2025-05-21)
+
+### Bug Fixes
+
+- Address 401 errors in test script by adding Host headers
+  ([`8f7675b`](https://github.com/gsinghjay/mvp_qr_gen/commit/8f7675bf739f91cd0504491abff23f3cbba0987f))
+
+
 ## v0.26.1 (2025-05-21)
 
 ### Bug Fixes
