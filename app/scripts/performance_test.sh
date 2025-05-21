@@ -31,6 +31,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Get the directory of the script
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # Load environment variables from .env file if it exists
 if [ -f ".env" ]; then
     echo -e "${YELLOW}Loading environment variables from .env file...${NC}"
@@ -41,7 +44,7 @@ fi
 API_URL=${API_URL:-"https://10.1.6.12"}
 ITERATIONS=3
 WAIT_TIME=1
-OUTPUT_FILE="performance_results.csv"
+OUTPUT_FILE="${SCRIPT_DIR}/performance_results.csv"
 VERBOSE=false
 
 # Authentication credentials
@@ -62,7 +65,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         -o|--output)
-            OUTPUT_FILE="$2"
+            OUTPUT_FILE="${SCRIPT_DIR}/$2"
             shift 2
             ;;
         -v|--verbose)
@@ -175,21 +178,49 @@ test_endpoint_performance "/health" "Health Check"
 test_endpoint_performance "/api/v1/qr?limit=1" "QR Listing"
 test_endpoint_performance "/" "Home Page"
 
-# Need to find a valid short_id for testing redirect
+# Create a test dynamic QR code for redirect testing
 echo -e "\n${YELLOW}Creating a test dynamic QR code for redirect testing...${NC}"
 REDIRECT_RESPONSE=$(curl -k -s $AUTH_HEADER -X POST "${API_URL}/api/v1/qr/dynamic" \
     -H "Content-Type: application/json" \
-    -d '{"content": "perf-test", "redirect_url": "https://example.com"}')
+    -d '{
+        "content": "perf-test",
+        "redirect_url": "https://example.com",
+        "title": "Performance Test QR",
+        "description": "This is a test QR code for performance testing"
+    }')
 
-QR_ID=$(echo "$REDIRECT_RESPONSE" | grep -o '"id":"[^"]*' | sed 's/"id":"//g')
-CONTENT=$(curl -k -s $AUTH_HEADER "${API_URL}/api/v1/qr/$QR_ID" | grep -o '"content":"[^"]*' | sed 's/"content":"//g')
-SHORT_ID=$(echo "$CONTENT" | sed 's/.*\/r\///')
+# Extract QR ID and content more robustly
+QR_ID=$(echo "$REDIRECT_RESPONSE" | grep -o '"id":"[^"]*' | sed 's/"id":"//g' || echo "")
 
-if [ -n "$SHORT_ID" ]; then
-    echo -e "${GREEN}Created test QR with short ID: $SHORT_ID${NC}"
-    test_endpoint_performance "/r/$SHORT_ID" "QR Redirect"
+if [ -z "$QR_ID" ]; then
+    echo -e "${RED}Failed to extract QR ID from response${NC}"
+    echo -e "${YELLOW}Response from API:${NC}"
+    echo "$REDIRECT_RESPONSE"
 else
-    echo -e "${RED}Failed to create test QR code for redirect testing${NC}"
+    echo -e "${GREEN}Created test QR with ID: $QR_ID${NC}"
+    
+    # Get the QR code details to extract the short_id
+    QR_DETAILS=$(curl -k -s $AUTH_HEADER "${API_URL}/api/v1/qr/$QR_ID")
+    CONTENT=$(echo "$QR_DETAILS" | grep -o '"content":"[^"]*' | sed 's/"content":"//g' || echo "")
+    
+    if [ -z "$CONTENT" ]; then
+        echo -e "${RED}Failed to extract content from QR code details${NC}"
+        echo -e "${YELLOW}QR Details:${NC}"
+        echo "$QR_DETAILS"
+    else
+        echo -e "${GREEN}QR content: $CONTENT${NC}"
+        
+        # Extract short ID from content using a more reliable method
+        SHORT_ID=$(echo "$CONTENT" | sed -n 's/.*\/r\/\([^?]*\).*/\1/p' || echo "")
+        
+        if [ -z "$SHORT_ID" ]; then
+            echo -e "${RED}Failed to extract short ID from content${NC}"
+            echo -e "${YELLOW}Content:${NC} $CONTENT"
+        else
+            echo -e "${GREEN}Extracted short ID: $SHORT_ID${NC}"
+            test_endpoint_performance "/r/$SHORT_ID" "QR Redirect"
+        fi
+    fi
 fi
 
 # Generate final report
@@ -214,7 +245,7 @@ echo -e "\n${GREEN}Performance test completed! Results saved to $OUTPUT_FILE${NC
 
 # Append results to a historical log file if verbose is enabled
 if [ "$VERBOSE" = true ]; then
-    HISTORY_FILE="performance_history.log"
+    HISTORY_FILE="${SCRIPT_DIR}/performance_history.log"
     echo "$(date +%Y-%m-%d_%H:%M:%S),${API_URL},${COLD_AVG},${WARM_AVG},${OVERALL_RATIO}" >> $HISTORY_FILE
     echo -e "${BLUE}Historical data appended to $HISTORY_FILE${NC}"
 fi 
