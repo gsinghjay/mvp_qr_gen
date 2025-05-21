@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v0.25.0 (2025-05-21)
+
+### Features
+
+- **tests**: Add helper functions for validating scan log data
+  ([`b7d459f`](https://github.com/gsinghjay/mvp_qr_gen/commit/b7d459fb3234589a394d48dc122562579da9eea4))
+
+- **tests**: Add scan_log_factory fixtures and qr_with_scans fixtures
+  ([`29c40d8`](https://github.com/gsinghjay/mvp_qr_gen/commit/29c40d809d62345133360c8a07111b61710ce3d8))
+
+- **tests**: Add ScanLogFactory for test data generation
+  ([`8b319e6`](https://github.com/gsinghjay/mvp_qr_gen/commit/8b319e68acd1673868a1d1b054301334749eaf28))
+
+### Testing
+
+- **factories**: Add tests demonstrating factory pattern usage
+  ([`3ed1830`](https://github.com/gsinghjay/mvp_qr_gen/commit/3ed18302edfd3add2c43e8ca7372b9498933465d))
+
+
 ## v0.24.0 (2025-05-20)
 
 ### Bug Fixes
