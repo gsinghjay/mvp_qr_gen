@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.26.1 (2025-05-21)
+
+### Bug Fixes
+
+- Improve error handling and reliability in performance test script
+  ([`cd1e977`](https://github.com/gsinghjay/mvp_qr_gen/commit/cd1e97761be5b669c79c290dced72404c38acace))
+
+### Documentation
+
+- Update performance test results with comprehensive metrics
+  ([`db13585`](https://github.com/gsinghjay/mvp_qr_gen/commit/db1358553e91a72ab57d605926fa6686fb8039dd))
+
+- Update README with performance testing findings and refactoring decision
+  ([`3eefe1f`](https://github.com/gsinghjay/mvp_qr_gen/commit/3eefe1f08a6ca7c51e6e39d2e5dc77b1635b93a0))
+
+
 ## v0.26.0 (2025-05-21)
 
 ### Bug Fixes
