@@ -441,29 +441,58 @@ async def update_qr_code(
             status_code=404,
         )
     except ValidationError as e:
-        # Get the original QR code for the form
-        try:
-            qr = qr_service.get_qr_by_id(qr_id)
-            return templates.TemplateResponse(
-                "fragments/qr_edit.html",
-                {
-                    "request": request,
-                    "qr": qr,
-                    "redirect_url": redirect_url,
-                    "title": title,
-                    "description": description,
-                    "error_messages": e.errors()
-                }
-            )
-        except Exception:
-            return templates.TemplateResponse(
-                "fragments/error.html",
-                {
-                    "request": request,
-                    "error": "An error occurred while retrieving the QR code for editing."
-                },
-                status_code=500,
-            )
+        # Determine whether the request came from the edit form on the analytics page
+        # or from the modal edit form (checking the hx-target header)
+        hx_target = request.headers.get("HX-Target", "")
+        
+        if "qr-edit-form-container" in hx_target:
+            # Request came from analytics page form
+            try:
+                qr = qr_service.get_qr_by_id(qr_id)
+                return templates.TemplateResponse(
+                    "fragments/qr_edit_form.html",
+                    {
+                        "request": request,
+                        "qr": qr,
+                        "redirect_url": redirect_url,
+                        "title": title,
+                        "description": description,
+                        "error_messages": e.errors()
+                    }
+                )
+            except Exception:
+                return templates.TemplateResponse(
+                    "fragments/error.html",
+                    {
+                        "request": request,
+                        "error": "An error occurred while retrieving the QR code for editing."
+                    },
+                    status_code=500,
+                )
+        else:
+            # Default to modal form response
+            try:
+                qr = qr_service.get_qr_by_id(qr_id)
+                return templates.TemplateResponse(
+                    "fragments/qr_edit.html",
+                    {
+                        "request": request,
+                        "qr": qr,
+                        "redirect_url": redirect_url,
+                        "title": title,
+                        "description": description,
+                        "error_messages": e.errors()
+                    }
+                )
+            except Exception:
+                return templates.TemplateResponse(
+                    "fragments/error.html",
+                    {
+                        "request": request,
+                        "error": "An error occurred while retrieving the QR code for editing."
+                    },
+                    status_code=500,
+                )
     except Exception as e:
         logger.error(f"Error updating QR code: {str(e)}")
         return templates.TemplateResponse(
@@ -625,4 +654,71 @@ async def get_qr_download_options_fragment(
                 "error": "Unable to load QR download options"
             },
             status_code=500,
-        ) 
+        )
+
+@router.get("/qr-edit-form/{qr_id}", response_class=HTMLResponse)
+async def get_qr_edit_form_fragment(
+    request: Request,
+    qr_id: str,
+    qr_service: QRServiceDep,
+):
+    """
+    Get the QR code edit form fragment for the analytics page.
+    
+    Args:
+        request: The FastAPI request object.
+        qr_id: The ID of the QR code.
+        qr_service: The QR code service.
+        
+    Returns:
+        HTMLResponse: The rendered QR edit form fragment.
+    """
+    try:
+        # Get the QR code
+        qr = qr_service.get_qr_by_id(qr_id)
+        
+        # Return the edit form fragment
+        return templates.TemplateResponse(
+            "fragments/qr_edit_form.html",
+            {
+                "request": request,
+                "qr": qr,
+            }
+        )
+    except QRCodeNotFoundError:
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": f"QR code with ID {qr_id} not found."
+            },
+            status_code=404,
+        )
+    except Exception as e:
+        logger.error(f"Error retrieving QR code for editing: {str(e)}")
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": f"An error occurred while retrieving the QR code: {str(e)}"
+            },
+            status_code=500,
+        )
+
+@router.get("/qr-edit-form-cancel/{qr_id}", response_class=HTMLResponse)
+async def cancel_qr_edit_form(
+    request: Request,
+    qr_id: str,
+):
+    """
+    Cancel the QR code edit form and return an empty response.
+    
+    Args:
+        request: The FastAPI request object.
+        qr_id: The ID of the QR code.
+        
+    Returns:
+        HTMLResponse: An empty response to clear the form container.
+    """
+    # Return an empty response to clear the form container
+    return HTMLResponse(content="") 
