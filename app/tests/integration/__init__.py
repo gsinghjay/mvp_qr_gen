@@ -1,6 +1,5 @@
 """
-Integration test package initialization.
-Provides imports from the main tests package for easier access.
+Integration tests package.
 """
 import sys
 import os

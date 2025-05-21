@@ -20,44 +20,34 @@ def create_security_headers_middleware(app):
     """
     Create security headers middleware using FastAPI's decorator pattern.
     
-    This complements Traefik's security headers by adding application-specific headers
-    that may need to be dynamically generated or are best set at the application level.
+    As part of Phase III (Security Header Consolidation), standard security headers
+    have been moved to Traefik configuration as the single source of truth.
+    
+    This middleware now only handles application-specific headers that need to be
+    dynamically generated or are contextual to specific requests.
     """
     @app.middleware("http")
     async def security_headers_middleware(request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
         
-        # Add security headers not handled by Traefik or that need dynamic values
-        headers = {
-            "X-Content-Type-Options": "nosniff",
-            "X-Frame-Options": "DENY",
-            "X-XSS-Protection": "1; mode=block",
-        }
+        # Initialize empty headers dictionary
+        headers = {}
         
-        # Add CSP for static files
+        # Add CSP for static files - this is a dynamic, path-specific header
+        # that makes sense to keep at the application level
         if request.url.path.startswith("/static/"):
             headers["Content-Security-Policy"] = "upgrade-insecure-requests"
         
-        # Add HSTS in production only - safely check environment with fallback
-        try:
-            # Get environment from settings if available, otherwise assume production for safety
-            environment = getattr(request.app.state, "settings", None)
-            if environment and hasattr(environment, "ENVIRONMENT"):
-                is_production = environment.ENVIRONMENT == "production"
-            else:
-                # Default to production behavior if we can't determine environment
-                is_production = True
-                logger.warning("Could not determine environment from app state, defaulting to production security settings")
-                
-            if is_production:
-                headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-                logger.debug("Added HSTS header for production environment")
-        except Exception as e:
-            # On any error, use a safer default (add HSTS)
-            headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-            logger.warning(f"Error determining environment, defaulting to HSTS header: {str(e)}")
+        # Standard security headers removed and now managed by Traefik:
+        # - X-Content-Type-Options
+        # - X-Frame-Options
+        # - X-XSS-Protection
+        # - Strict-Transport-Security (HSTS)
             
-        response.headers.update(headers)
+        # Only update headers if we have any to add
+        if headers:
+            response.headers.update(headers)
+        
         return response
 
     return security_headers_middleware

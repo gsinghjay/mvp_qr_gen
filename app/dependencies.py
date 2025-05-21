@@ -8,7 +8,7 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from .database import get_db_with_logging
-from .repositories.qr_repository import QRCodeRepository
+from .repositories import QRCodeRepository, ScanLogRepository
 from .services.qr_service import QRCodeService
 
 
@@ -22,7 +22,7 @@ def get_db() -> Annotated[Session, Depends(get_db_with_logging)]:
     return Depends(get_db_with_logging)
 
 
-def get_qr_repository(db: Annotated[Session, Depends(get_db_with_logging)]) -> QRCodeRepository:
+def get_qr_code_repository(db: Annotated[Session, Depends(get_db_with_logging)]) -> QRCodeRepository:
     """
     Dependency for getting a QRCodeRepository instance.
     
@@ -35,14 +35,31 @@ def get_qr_repository(db: Annotated[Session, Depends(get_db_with_logging)]) -> Q
     return QRCodeRepository(db)
 
 
-def get_qr_service(repo: Annotated[QRCodeRepository, Depends(get_qr_repository)]) -> QRCodeService:
+def get_scan_log_repository(db: Annotated[Session, Depends(get_db_with_logging)]) -> ScanLogRepository:
+    """
+    Dependency for getting a ScanLogRepository instance.
+    
+    Args:
+        db: The database session (injected via FastAPI's dependency system)
+        
+    Returns:
+        An instance of ScanLogRepository with the database session
+    """
+    return ScanLogRepository(db)
+
+
+def get_qr_service(
+    qr_code_repo: Annotated[QRCodeRepository, Depends(get_qr_code_repository)],
+    scan_log_repo: Annotated[ScanLogRepository, Depends(get_scan_log_repository)]
+) -> QRCodeService:
     """
     Dependency for getting a QRCodeService instance.
     
     Args:
-        repo: The QRCodeRepository (injected via FastAPI's dependency system)
+        qr_code_repo: The QRCodeRepository
+        scan_log_repo: The ScanLogRepository
         
     Returns:
-        An instance of QRCodeService with the repository
+        An instance of QRCodeService with the repositories
     """
-    return QRCodeService(repo)
+    return QRCodeService(qr_code_repo=qr_code_repo, scan_log_repo=scan_log_repo)
