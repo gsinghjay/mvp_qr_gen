@@ -680,4 +680,51 @@ async def get_device_stats_fragment(
                 "error": "An error occurred while retrieving device statistics."
             },
             status_code=500,
+        )
+
+@router.get("/qr/{qr_id}/download-options", response_class=HTMLResponse)
+async def get_qr_download_options_fragment(
+    request: Request,
+    qr_id: str,
+    qr_service: QRServiceDep,
+):
+    """
+    Get the download options fragment for a specific QR code.
+    
+    Args:
+        request: The FastAPI request object.
+        qr_id: The ID of the QR code.
+        qr_service: The QR code service.
+        
+    Returns:
+        HTMLResponse: The rendered QR download options fragment.
+    """
+    try:
+        qr = qr_service.get_qr_by_id(qr_id)
+        
+        return templates.TemplateResponse(
+            "fragments/qr_download_options.html",
+            {
+                "request": request,
+                "qr": qr,
+            }
+        )
+    except QRCodeNotFoundError:
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": f"QR code with ID {qr_id} not found"
+            },
+            status_code=404,
+        )
+    except Exception as e:
+        logger.error(f"Error getting QR download options: {str(e)}")
+        return templates.TemplateResponse(
+            "fragments/error.html",
+            {
+                "request": request,
+                "error": "Unable to load QR download options"
+            },
+            status_code=500,
         ) 
