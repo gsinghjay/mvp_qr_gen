@@ -210,3 +210,69 @@ async def qr_detail(
             },
             status_code=404,
         ) 
+
+
+@router.get("/qr-analytics/{qr_id}", response_class=HTMLResponse)
+async def qr_analytics_page(
+    request: Request, 
+    qr_id: str, 
+    qr_service: QRServiceDep
+):
+    """
+    Render the QR code analytics page.
+    
+    This endpoint displays comprehensive analytics data for a specific QR code,
+    including scan statistics, device breakdown, and time-series visualizations.
+    
+    Args:
+        request: The FastAPI request object.
+        qr_id: The ID of the QR code to display analytics for.
+        qr_service: The QR code service.
+        
+    Returns:
+        HTMLResponse: The rendered QR code analytics page.
+    """
+    try:
+        # Get the QR code using the service to fetch basic details
+        qr_code = qr_service.get_qr_by_id(qr_id)
+        
+        # Convert the QR code model to a dictionary for the template
+        qr_data = qr_code.to_dict()
+        
+        # Add the base URL for the short URL display if it's a dynamic QR code
+        base_url = f"{settings.BASE_URL}/r/"
+        
+        return templates.TemplateResponse(
+            name="pages/qr_analytics.html",
+            context={
+                "request": request,
+                "is_authenticated": True,  # Network-level authentication is now used
+                "qr": qr_data,
+                "base_url": base_url,
+                "page_title": f"Analytics for {qr_data.get('title', 'QR Code')}",
+            },
+        )
+    except DatabaseError as e:
+        logger.error(f"Database error in QR analytics page for {qr_id}", extra={"error": str(e)})
+        return templates.TemplateResponse(
+            name="pages/qr_analytics.html",
+            context={
+                "request": request,
+                "is_authenticated": True,
+                "error": "An error occurred while loading the QR code analytics",
+                "qr_id": qr_id,
+            },
+            status_code=500,
+        )
+    except Exception as e:
+        logger.error(f"Error in QR analytics page for {qr_id}", extra={"error": str(e)})
+        return templates.TemplateResponse(
+            name="pages/qr_analytics.html",
+            context={
+                "request": request,
+                "is_authenticated": True,
+                "error": "QR code not found",
+                "qr_id": qr_id,
+            },
+            status_code=404,
+        ) 
