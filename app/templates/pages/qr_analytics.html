@@ -6,6 +6,19 @@
 {% block extra_head %}
 <!-- Chart.js library will be added here -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .qr-preview-container {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .qr-preview-container img {
+    border: 1px solid #e9e9e9;
+    max-width: 100%;
+    height: auto;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -109,6 +122,54 @@
                                     <p class="text-muted small mb-0">Last Genuine Scan</p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Download Options -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <!-- QR Code Preview Card -->
+            <div class="card mb-3">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Preview</h6>
+                    <span class="badge rounded-pill text-bg-{{ 'primary' if qr.qr_type == 'dynamic' else 'secondary' }}">
+                        {{ qr.qr_type|title }}
+                    </span>
+                </div>
+                <div class="card-body text-center p-3">
+                    <!-- Add preview logo checkbox -->
+                    <div class="form-check form-switch d-flex justify-content-center align-items-center mb-2">
+                        <input class="form-check-input me-2" type="checkbox" id="previewIncludeLogo" checked>
+                        <label class="form-check-label" for="previewIncludeLogo">Show logo in preview</label>
+                    </div>
+                    <div class="qr-preview-container mb-2">
+                        <img id="qrPreviewImage" src="/api/v1/qr/{{ qr.id }}/image?format=png&size=20&include_logo=true&error_level=h" alt="QR Code" class="img-fluid" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <!-- Download Options - loaded dynamically via HTMX -->
+            <div id="download-options-container"
+                 hx-get="/api/v1/fragments/qr/{{ qr.id }}/download-options"
+                 hx-trigger="load"
+                 hx-indicator=".download-options-indicator">
+                <div class="download-options-indicator">
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Download Options</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                            <p class="text-center mt-3 text-muted">Loading download options...</p>
                         </div>
                     </div>
                 </div>
@@ -231,6 +292,62 @@
                 console.error('Error copying text: ', err);
             });
     }
+
+    // QR Preview Image Handling
+    (function() {
+        console.log('QR Preview Image Handler loading...');
+        
+        // Make sure DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializePreviewImage);
+        } else {
+            // DOM already loaded, run directly
+            initializePreviewImage();
+        }
+        
+        function initializePreviewImage() {
+            console.log('Initializing QR preview image functionality');
+            
+            const previewLogoCheckbox = document.getElementById('previewIncludeLogo');
+            const previewImage = document.getElementById('qrPreviewImage');
+            
+            if (!previewLogoCheckbox || !previewImage) {
+                console.error('Missing preview elements');
+                return;
+            }
+            
+            // Initial update
+            updatePreviewImage();
+            
+            // Add event listener
+            previewLogoCheckbox.addEventListener('change', function() {
+                console.log('Preview logo checkbox changed:', this.checked);
+                updatePreviewImage();
+            });
+        }
+        
+        function updatePreviewImage() {
+            const logoCheckbox = document.getElementById('previewIncludeLogo');
+            const previewImg = document.getElementById('qrPreviewImage');
+            
+            if (!logoCheckbox || !previewImg) {
+                console.error('Missing preview elements');
+                return;
+            }
+            
+            const includeLogo = logoCheckbox.checked;
+            console.log('Updating preview image with logo:', includeLogo);
+            
+            const basePreviewUrl = `/api/v1/qr/{{ qr.id }}/image?format=png&size=20`;
+            const logoParam = includeLogo ? '&include_logo=true' : '';
+            // Set error level to H when including logo
+            const errorParam = includeLogo ? '&error_level=h' : '';
+            const fullUrl = basePreviewUrl + logoParam + errorParam;
+            
+            console.log('Setting preview image URL to:', fullUrl);
+            previewImg.src = fullUrl;
+        }
+    })();
 
     // Future chart initialization will be handled by the chart fragment
 </script>
