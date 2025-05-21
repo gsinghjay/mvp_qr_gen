@@ -24,7 +24,7 @@ from ..core.exceptions import (
 )
 from ..core.config import settings
 from ..models.qr import QRCode
-from ..repositories.qr_repository import QRCodeRepository
+from ..repositories import OriginalQRCodeRepository, QRCodeRepository, ScanLogRepository
 from ..schemas.common import QRType, ErrorCorrectionLevel
 from ..schemas.qr.models import QRCodeCreate
 from ..schemas.qr.parameters import (
@@ -53,14 +53,23 @@ IMAGE_FORMATS = {
 class QRCodeService:
     """Service class for QR code operations."""
 
-    def __init__(self, repository: QRCodeRepository):
+    def __init__(
+        self, 
+        repository: OriginalQRCodeRepository,
+        qr_code_repo: Optional[QRCodeRepository] = None, 
+        scan_log_repo: Optional[ScanLogRepository] = None
+    ):
         """
-        Initialize the QR code service with a repository.
+        Initialize the QR code service with repositories.
 
         Args:
-            repository: QRCodeRepository for database operations
+            repository: Original QRCodeRepository for backward compatibility
+            qr_code_repo: Specialized QRCodeRepository for QR code operations
+            scan_log_repo: ScanLogRepository for scan log operations
         """
         self.repository = repository
+        self.qr_code_repo = qr_code_repo or repository  # Fall back to original repository if not provided
+        self.scan_log_repo = scan_log_repo
 
     def get_qr_by_id(self, qr_id: str) -> QRCode:
         """
@@ -76,7 +85,12 @@ class QRCodeService:
             QRCodeNotFoundError: If the QR code is not found
             DatabaseError: If a database error occurs
         """
-        qr = self.repository.get_by_id(qr_id)
+        # Use specialized repository if available
+        if self.qr_code_repo is not self.repository:
+            qr = self.qr_code_repo.get_by_id(qr_id)
+        else:
+            qr = self.repository.get_by_id(qr_id)
+            
         if not qr:
             raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
         return qr
@@ -444,6 +458,9 @@ class QRCodeService:
         statistics for a QR code. It is designed to be run as a background
         task to avoid blocking the redirect response.
         
+        This implementation orchestrates between QRCodeRepository and ScanLogRepository
+        to update QR code statistics and create scan log entries, respectively.
+        
         Args:
             qr_id: The ID of the QR code to update
             timestamp: The timestamp of the scan, defaults to current time
@@ -455,18 +472,40 @@ class QRCodeService:
             QRCodeNotFoundError: If the QR code is not found
             DatabaseError: If a database error occurs
         """
+        if timestamp is None:
+            timestamp = datetime.now(UTC)
+
         # Parse user agent data
-        ua_data = self._parse_user_agent_data(user_agent)
+        parsed_ua_data = self._parse_user_agent_data(user_agent)
         
-        # Use repository method to update scan statistics and create scan log
-        self.repository.update_and_log_scan_statistics(
-            qr_id, 
-            timestamp, 
-            client_ip, 
-            user_agent, 
-            ua_data, 
-            is_genuine_scan_signal
-        )
+        # If we're using the new repositories, use them directly
+        if self.qr_code_repo is not self.repository and self.scan_log_repo is not None:
+            # 1. Update QR code scan statistics (scan_count, genuine_scan_count, etc.)
+            updated_qr = self.qr_code_repo.update_scan_count(qr_id, timestamp, is_genuine_scan_signal)
+            if not updated_qr:
+                logger.warning(f"Failed to update scan count for QR ID {qr_id}.")
+                return  # Or raise appropriate error
+                
+            # 2. Create scan log entry
+            self.scan_log_repo.create_scan_log(
+                qr_id=qr_id,
+                timestamp=timestamp,
+                ip_address=client_ip,
+                raw_user_agent=user_agent,
+                parsed_ua_data=parsed_ua_data,
+                is_genuine_scan_signal=is_genuine_scan_signal
+            )
+            logger.info(f"Scan statistics and log updated for QR ID {qr_id}")
+        else:
+            # Fall back to the original repository method for backward compatibility
+            self.repository.update_and_log_scan_statistics(
+                qr_id, 
+                timestamp, 
+                client_ip, 
+                user_agent, 
+                parsed_ua_data, 
+                is_genuine_scan_signal
+            )
 
     def validate_qr_code(self, qr_data: QRCodeCreate) -> None:
         """
@@ -654,17 +693,28 @@ class QRCodeService:
         Raises:
             DatabaseError: If a database error occurs
         """
-        # No need for try-except, let repository errors propagate
-        # Get count of all QR codes
-        total_qr_codes = self.repository.count()
-        
-        # Get recent QR codes
-        recent_qr_codes, _ = self.repository.list_qr_codes(
-            skip=0,
-            limit=5,
-            sort_by="created_at",
-            sort_desc=True
-        )
+        # Use specialized repository if available
+        if self.qr_code_repo is not self.repository:
+            # Get count of all QR codes
+            total_qr_codes = self.qr_code_repo.count()
+            
+            # Get recent QR codes
+            recent_qr_codes, _ = self.qr_code_repo.list_qr_codes(
+                skip=0,
+                limit=5,
+                sort_by="created_at",
+                sort_desc=True
+            )
+        else:
+            # Fall back to original repository for backward compatibility
+            total_qr_codes = self.repository.count()
+            
+            recent_qr_codes, _ = self.repository.list_qr_codes(
+                skip=0,
+                limit=5,
+                sort_by="created_at",
+                sort_desc=True
+            )
         
         return {
             "total_qr_codes": total_qr_codes,
@@ -688,17 +738,25 @@ class QRCodeService:
         # Get the QR code to verify it exists and get basic info
         qr = self.get_qr_by_id(qr_id)
         
-        # Get scan logs for the QR code
-        scan_logs, total_logs = self.repository.get_scan_logs_for_qr(qr_id, limit=100)
-        
-        # Get device statistics
-        device_stats = self.repository.get_device_statistics(qr_id)
-        
-        # Get browser statistics
-        browser_stats = self.repository.get_browser_statistics(qr_id)
-        
-        # Get OS statistics
-        os_stats = self.repository.get_os_statistics(qr_id)
+        # If we have the specialized repositories, use them
+        if self.qr_code_repo is not self.repository and self.scan_log_repo is not None:
+            # Get scan logs for the QR code
+            scan_logs, total_logs = self.scan_log_repo.get_scan_logs_for_qr(qr_id, limit=100)
+            
+            # Get device statistics
+            device_stats = self.scan_log_repo.get_device_statistics(qr_id)
+            
+            # Get browser statistics
+            browser_stats = self.scan_log_repo.get_browser_statistics(qr_id)
+            
+            # Get OS statistics
+            os_stats = self.scan_log_repo.get_os_statistics(qr_id)
+        else:
+            # Fall back to original repository for backward compatibility
+            scan_logs, total_logs = self.repository.get_scan_logs_for_qr(qr_id, limit=100)
+            device_stats = self.repository.get_device_statistics(qr_id)
+            browser_stats = self.repository.get_browser_statistics(qr_id)
+            os_stats = self.repository.get_os_statistics(qr_id)
         
         # Calculate percentage of genuine scans
         genuine_scan_pct = 0
@@ -763,6 +821,13 @@ class QRCodeService:
             end_date = datetime.now(UTC)
             start_date = end_date - timedelta(days=6)  # 7 days including today
             
+            # If we have the specialized scan log repository, use it
+            if self.qr_code_repo is not self.repository and self.scan_log_repo is not None:
+                # Get scan timeseries data
+                timeseries_data = self.scan_log_repo.get_scan_timeseries(qr_id, time_range="last7days")
+                return timeseries_data
+            
+            # Otherwise, fall back to the original implementation
             # Get daily scan counts for all scans
             all_scans_query = (
                 self.repository.db.query(
