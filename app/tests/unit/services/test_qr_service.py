@@ -21,7 +21,8 @@ from app.tests.conftest import test_db
 from app.tests.helpers import assert_http_exception, assert_qr_code_fields
 
 from app.models.qr import QRCode
-from app.repositories.qr_repository import QRCodeRepository
+from app.repositories.qr_code_repository import QRCodeRepository
+from app.repositories.scan_log_repository import ScanLogRepository
 from app.services.qr_service import QRCodeService
 from app.core.exceptions import QRCodeNotFoundError, DatabaseError
 from app.schemas.qr.parameters import StaticQRCreateParameters
@@ -34,8 +35,9 @@ from app.main import app  # Add this import for the client_with_real_db fixture
 @pytest.fixture
 def qr_service(test_db):
     """Fixture to create a real QR service with test database."""
-    repository = QRCodeRepository(test_db)
-    return QRCodeService(repository)
+    qr_repository = QRCodeRepository(test_db)
+    scan_log_repository = ScanLogRepository(test_db)
+    return QRCodeService(qr_repository, scan_log_repository)
 
 
 @pytest.fixture
@@ -286,7 +288,7 @@ class TestQRCodeService:
             "title": "Test Static QR",
             "fill_color": "#000000",
             "back_color": "#FFFFFF",
-            "error_level": "m",  # Use string here since JSON serialization will convert it anyway
+            "error_level": ErrorCorrectionLevel.M.value,  # Use enum value (string) for JSON serialization
         }
 
         # Act
