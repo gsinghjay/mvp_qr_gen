@@ -172,6 +172,72 @@ flowchart TD
     end
 ```
 
+## System Architecture Overview
+
+A high-level look at how the main FastAPI application is structured internally and how core components interact.
+
+```mermaid
+flowchart TD
+    subgraph "FastAPI Application"
+        direction LR
+        Router["Routers (API & Web)"]
+        Middleware["Middleware Layer<br>(Logging · Metrics · Security)"]
+        Services["Service Layer (Business Logic)"]
+        Repos["Repository Layer (DB Access)"]
+        Models["SQLAlchemy Models"]
+
+        Router --> Middleware --> Services --> Repos --> Models
+    end
+
+    Models -- Read / Write --> Postgres[(PostgreSQL)]
+    Services -- Generates --> Segno["Segno & Pillow (QR Imaging)"]
+    Router -- Serves --> Jinja[Jinja2 Templates]
+    Router -- Streams --> APIClients[REST Clients]
+```
+
+## Request Flow Through the System
+
+The sequence below illustrates how a typical request is handled from the browser to the database (showing both an admin dashboard request and a public QR redirect).
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Traefik
+    participant FastAPI
+    participant DB as PostgreSQL
+
+    User->>Traefik: HTTPS request (e.g. /qr-list or /r/{short_id})
+
+    alt Admin / API request
+        Traefik->>Traefik: Check IP allow-list & basicAuth
+        Traefik->>FastAPI: Forward on success
+        FastAPI->>FastAPI: Middleware chain
+        FastAPI->>DB: ORM query
+        DB-->>FastAPI: Data
+        FastAPI-->>User: HTML / JSON response
+    else Public QR redirect
+        Traefik->>Traefik: Path-based rule + rate-limit
+        Traefik->>FastAPI: Forward request
+        FastAPI->>DB: Lookup short_id
+        DB-->>FastAPI: Redirect URL
+        FastAPI->>FastAPI: Background task → update scan logs
+        FastAPI-->>User: 302 Redirect
+    end
+```
+
+## Database Evolution
+
+Key milestones in the schema's history.
+
+```mermaid
+gitGraph
+    commit id: "initial" tag: "Initial Schema"
+    commit id: "tz" tag: "UTC Timestamps"
+    commit id: "short_id" tag: "Dynamic QR short_id"
+    commit id: "scan_log" tag: "Scan Log Table"
+    commit id: "current" tag: "Current Schema"
+```
+
 ## API Documentation
 
 The API provides endpoints for managing QR codes. Access the interactive documentation (Swagger UI) via `/docs`.
