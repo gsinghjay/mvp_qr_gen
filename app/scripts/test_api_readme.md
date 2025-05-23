@@ -45,6 +45,7 @@ If you're running tests in a different environment, you may need to modify the h
 
 The script performs comprehensive testing of your QR Code Generator API endpoints:
 
+### Core Functionality
 1. Docker Container Status
 2. Health Endpoint
 3. QR Code Listing
@@ -53,10 +54,61 @@ The script performs comprehensive testing of your QR Code Generator API endpoint
 6. Get QR Code by ID
 7. Update Dynamic QR Code
 8. QR Code Redirection
+
+### Advanced Features
 9. QR Code with Logo Generation
 10. Error Correction Levels
 11. SVG Accessibility Features
 12. Enhanced User Agent Tracking
+
+### Production Hardening Security
+13. Invalid Short ID Format Validation
+14. Disallowed Redirect URL Rejection
+15. Invalid URL Scheme Rejection
+16. Differentiated Rate Limiting (QR vs API)
+
+### FastAPI Optimization Verification
+17. Service-Based Dependency Injection
+18. Background Tasks for Scan Statistics
+19. Enhanced User Agent Tracking
+
+## Production Hardening Security Features
+
+The script comprehensively tests the security hardening implemented for production deployment:
+
+### Input Validation and Normalization
+- **Short ID Format Validation**: Tests regex pattern `^[a-f0-9]{8}$` enforcement
+- **Case Normalization**: Verifies uppercase short IDs are converted to lowercase
+- **Invalid Format Rejection**: Confirms 404 errors for malformed short IDs
+- **Non-existent ID Handling**: Tests proper 404 responses for valid format but non-existent IDs
+
+### URL Safety and Domain Allowlisting
+- **Domain Allowlisting**: Tests `ALLOWED_REDIRECT_DOMAINS` configuration enforcement
+- **Subdomain Support**: Verifies that subdomains of allowed domains are permitted
+- **Disallowed Domain Rejection**: Confirms 422 errors for non-allowed domains
+- **URL Scheme Validation**: Tests rejection of non-HTTP/HTTPS schemes (FTP, file, javascript)
+
+### Rate Limiting (Classroom-Optimized)
+The script tests the differentiated rate limiting strategy designed for educational environments:
+
+#### QR Redirect Rate Limiting (Classroom-Friendly)
+- **Target**: `/r/{short_id}` endpoints via `web.hccc.edu`
+- **Limits**: 300 requests/minute, 50 burst capacity
+- **Test**: 60 rapid requests simulating classroom QR scanning
+- **Expected**: 90%+ success rate to handle entire classrooms
+- **College Network Compatible**: Addresses NAT issues where all students appear from same IP
+
+#### Internal API Access (Unrestricted)
+- **Target**: `/api/v1/*` endpoints via `10.1.6.12`
+- **Limits**: None (internal administrative access)
+- **Test**: 30 rapid requests to verify unrestricted access
+- **Expected**: 100% success rate for administrative operations
+
+### Error Handling and Resilience
+- **Specific HTTP Status Codes**: Tests proper 404, 422, 503, 500 responses
+- **Background Task Error Handling**: Verifies graceful error handling without crashes
+- **Client IP Extraction**: Tests robust IP detection behind Traefik proxy
+- **Defense-in-Depth**: Multiple layers of URL validation
 
 ## Error Correction Levels
 
@@ -129,7 +181,39 @@ The script also verifies the implementation of completed optimization tasks:
 - **Implementation Status**: ✅ COMPLETE
 - **Test Results**: All tests pass, confirming that the system correctly tracks and differentiates scan types while extracting detailed device information.
 
+## Security Configuration
+
+### Environment Variables
+The script tests proper loading and enforcement of security configuration:
+
+```bash
+# Required in .env file
+ALLOWED_REDIRECT_DOMAINS="hccc.edu,example.com,vercel.app,github.com"
+```
+
+### Rate Limiting Configuration
+The Traefik configuration implements differentiated rate limiting:
+
+```yaml
+# QR Redirects - Classroom Optimized
+qr-redirect-rate-limit:
+  average: 300  # 5 requests/second
+  burst: 50     # Handles classroom scanning
+
+# API Endpoints - Security Focused  
+rate-limit:
+  average: 60   # 1 request/second
+  burst: 10     # Prevents abuse
+```
+
 ## Implementation Details
+
+### Production Hardening Security
+- **Input Validation**: Comprehensive regex-based validation with case normalization
+- **Domain Allowlisting**: Configurable domain restrictions with subdomain support
+- **URL Safety**: Multi-layer validation preventing malicious redirects
+- **Rate Limiting**: Classroom-optimized limits addressing college network NAT issues
+- **Error Handling**: Specific HTTP status codes with comprehensive logging
 
 ### Service-Based Dependency Injection
 - The application successfully uses a service layer for QR code operations
@@ -161,6 +245,18 @@ The script also verifies the implementation of completed optimization tasks:
 - Timestamp recording for first and last genuine scans provides valuable analytics data
 - Device-specific data (mobile/tablet/PC/bot detection) enhances scan analytics capabilities
 
+## Test Results Summary
+
+A successful test run validates:
+
+- ✅ **47+ Tests Passing** across all functionality areas
+- ✅ **Security Hardening**: All 8 production hardening tasks verified
+- ✅ **Rate Limiting**: 95%+ success rate for QR redirects (classroom-friendly)
+- ✅ **Domain Security**: Proper rejection of disallowed domains
+- ✅ **Input Validation**: Comprehensive short ID format enforcement
+- ✅ **Background Tasks**: Fast response times with asynchronous processing
+- ✅ **User Experience**: No regressions in existing functionality
+
 ## Requirements
 
 - The application must be running via Docker Compose
@@ -185,3 +281,18 @@ After running all tests, the script automatically cleans up:
   - The API_URL is properly configured
   - Your Traefik configuration is routing `/r/` paths correctly
 - If SVG tests fail, check that your segno library is properly configured
+- If security tests fail, verify:
+  - `ALLOWED_REDIRECT_DOMAINS` is properly set in `.env`
+  - Environment variables are passed to Docker containers
+  - Traefik rate limiting configuration is active
+
+## College Network Compatibility
+
+The rate limiting configuration specifically addresses common issues in educational environments:
+
+- **NAT/Proxy Issues**: All students appear from same IP address
+- **Classroom Scenarios**: 50+ students scanning QR codes simultaneously
+- **Event Registration**: Large groups accessing QR codes without blocking
+- **Administrative Access**: Unrestricted internal API access for management
+
+This ensures the QR system works seamlessly in college network environments while maintaining security.

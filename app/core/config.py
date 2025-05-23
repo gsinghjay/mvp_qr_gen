@@ -4,6 +4,8 @@ Core configuration module for the FastAPI application.
 
 import os
 from pathlib import Path
+from typing import List
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -53,6 +55,23 @@ class Settings(BaseSettings):
     TRUSTED_HOSTS: list[str] = ["*"]
     CORS_ORIGINS: list[str] = ["*"]
     CORS_HEADERS: list[str] = ["*"]
+
+    # Allowed redirect domains for QR codes
+    ALLOWED_REDIRECT_DOMAINS: str | List[str] = "hccc.edu,example.com,localhost"
+
+    @field_validator("ALLOWED_REDIRECT_DOMAINS", mode="before")
+    @classmethod
+    def parse_allowed_domains(cls, v):
+        """Parse comma-separated string of allowed domains from environment variable."""
+        if isinstance(v, str):
+            # Split by comma and strip whitespace
+            domains = [domain.strip() for domain in v.split(",") if domain.strip()]
+            return domains if domains else ["hccc.edu", "example.com", "localhost"]
+        elif isinstance(v, list):
+            return v
+        else:
+            # Return default if not string or list
+            return ["hccc.edu", "example.com", "localhost"]
 
     # Middleware Configuration
     ENABLE_GZIP: bool = True
