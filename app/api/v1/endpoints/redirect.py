@@ -22,6 +22,9 @@ from app.core.exceptions import QRCodeNotFoundError, DatabaseError
 import logging
 logger = logging.getLogger("app.qr.redirect")
 
+# Regex pattern for valid short_id format (8 hexadecimal characters)
+SHORT_ID_PATTERN = re.compile(r"^[a-f0-9]{8}$")
+
 router = APIRouter(
     prefix="/r",
     tags=["QR Redirects"],
@@ -62,13 +65,24 @@ async def redirect_qr(
         A redirect response to the target URL
     """
     try:
-        # Get the QR code using the service
-        qr = qr_service.get_qr_by_short_id(short_id)
+        # Validate and normalize short_id format
+        normalized_short_id = short_id.lower()
+        if not SHORT_ID_PATTERN.match(normalized_short_id):
+            logger.warning(f"Invalid short_id format: {short_id}")
+            raise HTTPException(status_code=404, detail="QR code not found")
+
+        # Get the QR code using the service with normalized short_id
+        qr = qr_service.get_qr_by_short_id(normalized_short_id)
 
         # Validate QR code type and redirect URL
-        if qr.qr_type != "dynamic" or not qr.redirect_url:
-            logger.error(f"Invalid QR code type or missing redirect URL: {qr.id}")
-            raise HTTPException(status_code=400, detail="Invalid QR code")
+        if qr.qr_type != "dynamic" or not qr.redirect_url or not qr.redirect_url.startswith(('http://', 'https://')):
+            logger.error(f"QR code not configured for redirects: {qr.id} (type: {qr.qr_type}, redirect_url: {qr.redirect_url})")
+            raise HTTPException(status_code=400, detail="QR code not configured for redirects")
+
+        # Defense-in-depth: validate redirect URL safety
+        if not qr_service._is_safe_redirect_url(qr.redirect_url):
+            logger.warning(f"Unsafe redirect URL detected for QR {qr.id}: {qr.redirect_url}")
+            raise HTTPException(status_code=400, detail="Redirect not permitted")
 
         # Get redirect URL before any background tasks run
         redirect_url = qr.redirect_url
@@ -76,8 +90,12 @@ async def redirect_qr(
         # Update scan statistics in a background task to improve response time
         timestamp = datetime.now(UTC)
 
-        # Get client information for analytics
-        client_ip = request.client.host if request.client else "unknown"
+        # Get client information for analytics - robust IP extraction
+        client_ip = (
+            request.headers.get("X-Real-IP")
+            or request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+            or (request.client.host if request.client else "unknown")
+        )
         user_agent = request.headers.get("user-agent", "unknown")
         
         # Extract the scan_ref parameter from the query string
@@ -86,7 +104,7 @@ async def redirect_qr(
         
         # Log whether this is a genuine scan or direct access
         scan_type = "genuine QR scan" if is_genuine_scan else "direct URL access"
-        logger.info(f"Processing {scan_type} for QR {qr.id} with short_id {short_id}")
+        logger.info(f"Processing {scan_type} for QR {qr.id} with short_id {normalized_short_id}")
 
         # Add the background task to update scan statistics with client info and genuine scan signal
         background_tasks.add_task(
@@ -115,13 +133,18 @@ async def redirect_qr(
         return RedirectResponse(url=redirect_url, status_code=302)
 
     except QRCodeNotFoundError as e:
-        logger.warning(f"QR code not found: {short_id}")
+        logger.info(f"QR code not found: {normalized_short_id if 'normalized_short_id' in locals() else short_id}")
         raise HTTPException(status_code=404, detail=str(e))
+    except HTTPException:
+        # Re-raise HTTPExceptions (including our 400 errors above)
+        raise
     except DatabaseError as e:
         logger.error(f"Database error processing QR code redirect: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-    except HTTPException:
-        raise
+        raise HTTPException(
+            status_code=503, 
+            detail="Service temporarily unavailable",
+            headers={"Retry-After": "30"}
+        )
     except Exception as e:
-        logger.exception(f"Error processing QR code redirect: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error processing QR code redirect")
+        logger.exception(f"Unexpected error processing QR code redirect: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
