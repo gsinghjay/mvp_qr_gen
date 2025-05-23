@@ -210,8 +210,8 @@ http:
 
     rate-limit:
       rateLimit:
-        average: 100
-        burst: 50
+        average: 60
+        burst: 10
         period: 1m
 
     ip-whitelist: # For internal dashboard and management
