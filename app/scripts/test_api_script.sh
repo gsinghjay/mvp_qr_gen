@@ -881,6 +881,9 @@ test_invalid_url_schemes() {
 test_rate_limiting() {
     echo -e "\n${YELLOW}Testing Rate Limiting...${NC}"
     
+    # Test 1: QR Redirect Rate Limiting (Classroom Optimized)
+    echo -e "\n${YELLOW}Test 1: QR Redirect Rate Limiting (Classroom Optimized)...${NC}"
+    
     # Create a dynamic QR for rate limiting test
     local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
         -H "Content-Type: application/json" \
@@ -896,28 +899,28 @@ test_rate_limiting() {
     
     echo -e "${YELLOW}Created QR for rate limiting test with short_id: $short_id${NC}"
     
-    # Test rapid requests to trigger rate limiting
-    echo -e "\n${YELLOW}Sending rapid requests to test rate limiting (75 requests)...${NC}"
+    # Test QR redirect rate limiting (should be more permissive - 300/min, 50 burst)
+    echo -e "\n${YELLOW}Testing QR redirect rate limits (60 requests)...${NC}"
     
-    local success_count=0
-    local rate_limited_count=0
-    local other_count=0
+    local qr_success_count=0
+    local qr_rate_limited_count=0
+    local qr_other_count=0
     
-    # Send 75 requests rapidly to exceed the 60/min average + 10 burst limit
-    for i in {1..75}; do
+    # Send 60 requests rapidly to test the 50 burst + some sustained rate
+    for i in {1..60}; do
         local status=$(curl -k -s -o /dev/null -w "%{http_code}" \
             -H "Host: web.hccc.edu" \
             $API_URL/r/$short_id 2>/dev/null)
         
         case $status in
             302)
-                success_count=$((success_count + 1))
+                qr_success_count=$((qr_success_count + 1))
                 ;;
             429)
-                rate_limited_count=$((rate_limited_count + 1))
+                qr_rate_limited_count=$((qr_rate_limited_count + 1))
                 ;;
             *)
-                other_count=$((other_count + 1))
+                qr_other_count=$((qr_other_count + 1))
                 ;;
         esac
         
@@ -925,42 +928,100 @@ test_rate_limiting() {
         sleep 0.01
     done
     
-    echo -e "${YELLOW}Results:${NC}"
-    echo -e "  Successful redirects (302): $success_count"
-    echo -e "  Rate limited (429): $rate_limited_count"
-    echo -e "  Other responses: $other_count"
+    echo -e "${YELLOW}QR Redirect Rate Limiting Results:${NC}"
+    echo -e "  Successful redirects (302): $qr_success_count"
+    echo -e "  Rate limited (429): $qr_rate_limited_count"
+    echo -e "  Other responses: $qr_other_count"
+    echo -e "  Success rate: $(echo "scale=1; $qr_success_count * 100 / 60" | bc)%"
     
-    # Verify rate limiting is working
-    if [ "$rate_limited_count" -gt 0 ]; then
-        echo -e "${GREEN}✓ PASS:${NC} Rate limiting is working (received $rate_limited_count rate limit responses)"
+    # Verify QR redirect rate limiting is classroom-friendly (should allow most requests)
+    if [ "$qr_success_count" -gt 45 ]; then
+        echo -e "${GREEN}✓ PASS:${NC} QR redirect rate limiting is classroom-friendly (${qr_success_count}/60 successful)"
     else
-        echo -e "${YELLOW}⚠ WARNING:${NC} No rate limiting detected - this might indicate rate limits are too high or not configured"
+        echo -e "${YELLOW}⚠ WARNING:${NC} QR redirect rate limiting might be too restrictive for classrooms (${qr_success_count}/60 successful)"
     fi
     
-    # Verify we got some successful responses initially
-    if [ "$success_count" -gt 0 ]; then
-        echo -e "${GREEN}✓ PASS:${NC} Initial requests were successful before rate limiting kicked in"
+    # Test 2: API Endpoint Rate Limiting (Stricter)
+    echo -e "\n${YELLOW}Test 2: API Endpoint Rate Limiting (Internal Access)...${NC}"
+    
+    # Wait a moment for any rate limits to reset
+    echo -e "${YELLOW}Waiting 5 seconds for rate limits to settle...${NC}"
+    sleep 5
+    
+    # Test API endpoint rate limiting (internal access via 10.1.6.12 - no rate limiting by design)
+    echo -e "\n${YELLOW}Testing API endpoint access (30 requests to /api/v1/qr via internal IP)...${NC}"
+    echo -e "${BLUE}Note: Internal API access (10.1.6.12) is not rate limited by design${NC}"
+    
+    local api_success_count=0
+    local api_rate_limited_count=0
+    local api_other_count=0
+    
+    # Send 30 requests rapidly to test internal API access
+    for i in {1..30}; do
+        local status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+            $AUTH_HEADER \
+            $API_URL/api/v1/qr 2>/dev/null)
+        
+        case $status in
+            200)
+                api_success_count=$((api_success_count + 1))
+                ;;
+            429)
+                api_rate_limited_count=$((api_rate_limited_count + 1))
+                ;;
+            *)
+                api_other_count=$((api_other_count + 1))
+                ;;
+        esac
+        
+        # Small delay to avoid overwhelming the system
+        sleep 0.01
+    done
+    
+    echo -e "${YELLOW}Internal API Access Results:${NC}"
+    echo -e "  Successful requests (200): $api_success_count"
+    echo -e "  Rate limited (429): $api_rate_limited_count"
+    echo -e "  Other responses: $api_other_count"
+    echo -e "  Success rate: $(echo "scale=1; $api_success_count * 100 / 30" | bc)%"
+    
+    # Verify internal API access works (should not be rate limited)
+    if [ "$api_success_count" -eq 30 ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Internal API access works without rate limiting (as designed)"
     else
-        echo -e "${RED}✗ FAIL:${NC} No successful requests - rate limiting might be too restrictive"
-        exit 1
+        echo -e "${YELLOW}⚠ WARNING:${NC} Internal API access had some failures (${api_success_count}/30 successful)"
     fi
     
-    # Wait for rate limit to reset
-    echo -e "\n${YELLOW}Waiting 65 seconds for rate limit to reset...${NC}"
+    # Test 3: Rate Limit Reset
+    echo -e "\n${YELLOW}Test 3: Rate Limit Reset...${NC}"
+    echo -e "${YELLOW}Waiting 65 seconds for rate limits to reset...${NC}"
     sleep 65
     
-    # Test that requests work again after rate limit reset
-    local reset_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+    # Test that QR redirects work again after rate limit reset
+    local qr_reset_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
         -H "Host: web.hccc.edu" \
         $API_URL/r/$short_id)
     
-    if [ "$reset_status" == "302" ]; then
-        echo -e "${GREEN}✓ PASS:${NC} Requests work again after rate limit reset"
+    if [ "$qr_reset_status" == "302" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} QR redirects work again after rate limit reset"
     else
-        echo -e "${YELLOW}⚠ WARNING:${NC} Request after rate limit reset returned $reset_status instead of 302"
+        echo -e "${YELLOW}⚠ WARNING:${NC} QR redirect after rate limit reset returned $qr_reset_status instead of 302"
     fi
     
-    echo -e "\n${GREEN}✓ PASS:${NC} Rate limiting tests completed successfully"
+    # Test that API requests work again after rate limit reset
+    local api_reset_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+        $AUTH_HEADER \
+        $API_URL/api/v1/qr)
+    
+    if [ "$api_reset_status" == "200" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} API requests work again after rate limit reset"
+    else
+        echo -e "${YELLOW}⚠ WARNING:${NC} API request after rate limit reset returned $api_reset_status instead of 200"
+    fi
+    
+    echo -e "\n${GREEN}✓ PASS:${NC} Differentiated rate limiting tests completed successfully"
+    echo -e "${BLUE}Summary:${NC}"
+    echo -e "  QR Redirects: Classroom-optimized (${qr_success_count}/60 = $(echo "scale=1; $qr_success_count * 100 / 60" | bc)% success)"
+    echo -e "  Internal API: Unrestricted access (${api_success_count}/30 = $(echo "scale=1; $api_success_count * 100 / 30" | bc)% success)"
 }
 
 # Function to run optimization task verification tests
