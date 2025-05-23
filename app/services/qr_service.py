@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from io import BytesIO
 from zoneinfo import ZoneInfo
 from typing import Optional, Union, List, Tuple, Dict, Any
+from urllib.parse import urlparse
 
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
@@ -68,6 +69,47 @@ class QRCodeService:
         """
         self.qr_code_repo = qr_code_repo
         self.scan_log_repo = scan_log_repo
+
+    def _is_safe_redirect_url(self, url: str) -> bool:
+        """
+        Validate if a redirect URL is safe based on scheme and domain allowlist.
+        
+        Args:
+            url: The URL to validate
+            
+        Returns:
+            bool: True if the URL is safe, False otherwise
+        """
+        try:
+            parsed_url = urlparse(url)
+            
+            # Check if scheme is http or https
+            if parsed_url.scheme not in ("http", "https"):
+                logger.warning(f"Unsafe URL scheme: {parsed_url.scheme}")
+                return False
+            
+            # Get the domain (netloc)
+            domain = parsed_url.netloc.lower()
+            if not domain:
+                logger.warning("URL has no domain")
+                return False
+            
+            # Check against allowed domains (exact match or subdomain)
+            for allowed_domain in settings.ALLOWED_REDIRECT_DOMAINS:
+                allowed_domain = allowed_domain.lower()
+                # Exact match
+                if domain == allowed_domain:
+                    return True
+                # Subdomain match (domain ends with .allowed_domain)
+                if domain.endswith(f".{allowed_domain}"):
+                    return True
+            
+            logger.warning(f"Domain not in allowlist: {domain}")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error parsing URL {url}: {str(e)}")
+            return False
 
     def get_qr_by_id(self, qr_id: str) -> QRCode:
         """
@@ -224,6 +266,11 @@ class QRCodeService:
             DatabaseError: If a database error occurs
         """
         try:
+            # Validate redirect URL safety
+            redirect_url_str = str(data.redirect_url)
+            if not self._is_safe_redirect_url(redirect_url_str):
+                raise RedirectURLError(f"Redirect URL not allowed: {redirect_url_str}")
+
             # Generate a short unique identifier for the redirect path
             short_id = str(uuid.uuid4())[:8]
             
@@ -235,7 +282,7 @@ class QRCodeService:
                 id=str(uuid.uuid4()),
                 content=full_url,
                 qr_type=QRType.DYNAMIC,
-                redirect_url=str(data.redirect_url),  # Explicitly convert to string
+                redirect_url=redirect_url_str,  # Use validated string
                 title=data.title,
                 description=data.description,
                 fill_color=data.fill_color,
@@ -370,8 +417,14 @@ class QRCodeService:
                 # Verify it's a dynamic QR code
                 if qr.qr_type != QRType.DYNAMIC.value:
                     raise QRCodeValidationError(f"Cannot update redirect URL for non-dynamic QR code: {qr_id}")
+                
+                # Validate redirect URL safety
+                redirect_url_str = str(data.redirect_url)
+                if not self._is_safe_redirect_url(redirect_url_str):
+                    raise RedirectURLError(f"Redirect URL not allowed: {redirect_url_str}")
+                
                 # Ensure redirect_url is a string
-                update_data["redirect_url"] = str(data.redirect_url)
+                update_data["redirect_url"] = redirect_url_str
             
             # Only set updated_at if we're actually updating something
             if update_data:
@@ -469,28 +522,34 @@ class QRCodeService:
             QRCodeNotFoundError: If the QR code is not found
             DatabaseError: If a database error occurs
         """
-        if timestamp is None:
-            timestamp = datetime.now(UTC)
+        try:
+            if timestamp is None:
+                timestamp = datetime.now(UTC)
 
-        # Parse user agent data
-        parsed_ua_data = self._parse_user_agent_data(user_agent)
-        
-        # 1. Update QR code scan statistics (scan_count, genuine_scan_count, etc.)
-        updated_qr = self.qr_code_repo.update_scan_count(qr_id, timestamp, is_genuine_scan_signal)
-        if not updated_qr:
-            logger.warning(f"Failed to update scan count for QR ID {qr_id}.")
-            return  # Or raise appropriate error
+            # Parse user agent data
+            parsed_ua_data = self._parse_user_agent_data(user_agent)
             
-        # 2. Create scan log entry
-        self.scan_log_repo.create_scan_log(
-            qr_id=qr_id,
-            timestamp=timestamp,
-            ip_address=client_ip,
-            raw_user_agent=user_agent,
-            parsed_ua_data=parsed_ua_data,
-            is_genuine_scan_signal=is_genuine_scan_signal
-        )
-        logger.info(f"Scan statistics and log updated for QR ID {qr_id}")
+            # 1. Update QR code scan statistics (scan_count, genuine_scan_count, etc.)
+            updated_qr = self.qr_code_repo.update_scan_count(qr_id, timestamp, is_genuine_scan_signal)
+            if not updated_qr:
+                logger.warning(f"Background task: Failed to update scan count for QR ID {qr_id}.")
+                return  # Or raise appropriate error
+                
+            # 2. Create scan log entry
+            self.scan_log_repo.create_scan_log(
+                qr_id=qr_id,
+                timestamp=timestamp,
+                ip_address=client_ip,
+                raw_user_agent=user_agent,
+                parsed_ua_data=parsed_ua_data,
+                is_genuine_scan_signal=is_genuine_scan_signal
+            )
+            logger.info(f"Background task: Scan statistics and log updated for QR ID {qr_id}")
+            
+        except Exception as e:
+            # Log all errors comprehensively but do not re-raise to prevent background task crashes
+            logger.exception(f"Background task: Error updating scan statistics for QR ID {qr_id}: {str(e)}")
+            # Do not re-raise - allow background task to terminate gracefully
 
     def validate_qr_code(self, qr_data: QRCodeCreate) -> None:
         """
