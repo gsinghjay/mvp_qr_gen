@@ -470,7 +470,8 @@ def client(test_db) -> TestClient:
     This fixture overrides key dependencies to use test instances:
     - get_db_with_logging: Main database dependency used across the app
     - get_db: Backup direct database dependency (used in some places)
-    - get_qr_repository: Repository for QR code operations
+    - get_qr_code_repository: Repository for QR code operations
+    - get_scan_log_repository: Repository for scan log operations
     - get_qr_service: Service for QR code business logic
 
     Args:
@@ -485,13 +486,14 @@ def client(test_db) -> TestClient:
     try:
         # Import all application dependencies
         from app.database import get_db, get_db_with_logging
-        from app.dependencies import get_qr_service, get_qr_repository
+        from app.dependencies import get_qr_service, get_qr_code_repository, get_scan_log_repository
         
         # Import test-specific dependencies
         from app.tests.dependencies import (
             get_test_db,
             get_test_db_with_logging,
-            get_qr_repository as get_test_qr_repository,
+            get_qr_code_repository as get_test_qr_code_repository,
+            get_scan_log_repository as get_test_scan_log_repository,
             get_qr_service as get_test_qr_service,
         )
 
@@ -516,7 +518,8 @@ def client(test_db) -> TestClient:
         # Configure dependency overrides for database, repository, and service
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_db_with_logging] = override_get_db_with_logging
-        app.dependency_overrides[get_qr_repository] = get_test_qr_repository
+        app.dependency_overrides[get_qr_code_repository] = get_test_qr_code_repository
+        app.dependency_overrides[get_scan_log_repository] = get_test_scan_log_repository
         app.dependency_overrides[get_qr_service] = get_test_qr_service
 
         # Create and return the test client
@@ -928,7 +931,8 @@ async def async_client(async_test_db) -> AsyncGenerator[TestClient, None]:
     This fixture overrides key dependencies to use test instances:
     - get_db_with_logging: Main database dependency used across the app
     - get_db: Backup direct database dependency (used in some places)
-    - get_qr_repository: Repository for QR code operations
+    - get_qr_code_repository: Repository for QR code operations
+    - get_scan_log_repository: Repository for scan log operations
     - get_qr_service: Service for QR code business logic
 
     Args:
@@ -943,11 +947,12 @@ async def async_client(async_test_db) -> AsyncGenerator[TestClient, None]:
     try:
         # Import all application dependencies
         from app.database import get_db, get_db_with_logging
-        from app.dependencies import get_qr_service, get_qr_repository
+        from app.dependencies import get_qr_service, get_qr_code_repository, get_scan_log_repository
         
         # Import test-specific dependencies (will need async versions in the future)
         from app.tests.dependencies import (
-            get_qr_repository as get_test_qr_repository,
+            get_qr_code_repository as get_test_qr_code_repository,
+            get_scan_log_repository as get_test_scan_log_repository,
             get_qr_service as get_test_qr_service,
         )
 
@@ -976,7 +981,8 @@ async def async_client(async_test_db) -> AsyncGenerator[TestClient, None]:
         # Configure dependency overrides for database, repository, and service
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_db_with_logging] = override_get_db_with_logging
-        app.dependency_overrides[get_qr_repository] = get_test_qr_repository
+        app.dependency_overrides[get_qr_code_repository] = get_test_qr_code_repository
+        app.dependency_overrides[get_scan_log_repository] = get_test_scan_log_repository
         app.dependency_overrides[get_qr_service] = get_test_qr_service
 
         # Create and return the test client

@@ -21,15 +21,15 @@
                                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                                     <span>
                                                         {% if device_type == 'mobile' %}
-                                                            <i class="fas fa-mobile-alt me-2"></i>Mobile
+                                                            <i class="bi bi-phone me-2"></i>Mobile
                                                         {% elif device_type == 'tablet' %}
-                                                            <i class="fas fa-tablet-alt me-2"></i>Tablet
+                                                            <i class="bi bi-tablet me-2"></i>Tablet
                                                         {% elif device_type == 'pc' %}
-                                                            <i class="fas fa-desktop me-2"></i>Desktop
+                                                            <i class="bi bi-laptop me-2"></i>Desktop
                                                         {% elif device_type == 'bot' %}
-                                                            <i class="fas fa-robot me-2"></i>Bot
+                                                            <i class="bi bi-robot me-2"></i>Bot
                                                         {% else %}
-                                                            <i class="fas fa-question-circle me-2"></i>{{ device_type|capitalize }}
+                                                            <i class="bi bi-question-circle me-2"></i>{{ device_type|capitalize }}
                                                         {% endif %}
                                                     </span>
                                                     <span class="text-muted small">{{ count }} ({{ percentage }}%)</span>
@@ -68,7 +68,7 @@
                         </div>
                     {% else %}
                         <div class="alert alert-info mb-0">
-                            <i class="fas fa-info-circle me-2"></i> No device data available yet.
+                            <i class="bi bi-info-circle me-2"></i> No device data available yet.
                         </div>
                     {% endif %}
                 </div>
@@ -92,15 +92,15 @@
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <span>
                                             {% if browser == 'Chrome' %}
-                                                <i class="fab fa-chrome me-2"></i>
+                                                <i class="bi bi-globe me-2"></i>
                                             {% elif browser == 'Firefox' %}
-                                                <i class="fab fa-firefox-browser me-2"></i>
+                                                <i class="bi bi-globe me-2"></i>
                                             {% elif browser == 'Safari' or browser == 'Mobile Safari' %}
-                                                <i class="fab fa-safari me-2"></i>
+                                                <i class="bi bi-globe me-2"></i>
                                             {% elif browser == 'Edge' %}
-                                                <i class="fab fa-edge me-2"></i>
+                                                <i class="bi bi-globe me-2"></i>
                                             {% else %}
-                                                <i class="fas fa-globe me-2"></i>
+                                                <i class="bi bi-globe me-2"></i>
                                             {% endif %}
                                             {{ browser if browser else 'Unknown' }}
                                         </span>
@@ -111,7 +111,7 @@
                         </div>
                     {% else %}
                         <div class="alert alert-info mb-0">
-                            <i class="fas fa-info-circle me-2"></i> No browser data available yet.
+                            <i class="bi bi-info-circle me-2"></i> No browser data available yet.
                         </div>
                     {% endif %}
                 </div>
@@ -132,17 +132,17 @@
                                     <div class="d-flex justify-content-between align-items-center mb-1">
                                         <span>
                                             {% if os == 'Windows' %}
-                                                <i class="fab fa-windows me-2"></i>
+                                                <i class="bi bi-laptop me-2"></i>
                                             {% elif os == 'Android' %}
-                                                <i class="fab fa-android me-2"></i>
+                                                <i class="bi bi-phone me-2"></i>
                                             {% elif os == 'iOS' %}
-                                                <i class="fab fa-apple me-2"></i>
+                                                <i class="bi bi-phone me-2"></i>
                                             {% elif os == 'Mac OS X' %}
-                                                <i class="fab fa-apple me-2"></i>
+                                                <i class="bi bi-laptop me-2"></i>
                                             {% elif os == 'Linux' %}
-                                                <i class="fab fa-linux me-2"></i>
+                                                <i class="bi bi-laptop me-2"></i>
                                             {% else %}
-                                                <i class="fas fa-microchip me-2"></i>
+                                                <i class="bi bi-cpu me-2"></i>
                                             {% endif %}
                                             {{ os if os else 'Unknown' }}
                                         </span>
@@ -153,7 +153,7 @@
                         </div>
                     {% else %}
                         <div class="alert alert-info mb-0">
-                            <i class="fas fa-info-circle me-2"></i> No OS data available yet.
+                            <i class="bi bi-info-circle me-2"></i> No OS data available yet.
                         </div>
                     {% endif %}
                 </div>

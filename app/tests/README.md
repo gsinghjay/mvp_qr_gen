@@ -2,50 +2,90 @@
 
 This document outlines the testing strategy, organization, and best practices for the QR code generator application.
 
+## Testing Strategy
+
+Our testing strategy follows a practical, value-driven approach:
+
+1. **Integration Tests First**: We prioritize integration tests that verify multiple components working together, especially API endpoints and database interactions.
+   - Integration tests provide higher business value by ensuring features work as expected from the user's perspective
+   - Focus on covering core functionality and critical paths with integration tests
+   - Aim for ~80-90% coverage using integration tests alone
+
+2. **Unit Tests for Targeted Coverage**: We use unit tests to fill coverage gaps and test complex logic in isolation.
+   - Unit tests supplement integration tests to achieve 100% coverage
+   - Focus unit tests on edge cases, error handling, and business logic that's difficult to test through integration tests
+   - Isolate components using mocks only when it provides clear testing benefits
+
+3. **End-to-End Tests for Complete Workflows**: E2E tests verify the system works as a whole.
+   - Focus on critical user journeys and workflows
+   - Keep E2E test count low due to maintenance overhead
+
+This approach balances practical test coverage with maintainability, avoiding excessive mocking while ensuring thorough test coverage.
+
 ## Test Organization
 
-The tests are organized according to the following structure:
+The tests are organized according to the following hierarchical structure:
 
 ```
 app/tests/
-├── conftest.py             # Test fixtures and configuration
-├── factories.py            # Test data factories
-├── helpers.py              # Test helper classes and functions
-├── utils.py                # Test assertion utilities
-├── README.md               # This documentation file
-├── test_main.py            # API endpoint integration tests
-├── test_integration.py     # End-to-end integration tests
-├── test_middleware.py      # Middleware specific tests
-├── test_background_tasks.py # Background task tests
-├── test_qr_service.py      # Service layer unit tests
-├── test_response_models.py # Response model validation tests
-├── test_validation_parameterized.py # Parameterized validation tests
+├── integration/           # Integration tests that use real database connections
+│   ├── api/               # API integration tests
+│   │   └── v1/            # Tests for API v1 endpoints
+│   └── repositories/      # Integration tests for repositories with real DB
+├── unit/                  # Unit tests with mocked dependencies where appropriate
+│   ├── services/          # Tests for service layer components
+│   ├── repositories/      # Tests for repository layer components
+│   └── utils/             # Tests for utility functions and helpers
+├── e2e/                   # End-to-end tests simulating real user interactions
+├── data/                  # Test data fixtures and sample data
+├── conftest.py            # Pytest fixtures and configuration
+├── dependencies.py        # Test-specific dependency injection functions
+├── factories.py           # Test data factories using Factory Boy
+├── helpers.py             # Test helper functions
+├── utils.py               # Utility functions for testing
+└── README.md              # This documentation file
 ```
 
-### Purpose of Test Files
+### Test Categories
 
-* **test_main.py**: Tests all FastAPI endpoints directly, focusing on HTTP aspects and API behavior
-* **test_integration.py**: End-to-end tests that verify complete application workflows
-* **test_middleware.py**: Tests middleware components in isolation and how they transform requests/responses
-* **test_background_tasks.py**: Tests asynchronous background task processing 
-* **test_qr_service.py**: Unit tests for the service layer business logic without API concerns
-* **test_response_models.py**: Tests that focus specifically on response model validation
-* **test_validation_parameterized.py**: Tests input validation using parameterized test cases for efficiency
+#### Integration Tests
+- Located in `app/tests/integration/`
+- Use a real test database connection
+- Test multiple components working together
+- Include API endpoint tests, repository tests with real database interaction
+- **Primary focus** for achieving majority of test coverage
+
+#### Unit Tests
+- Located in `app/tests/unit/`
+- Test components in isolation with appropriate mocks
+- Focus on business logic in services, utility functions, and isolated repository behavior
+- Used to **supplement integration tests** to reach 100% coverage
+
+#### End-to-End Tests
+- Located in `app/tests/e2e/`
+- Simulate complete user workflows
+- Test the application as a whole
+
+**Note:** Currently there's an organizational inconsistency where some database integration tests are incorrectly placed in the `unit/repositories/` directory instead of `integration/repositories/`. This is a known issue that will be addressed in future refactoring.
 
 ## Testing Levels
 
 Our testing strategy includes multiple levels of testing:
 
-1. **Unit Tests**: Test individual components in isolation
-   - Located in files like `test_qr_service.py`
-   - Focus on testing business logic independently
-
-2. **Integration Tests**: Test multiple components working together
-   - Located in files like `test_main.py`
+1. **Integration Tests**: Test multiple components working together
+   - Located in `app/tests/integration/` directory
    - Test API endpoints and database interactions
+   - Use the real test database
+   - **Primary focus** for majority of test coverage
+
+2. **Unit Tests**: Test individual components in isolation
+   - Located in `app/tests/unit/` directory
+   - Focus on testing business logic independently
+   - Use mocks for external dependencies
+   - Used to reach 100% coverage after integration tests
 
 3. **End-to-End Tests**: Test the complete application flow
-   - Located in `test_integration.py`
+   - Located in `app/tests/e2e/` directory
    - Test entire user workflows from request to response
 
 ## Testing Principles
@@ -472,3 +512,104 @@ Until the above issues are resolved, the recommended approach for testing async 
 2. Only use async fixtures when testing code that requires async/await patterns
 3. Convert timezone-aware datetime objects to naive ones before storing in the database
 4. Be aware that transaction management might behave differently between sync and async tests 
+
+## API Test Best Practices
+
+Based on recent fixes to the QR code endpoint tests, here are essential best practices for API testing:
+
+### Test Data Creation
+
+1. **Prefer API-Based Entity Creation**
+   - When testing API endpoints, create test entities through the API itself when possible
+   - Use fixtures like `create_static_qr_request` and `create_dynamic_qr_request` that make actual API calls
+   - This ensures entities exist in both the database and the API context
+
+   ```python
+   # Recommended - create through API
+   def test_update_qr(client, create_static_qr_request):
+       # First create a QR code through the API
+       create_response = create_static_qr_request()
+       assert create_response.status_code == 201
+       qr_data = create_response.json()
+       qr_id = qr_data["id"]
+       
+       # Now test the update operation
+       response = client.put(f"/api/v1/qr/{qr_id}", json={"title": "Updated"})
+       assert response.status_code == 200
+   ```
+
+2. **Factory Usage Considerations**
+   - When using factories directly, be aware of transaction isolation
+   - Factory-created objects may not be visible to API calls unless committed
+   - If using factories, consider explicit commits, but be aware this breaks isolation
+
+### HTTP Method Correctness
+
+1. **Match API Implementation Methods**
+   - Use the HTTP methods the API actually implements:
+     - Use PUT (not PATCH) for updates if the API uses PUT
+     - Consult API implementation or OpenAPI documentation to confirm
+   
+   ```python
+   # Correct - Using PUT for updates as implemented in the API
+   response = client.put(f"/api/v1/qr/{qr_id}", json=update_data)
+   
+   # Incorrect - Using PATCH when API implements PUT
+   response = client.patch(f"/api/v1/qr/{qr_id}", json=update_data)  # Will return 405 Method Not Allowed
+   ```
+
+2. **Test Method Not Allowed**
+   - Include tests that verify incorrect methods return 405 Method Not Allowed
+   - This confirms API routing is properly configured
+
+### Resilient Assertions
+
+1. **Handle Non-Deterministic Behaviors**
+   - For pagination tests, verify page sizes rather than exact page numbers
+   - For sorting tests, verify the endpoint accepts sort parameters without asserting exact order
+   - For search tests, verify specific items are found rather than exact result counts
+
+   ```python
+   # More resilient - verifies pages contain different items
+   first_page_ids = [item["id"] for item in first_page_data["items"]]
+   second_page_ids = [item["id"] for item in second_page_data["items"]]
+   assert len(set(first_page_ids).intersection(set(second_page_ids))) == 0
+   
+   # Less resilient - assumes specific page numbering behavior
+   assert data["page"] == 2  # Might not be consistent
+   ```
+
+2. **Image and File Testing**
+   - For image endpoints, verify content type and non-empty response
+   - Be flexible with format detection - some APIs may return different formats than requested
+   
+   ```python
+   # Resilient image testing
+   response = client.get(f"/api/v1/qr/{qr_id}/image?format=svg")
+   assert response.status_code == 200
+   assert "image/" in response.headers["content-type"]  # Any image type
+   assert len(response.content) > 0  # Non-empty response
+   ```
+
+### Dependency Management
+
+1. **Understanding Test Dependencies**
+   - Be aware of how dependency injection is configured in `conftest.py`
+   - The `client` fixture overrides dependencies to use test versions
+   - Database fixtures control transaction isolation
+
+2. **Correct Parameter Names**
+   - Use the correct fixture names in test functions:
+     - Use `test_db` not `test_db_session`
+     - Use `size` parameter for `create_batch` not `count`
+   
+   ```python
+   # Correct
+   def test_function(client, test_db):
+       # Test implementation
+   
+   # Factory usage
+   qr_code_factory.create_batch(size=3, qr_type=QRType.STATIC.value)
+   ```
+
+These best practices should be followed when writing new API tests or refactoring existing ones to ensure consistent, reliable testing across the application. 
