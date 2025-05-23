@@ -34,7 +34,7 @@ http:
         - web
       middlewares:
         - redirect-to-https@file
-        - rate-limit@file        # Public endpoint, rate limit
+        - qr-redirect-rate-limit@file  # Changed from rate-limit@file for classroom scenarios
         - public-endpoints@file  # Allow all IPs for this path
         - security-headers@file
       priority: 650
@@ -46,7 +46,7 @@ http:
         - websecure
       tls: {}
       middlewares:
-        - rate-limit@file
+        - qr-redirect-rate-limit@file  # Changed from rate-limit@file for classroom scenarios
         - public-endpoints@file
         - security-headers@file
       priority: 650
@@ -212,6 +212,12 @@ http:
       rateLimit:
         average: 60
         burst: 10
+        period: 1m
+
+    qr-redirect-rate-limit:
+      rateLimit:
+        average: 300  # 5 requests per second (300/minute) - handles classroom scenarios
+        burst: 50     # Allow 50 rapid scans (entire classroom can scan within 10 seconds)
         period: 1m
 
     ip-whitelist: # For internal dashboard and management
