@@ -11,6 +11,8 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DEBUG=${DEBUG:-false}
       - BASE_URL=${BASE_URL:-https://10.1.6.12} # This should be your primary internal access URL
+      # Security Configuration
+      - ALLOWED_REDIRECT_DOMAINS=${ALLOWED_REDIRECT_DOMAINS:-hccc.edu,example.com,localhost}
       # Database Configuration
       - PG_DATABASE_URL=${PG_DATABASE_URL:-postgresql+psycopg2://pguser:pgpassword@postgres:5432/qrdb}
       - ENVIRONMENT=production # Production environment settings
