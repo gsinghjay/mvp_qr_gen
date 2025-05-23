@@ -1,6 +1,42 @@
 # CHANGELOG
 
 
+## v0.29.0 (2025-05-23)
+
+### Documentation
+
+- Update test API readme with production hardening and classroom-optimized rate limiting
+  ([`38a73f7`](https://github.com/gsinghjay/mvp_qr_gen/commit/38a73f70a1e1cd0bcd75c6ee2e5057eb6c0aadf1))
+
+### Features
+
+- **config**: Add ALLOWED_REDIRECT_DOMAINS setting with environment variable parsing
+  ([`63cfc05`](https://github.com/gsinghjay/mvp_qr_gen/commit/63cfc05659c8361ee0b36c740889f9a6d479f3be))
+
+- **docker**: Add ALLOWED_REDIRECT_DOMAINS environment variable to api service
+  ([`d960b09`](https://github.com/gsinghjay/mvp_qr_gen/commit/d960b09eeb50fbbf13ca1f7a63cf76f2f2719d2b))
+
+- **security**: Add comprehensive input validation and error handling to redirect endpoint
+  ([`2f21cad`](https://github.com/gsinghjay/mvp_qr_gen/commit/2f21cad962fcfae64cdd1d99ec8c33ea6de3087a))
+
+- **security**: Adjust rate limiting to 60/min average with 10 burst for better abuse prevention
+  ([`9ae5592`](https://github.com/gsinghjay/mvp_qr_gen/commit/9ae55929c2f4967890adafd128e85d9961c57a3e))
+
+- **security**: Implement classroom-friendly rate limiting for QR redirects
+  ([`4508517`](https://github.com/gsinghjay/mvp_qr_gen/commit/45085173a55f9f5f7cbbd243fccec39c591b63a1))
+
+- **security**: Implement URL safety validation and background task error handling
+  ([`fa025a7`](https://github.com/gsinghjay/mvp_qr_gen/commit/fa025a75cd27c276578d0b669bc7e118003998b2))
+
+### Testing
+
+- Add comprehensive security tests and fix domain validation in update test
+  ([`cc78161`](https://github.com/gsinghjay/mvp_qr_gen/commit/cc781616c9577dde005e97f668ca192f0948ef2a))
+
+- Enhance rate limiting tests for differentiated QR vs API access patterns
+  ([`8d36f1e`](https://github.com/gsinghjay/mvp_qr_gen/commit/8d36f1e62d531bc55524d82d78299ecf3b096b71))
+
+
 ## v0.28.0 (2025-05-23)
 
 ### Bug Fixes
