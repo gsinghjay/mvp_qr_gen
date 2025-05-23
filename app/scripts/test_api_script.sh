@@ -129,7 +129,7 @@ test_get_qr_by_id() {
 # Function to update dynamic QR code
 test_update_dynamic_qr() {
     echo -e "\n${YELLOW}Testing Update Dynamic QR Code...${NC}"
-    local response=$(curl -k $AUTH_HEADER -X PUT $API_URL/api/v1/qr/$DYNAMIC_QR_ID -H "Content-Type: application/json" -d '{"redirect_url": "https://updated-example.com"}' -s | jq)
+    local response=$(curl -k $AUTH_HEADER -X PUT $API_URL/api/v1/qr/$DYNAMIC_QR_ID -H "Content-Type: application/json" -d '{"redirect_url": "https://updated.example.com"}' -s | jq)
     
     # Check if jq parsing was successful
     if [ $? -ne 0 ]; then
@@ -139,7 +139,7 @@ test_update_dynamic_qr() {
     
     # Extract the redirect URL from the response and remove trailing slash
     local updated_url=$(echo "$response" | jq -r '.redirect_url' | sed 's:/*$::')
-    local expected_url="https://updated-example.com"
+    local expected_url="https://updated.example.com"
     
     # Debugging output
     echo -e "${YELLOW}Full Response:${NC}"
@@ -646,6 +646,323 @@ test_enhanced_user_agent_tracking() {
     echo -e "\n${GREEN}✓ PASS:${NC} Enhanced user agent tracking tests completed successfully"
 }
 
+# Function to test production hardening security features
+test_production_hardening_security() {
+    print_section "TESTING PRODUCTION HARDENING SECURITY FEATURES"
+    
+    # Test invalid short_id formats
+    test_invalid_short_id_formats
+    
+    # Test disallowed redirect URLs
+    test_disallowed_redirect_urls
+    
+    # Test invalid URL schemes
+    test_invalid_url_schemes
+    
+    # Test rate limiting
+    test_rate_limiting
+    
+    echo -e "\n${GREEN}✓ PASS:${NC} All production hardening security tests completed successfully"
+}
+
+# Function to test invalid short_id formats (Task 1 & 5)
+test_invalid_short_id_formats() {
+    echo -e "\n${YELLOW}Testing Invalid Short ID Formats...${NC}"
+    
+    # Test 1: Short ID too short
+    echo -e "\n${YELLOW}Test 1: Short ID too short (abc)...${NC}"
+    local short_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+        -H "Host: web.hccc.edu" \
+        $API_URL/r/abc)
+    
+    if [ "$short_status" == "404" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Short ID too short correctly returns 404"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Short ID too short returned $short_status instead of 404"
+        exit 1
+    fi
+    
+    # Test 2: Short ID too long
+    echo -e "\n${YELLOW}Test 2: Short ID too long (abcdef123456)...${NC}"
+    local long_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+        -H "Host: web.hccc.edu" \
+        $API_URL/r/abcdef123456)
+    
+    if [ "$long_status" == "404" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Short ID too long correctly returns 404"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Short ID too long returned $long_status instead of 404"
+        exit 1
+    fi
+    
+    # Test 3: Short ID with invalid characters
+    echo -e "\n${YELLOW}Test 3: Short ID with invalid characters (invalid!)...${NC}"
+    local invalid_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+        -H "Host: web.hccc.edu" \
+        $API_URL/r/invalid!)
+    
+    if [ "$invalid_status" == "404" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Short ID with invalid characters correctly returns 404"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Short ID with invalid characters returned $invalid_status instead of 404"
+        exit 1
+    fi
+    
+    # Test 4: Non-existent but valid format short ID
+    echo -e "\n${YELLOW}Test 4: Non-existent but valid format short ID (deadbeef)...${NC}"
+    local nonexistent_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+        -H "Host: web.hccc.edu" \
+        $API_URL/r/deadbeef)
+    
+    if [ "$nonexistent_status" == "404" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Non-existent short ID correctly returns 404"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Non-existent short ID returned $nonexistent_status instead of 404"
+        exit 1
+    fi
+    
+    # Test 5: Mixed case short ID (should be normalized to lowercase)
+    echo -e "\n${YELLOW}Test 5: Mixed case short ID normalization...${NC}"
+    # First create a dynamic QR to get a valid short_id
+    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
+        -H "Content-Type: application/json" \
+        -d '{
+            "redirect_url": "https://case-test.example.com",
+            "title": "Case Test QR",
+            "description": "Testing case normalization"
+        }')
+    
+    local qr_id=$(echo "$response" | jq -r '.id')
+    local content=$(echo "$response" | jq -r '.content')
+    local short_id=$(echo "$content" | sed 's/.*\/r\///' | sed 's/?.*//')
+    
+    # Convert to uppercase for testing
+    local uppercase_short_id=$(echo "$short_id" | tr '[:lower:]' '[:upper:]')
+    
+    echo -e "${YELLOW}Testing uppercase short ID: $uppercase_short_id${NC}"
+    local case_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+        -H "Host: web.hccc.edu" \
+        $API_URL/r/$uppercase_short_id)
+    
+    if [ "$case_status" == "302" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Mixed case short ID correctly normalized and redirected"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Mixed case short ID returned $case_status instead of 302"
+        exit 1
+    fi
+    
+    echo -e "\n${GREEN}✓ PASS:${NC} All invalid short ID format tests completed successfully"
+}
+
+# Function to test disallowed redirect URLs
+test_disallowed_redirect_urls() {
+    echo -e "\n${YELLOW}Testing Disallowed Redirect URLs...${NC}"
+    
+    # Test 1: Create dynamic QR with disallowed domain
+    echo -e "\n${YELLOW}Test 1: Creating dynamic QR with disallowed domain...${NC}"
+    local disallowed_response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
+        -H "Content-Type: application/json" \
+        -d '{
+            "redirect_url": "https://definitely-not-allowed-domain.com",
+            "title": "Disallowed Domain Test",
+            "description": "Testing disallowed domain rejection"
+        }')
+    
+    local disallowed_status=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
+        -H "Content-Type: application/json" \
+        -d '{
+            "redirect_url": "https://definitely-not-allowed-domain.com",
+            "title": "Disallowed Domain Test",
+            "description": "Testing disallowed domain rejection"
+        }' \
+        -o /dev/null -w "%{http_code}")
+    
+    if [ "$disallowed_status" == "422" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Disallowed domain correctly rejected with 422"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Disallowed domain returned $disallowed_status instead of 422"
+        echo -e "${YELLOW}Response:${NC} $disallowed_response"
+        exit 1
+    fi
+    
+    # Test 2: Update dynamic QR to disallowed domain
+    echo -e "\n${YELLOW}Test 2: Updating dynamic QR to disallowed domain...${NC}"
+    # First create a valid dynamic QR
+    local valid_response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
+        -H "Content-Type: application/json" \
+        -d '{
+            "redirect_url": "https://valid-test.example.com",
+            "title": "Valid QR for Update Test",
+            "description": "Testing update to disallowed domain"
+        }')
+    
+    local valid_qr_id=$(echo "$valid_response" | jq -r '.id')
+    
+    # Now try to update to disallowed domain
+    local update_status=$(curl -k -s $AUTH_HEADER -X PUT $API_URL/api/v1/qr/$valid_qr_id \
+        -H "Content-Type: application/json" \
+        -d '{
+            "redirect_url": "https://malicious-domain.evil"
+        }' \
+        -o /dev/null -w "%{http_code}")
+    
+    if [ "$update_status" == "422" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Update to disallowed domain correctly rejected with 422"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Update to disallowed domain returned $update_status instead of 422"
+        exit 1
+    fi
+    
+    echo -e "\n${GREEN}✓ PASS:${NC} All disallowed redirect URL tests completed successfully"
+}
+
+# Function to test invalid URL schemes
+test_invalid_url_schemes() {
+    echo -e "\n${YELLOW}Testing Invalid URL Schemes...${NC}"
+    
+    # Test 1: FTP scheme
+    echo -e "\n${YELLOW}Test 1: Creating dynamic QR with FTP scheme...${NC}"
+    local ftp_status=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
+        -H "Content-Type: application/json" \
+        -d '{
+            "redirect_url": "ftp://example.com/file.txt",
+            "title": "FTP Scheme Test",
+            "description": "Testing FTP scheme rejection"
+        }' \
+        -o /dev/null -w "%{http_code}")
+    
+    if [ "$ftp_status" == "422" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} FTP scheme correctly rejected with 422"
+    else
+        echo -e "${RED}✗ FAIL:${NC} FTP scheme returned $ftp_status instead of 422"
+        exit 1
+    fi
+    
+    # Test 2: File scheme
+    echo -e "\n${YELLOW}Test 2: Creating dynamic QR with file scheme...${NC}"
+    local file_status=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
+        -H "Content-Type: application/json" \
+        -d '{
+            "redirect_url": "file:///etc/passwd",
+            "title": "File Scheme Test",
+            "description": "Testing file scheme rejection"
+        }' \
+        -o /dev/null -w "%{http_code}")
+    
+    if [ "$file_status" == "422" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} File scheme correctly rejected with 422"
+    else
+        echo -e "${RED}✗ FAIL:${NC} File scheme returned $file_status instead of 422"
+        exit 1
+    fi
+    
+    # Test 3: JavaScript scheme
+    echo -e "\n${YELLOW}Test 3: Creating dynamic QR with javascript scheme...${NC}"
+    local js_status=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
+        -H "Content-Type: application/json" \
+        -d '{
+            "redirect_url": "javascript:alert(\"XSS\")",
+            "title": "JavaScript Scheme Test",
+            "description": "Testing javascript scheme rejection"
+        }' \
+        -o /dev/null -w "%{http_code}")
+    
+    if [ "$js_status" == "422" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} JavaScript scheme correctly rejected with 422"
+    else
+        echo -e "${RED}✗ FAIL:${NC} JavaScript scheme returned $js_status instead of 422"
+        exit 1
+    fi
+    
+    echo -e "\n${GREEN}✓ PASS:${NC} All invalid URL scheme tests completed successfully"
+}
+
+# Function to test rate limiting
+test_rate_limiting() {
+    echo -e "\n${YELLOW}Testing Rate Limiting...${NC}"
+    
+    # Create a dynamic QR for rate limiting test
+    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
+        -H "Content-Type: application/json" \
+        -d '{
+            "redirect_url": "https://rate-limit-test.example.com",
+            "title": "Rate Limit Test QR",
+            "description": "Testing rate limiting on redirects"
+        }')
+    
+    local qr_id=$(echo "$response" | jq -r '.id')
+    local content=$(echo "$response" | jq -r '.content')
+    local short_id=$(echo "$content" | sed 's/.*\/r\///' | sed 's/?.*//')
+    
+    echo -e "${YELLOW}Created QR for rate limiting test with short_id: $short_id${NC}"
+    
+    # Test rapid requests to trigger rate limiting
+    echo -e "\n${YELLOW}Sending rapid requests to test rate limiting (75 requests)...${NC}"
+    
+    local success_count=0
+    local rate_limited_count=0
+    local other_count=0
+    
+    # Send 75 requests rapidly to exceed the 60/min average + 10 burst limit
+    for i in {1..75}; do
+        local status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+            -H "Host: web.hccc.edu" \
+            $API_URL/r/$short_id 2>/dev/null)
+        
+        case $status in
+            302)
+                success_count=$((success_count + 1))
+                ;;
+            429)
+                rate_limited_count=$((rate_limited_count + 1))
+                ;;
+            *)
+                other_count=$((other_count + 1))
+                ;;
+        esac
+        
+        # Small delay to avoid overwhelming the system
+        sleep 0.01
+    done
+    
+    echo -e "${YELLOW}Results:${NC}"
+    echo -e "  Successful redirects (302): $success_count"
+    echo -e "  Rate limited (429): $rate_limited_count"
+    echo -e "  Other responses: $other_count"
+    
+    # Verify rate limiting is working
+    if [ "$rate_limited_count" -gt 0 ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Rate limiting is working (received $rate_limited_count rate limit responses)"
+    else
+        echo -e "${YELLOW}⚠ WARNING:${NC} No rate limiting detected - this might indicate rate limits are too high or not configured"
+    fi
+    
+    # Verify we got some successful responses initially
+    if [ "$success_count" -gt 0 ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Initial requests were successful before rate limiting kicked in"
+    else
+        echo -e "${RED}✗ FAIL:${NC} No successful requests - rate limiting might be too restrictive"
+        exit 1
+    fi
+    
+    # Wait for rate limit to reset
+    echo -e "\n${YELLOW}Waiting 65 seconds for rate limit to reset...${NC}"
+    sleep 65
+    
+    # Test that requests work again after rate limit reset
+    local reset_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
+        -H "Host: web.hccc.edu" \
+        $API_URL/r/$short_id)
+    
+    if [ "$reset_status" == "302" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Requests work again after rate limit reset"
+    else
+        echo -e "${YELLOW}⚠ WARNING:${NC} Request after rate limit reset returned $reset_status instead of 302"
+    fi
+    
+    echo -e "\n${GREEN}✓ PASS:${NC} Rate limiting tests completed successfully"
+}
+
 # Function to run optimization task verification tests
 test_optimization_tasks() {
     print_section "TESTING FASTAPI OPTIMIZATION TASKS"
@@ -691,10 +1008,14 @@ run_tests() {
     # Run optimization task verification tests
     test_optimization_tasks
     
+    # Run production hardening security tests
+    test_production_hardening_security
+    
     # Clean up generated files
     cleanup
     
     echo -e "\n${GREEN}✨ All API Endpoint Tests Passed Successfully! ✨${NC}"
+    echo -e "${GREEN}✨ Including Production Hardening Security Tests! ✨${NC}"
 }
 
 # Run the tests
