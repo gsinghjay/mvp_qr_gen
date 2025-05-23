@@ -1,6 +1,100 @@
 # CHANGELOG
 
 
+## v0.28.0 (2025-05-23)
+
+### Bug Fixes
+
+- Correct test_db fixture naming in conftest.py
+  ([`1e784f8`](https://github.com/gsinghjay/mvp_qr_gen/commit/1e784f853ab1fb70a991918b5fe2b2208db985c1))
+
+- Update QR service tests for repository pattern
+  ([`eed680a`](https://github.com/gsinghjay/mvp_qr_gen/commit/eed680a9ef0e89b3b821951ec68507904963895e))
+
+### Documentation
+
+- Enhance README with architecture and flow diagrams
+  ([`c09999a`](https://github.com/gsinghjay/mvp_qr_gen/commit/c09999a88e8acc77820b954c604af5144f8a091f))
+
+- Remove INFRASTRUCTURE.md in favor of README diagrams
+  ([`755f4e3`](https://github.com/gsinghjay/mvp_qr_gen/commit/755f4e37c0eb2282b9f372b9edfae160dc2e0828))
+
+- Remove STORY.md in favor of README diagrams
+  ([`69236c5`](https://github.com/gsinghjay/mvp_qr_gen/commit/69236c550c1f2fe608f8a9bf92598f7b55ead9e5))
+
+- Update testing best practices in README.md
+  ([`7211d95`](https://github.com/gsinghjay/mvp_qr_gen/commit/7211d95af5b94243951498d2f56adf832391cc54))
+
+### Features
+
+- Add dedicated tests for HTMX fragment endpoints
+  ([`cfef808`](https://github.com/gsinghjay/mvp_qr_gen/commit/cfef808fe1ed3ed9a984a88bd48556eb178df63e))
+
+- Implement comprehensive QR code endpoint tests
+  ([`360fbc0`](https://github.com/gsinghjay/mvp_qr_gen/commit/360fbc0adf9fbb6c8463a732325a0ca241027286))
+
+### Refactoring
+
+- Align dependency injection with test_db fixture
+  ([`a551f88`](https://github.com/gsinghjay/mvp_qr_gen/commit/a551f8855ca6e705d41af6ed7c87d28febbbb4d3))
+
+- Remove async example tests for proper async implementation
+  ([`9f338d6`](https://github.com/gsinghjay/mvp_qr_gen/commit/9f338d6c10a5a6abe6b6e78f7b39a639bb0c12e8))
+
+- Remove general API tests for module-specific tests
+  ([`3d94fcc`](https://github.com/gsinghjay/mvp_qr_gen/commit/3d94fcc34610fc4a2de2e7479660862fbfe4a4e7))
+
+- Remove generic background tasks tests for endpoint-specific tests
+  ([`5d99dea`](https://github.com/gsinghjay/mvp_qr_gen/commit/5d99dea6b40257061bcb39f352e7c2c04a48dae4))
+
+- Remove generic exception tests for endpoint-specific tests
+  ([`18fee7d`](https://github.com/gsinghjay/mvp_qr_gen/commit/18fee7d3c8b726dd092f29129e7d28afa8b5f7fa))
+
+- Remove generic HTTP method tests for endpoint-specific tests
+  ([`fddb5be`](https://github.com/gsinghjay/mvp_qr_gen/commit/fddb5bed707f5ec3517f16ff6b67dc62d004a784))
+
+- Remove generic response model tests for endpoint-specific tests
+  ([`ab17955`](https://github.com/gsinghjay/mvp_qr_gen/commit/ab1795527ded2bc20b4f7f427ae64a2f394fec0d))
+
+- Remove generic validation tests for endpoint-specific tests
+  ([`dc61591`](https://github.com/gsinghjay/mvp_qr_gen/commit/dc61591cba178ec801f600d30f9e5688712eec29))
+
+- Remove placeholder repository integration tests
+  ([`51ebdba`](https://github.com/gsinghjay/mvp_qr_gen/commit/51ebdbad59e480d2d710d09b43f9993fc73aa9d2))
+
+- Remove redundant API restructure tests
+  ([`2dda5e4`](https://github.com/gsinghjay/mvp_qr_gen/commit/2dda5e489547b79a34ceafa5efb0717a8db73313))
+
+- Remove router structure tests for endpoint-specific tests
+  ([`d378a78`](https://github.com/gsinghjay/mvp_qr_gen/commit/d378a78c17ee8c632ec5c88390b6f0b00de04f8b))
+
+- Remove test factories examples after factory implementation
+  ([`c0c79d2`](https://github.com/gsinghjay/mvp_qr_gen/commit/c0c79d2474e4e9bc55c982863fcb5ee12ef0ce69))
+
+- Replace Font Awesome icons with Bootstrap Icons in device stats fragment
+  ([`6f66af7`](https://github.com/gsinghjay/mvp_qr_gen/commit/6f66af70c8103ea4cf8115eef475cac57fda6e4c))
+
+- Update API test module imports
+  ([`1259e3f`](https://github.com/gsinghjay/mvp_qr_gen/commit/1259e3f2c47403845fa624fcdbebdb9c056ea741))
+
+### Testing
+
+- Add comprehensive unit tests for QR service with mock and real DB approaches
+  ([`94d2dfc`](https://github.com/gsinghjay/mvp_qr_gen/commit/94d2dfc503630e3c698bc15e32fdf88ae68a2b08))
+
+- Add integration tests for health check API endpoints
+  ([`e610727`](https://github.com/gsinghjay/mvp_qr_gen/commit/e61072766384455714393b4d168056b266c4cbaa))
+
+- Add unit tests for health API endpoint with mocking
+  ([`6a44b35`](https://github.com/gsinghjay/mvp_qr_gen/commit/6a44b35e58fac51be0fe51d9e9f6983a6b7da7b2))
+
+- Add unit tests for health service with mocking
+  ([`779c880`](https://github.com/gsinghjay/mvp_qr_gen/commit/779c8804a4cd8d963c8379c17f2158a22b437165))
+
+- Remove old QR service test file (replaced by test_qr.py)
+  ([`bd38bc1`](https://github.com/gsinghjay/mvp_qr_gen/commit/bd38bc1b2370b7cf52c3405bcb57e49a002a2a2a))
+
+
 ## v0.27.0 (2025-05-21)
 
 ### Bug Fixes
