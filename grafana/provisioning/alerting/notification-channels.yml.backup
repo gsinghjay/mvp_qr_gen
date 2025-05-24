@@ -1,0 +1,42 @@
+apiVersion: 1
+
+# Notification channels for QR System Observatory-First Refactoring
+notifiers:
+  # Email notification channel
+  - name: qr-system-email-alerts
+    type: email
+    uid: qr_system_email
+    settings:
+      addresses: "admin@hccc.edu"  # Replace with actual admin email
+      subject: "[QR System Alert] {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}"
+      body: |
+        {{ range .Alerts }}
+        Alert: {{ .Annotations.summary }}
+        Description: {{ .Annotations.description }}
+        Severity: {{ .Labels.severity }}
+        Component: {{ .Labels.component }}
+        {{ if .Labels.refactoring }}Refactoring Alert: This alert is specifically for monitoring during the Observatory-First refactoring process.{{ end }}
+        
+        Time: {{ .StartsAt }}
+        {{ end }}
+    isDefault: true
+
+  # Webhook notification channel (for future integration with Slack, Teams, etc.)
+  - name: qr-system-webhook-alerts
+    type: webhook
+    uid: qr_system_webhook
+    settings:
+      url: "http://localhost:3001/webhook/alerts"  # Replace with actual webhook URL
+      httpMethod: "POST"
+      title: "QR System Alert"
+      username: "Grafana"
+    disableResolveMessage: false
+
+  # Console notification (for testing)
+  - name: qr-system-console
+    type: webhook
+    uid: qr_system_console
+    settings:
+      url: "http://localhost:3001/webhook/console"  # This can be a simple logging endpoint
+      httpMethod: "POST"
+      title: "QR System Console Alert" 
