@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v0.31.1 (2025-05-24)
+
+### Bug Fixes
+
+- Update wiki workflow to use personal access token for wiki permissions
+  ([`d47e7dc`](https://github.com/gsinghjay/mvp_qr_gen/commit/d47e7dc7d113b07ad2a84fb280b957ed13b02e42))
+
+### Documentation
+
+- Update memory bank with GitHub wiki integration and CORS fixes
+  ([`781071e`](https://github.com/gsinghjay/mvp_qr_gen/commit/781071e54d8a489b3036e00d12eb4ac9787a8eeb))
+
+
 ## v0.31.0 (2025-05-24)
 
 ### Bug Fixes
