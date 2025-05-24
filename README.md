@@ -28,6 +28,7 @@ A robust QR code generation and management API built with FastAPI and PostgreSQL
   - **[Getting Started Guide](https://github.com/gsinghjay/mvp_qr_gen/wiki/Getting-Started)**: Complete setup instructions for new users
   - **[System Architecture](https://github.com/gsinghjay/mvp_qr_gen/wiki/System-Architecture)**: Technical overview and design patterns
   - **[Traefik Configuration](https://github.com/gsinghjay/mvp_qr_gen/wiki/Traefik-Configuration)**: Complete reverse proxy setup guide
+  - **[Key Prometheus Queries for Developers](https://github.com/gsinghjay/mvp_qr_gen/wiki/Key-Prometheus-Queries-for-Developers)**: Essential PromQL queries and monitoring patterns
 - **API Documentation**: Interactive Swagger UI available at `/docs` endpoint
 - **Monitoring & Observability**: See `GRAFANA.md` for comprehensive monitoring dashboard guide
 - **Dashboard Suite**: 8 specialized Grafana dashboards for system monitoring, user experience, and infrastructure analysis
