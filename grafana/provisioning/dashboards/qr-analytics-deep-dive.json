@@ -17,17 +17,17 @@
         "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
         "targets": [
           {
-            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[5m])) * 60 or vector(0)",
             "legendFormat": "Successful QR Redirects/min",
             "refId": "A"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status!=\"302\"}[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status!=\"302\"}[5m])) * 60 or vector(0)",
             "legendFormat": "Failed QR Redirects/min",
             "refId": "B"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/api/v1/qr/.*/image\"}[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/api/v1/qr/.*/image\"}[5m])) * 60 or vector(0)",
             "legendFormat": "QR Image Generation/min",
             "refId": "C"
           }
@@ -49,7 +49,7 @@
         "type": "gauge",
         "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
         "targets": [{
-          "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[5m])) / sum(rate(app_http_requests_total{endpoint=~\"/r/.*\"}[5m])) * 100",
+          "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[1h])) / sum(rate(app_http_requests_total{endpoint=~\"/r/.*\"}[1h])) * 100 or vector(0)",
           "refId": "A"
         }],
         "fieldConfig": {
@@ -77,7 +77,7 @@
         "type": "stat",
         "gridPos": {"h": 4, "w": 8, "x": 8, "y": 8},
         "targets": [{
-          "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket{endpoint=~\"/api/v1/qr/.*/image\"}[5m])) by (le)) * 1000",
+          "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket{endpoint=~\"/api/v1/qr/.*/image\"}[1h])) by (le)) * 1000 or vector(0)",
           "refId": "A"
         }],
         "fieldConfig": {
@@ -104,7 +104,7 @@
         "type": "stat",
         "gridPos": {"h": 4, "w": 8, "x": 16, "y": 8},
         "targets": [{
-          "expr": "sum(increase(app_http_requests_total{endpoint=\"/qr-create\",status=\"200\"}[24h]))",
+          "expr": "sum(increase(app_http_requests_total{endpoint=\"/qr-create\",status=\"200\"}[24h])) or vector(0)",
           "refId": "A"
         }],
         "fieldConfig": {
@@ -124,7 +124,7 @@
         "type": "stat",
         "gridPos": {"h": 4, "w": 8, "x": 8, "y": 12},
         "targets": [{
-          "expr": "sum(increase(app_http_requests_total{endpoint=\"/qr-list\",status=\"200\"}[24h]))",
+          "expr": "sum(increase(app_http_requests_total{endpoint=\"/qr-list\",status=\"200\"}[24h])) or vector(0)",
           "refId": "A"
         }],
         "fieldConfig": {
@@ -143,7 +143,7 @@
         "type": "stat",
         "gridPos": {"h": 4, "w": 8, "x": 16, "y": 12},
         "targets": [{
-          "expr": "sum(increase(app_http_requests_total{endpoint=~\"/qr/.*/analytics\",status=\"200\"}[24h]))",
+          "expr": "sum(increase(app_http_requests_total{endpoint=~\"/qr/.*/analytics\",status=\"200\"}[24h])) or vector(0)",
           "refId": "A"
         }],
         "fieldConfig": {
@@ -162,7 +162,7 @@
         "type": "table",
         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
         "targets": [{
-          "expr": "topk(10, sum by (endpoint) (increase(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[24h])))",
+          "expr": "topk(10, sum by (endpoint) (increase(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[24h]))) or vector(0)",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -213,7 +213,7 @@
         "type": "heatmap",
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
         "targets": [{
-          "expr": "sum(rate(app_http_request_duration_seconds_bucket{endpoint=~\"/r/.*\"}[5m])) by (le)",
+          "expr": "sum(rate(app_http_request_duration_seconds_bucket{endpoint=~\"/r/.*\"}[5m])) by (le) or vector(0)",
           "format": "heatmap",
           "refId": "A"
         }],
@@ -274,17 +274,17 @@
         "gridPos": {"h": 6, "w": 24, "x": 0, "y": 24},
         "targets": [
           {
-            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=\"404\"}[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=\"404\"}[5m])) * 60 or vector(0)",
             "legendFormat": "QR Not Found (404)/min",
             "refId": "A"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=~\"5..\"}[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=~\"5..\"}[5m])) * 60 or vector(0)",
             "legendFormat": "Server Errors (5xx)/min",
             "refId": "B"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/api/v1/qr/.*/image\",status=~\"[45]..\"}[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/api/v1/qr/.*/image\",status=~\"[45]..\"}[5m])) * 60 or vector(0)",
             "legendFormat": "Image Generation Errors/min",
             "refId": "C"
           }
