@@ -1,6 +1,37 @@
 # CHANGELOG
 
 
+## v0.31.0 (2025-05-24)
+
+### Bug Fixes
+
+- Enhance CORS headers for Grafana RSS feeds and external resources
+  ([`7e30a33`](https://github.com/gsinghjay/mvp_qr_gen/commit/7e30a33ab024dfeb11a28b99a7c52635bb6ae3fb))
+
+### Chores
+
+- Update gitignore to keep docs folder ignored while supporting wiki system
+  ([`43ff926`](https://github.com/gsinghjay/mvp_qr_gen/commit/43ff9262f6d937eafb254ae535e3a12f8abdb83a))
+
+### Continuous Integration
+
+- Add automated wiki documentation sync workflow
+  ([`87dd2fa`](https://github.com/gsinghjay/mvp_qr_gen/commit/87dd2fad51845c0f5c8f1b9447e2ae379a60ca58))
+
+### Documentation
+
+- Add comprehensive GitHub wiki maintenance guide
+  ([`1a9722c`](https://github.com/gsinghjay/mvp_qr_gen/commit/1a9722cbf067c731e68772d218387c51409b19c5))
+
+- Update README to reference GitHub wiki instead of ignored docs directory
+  ([`241d587`](https://github.com/gsinghjay/mvp_qr_gen/commit/241d587a497984f3bb3843146d63e46e3e4fc9d3))
+
+### Features
+
+- Add wiki maintenance script for documentation sync
+  ([`651d754`](https://github.com/gsinghjay/mvp_qr_gen/commit/651d754eb4aba0de6b23d0d9168c68be0fc49e62))
+
+
 ## v0.30.0 (2025-05-24)
 
 ### Bug Fixes
