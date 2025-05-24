@@ -1,0 +1,316 @@
+{
+  "id": null,
+  "title": "QR Analytics Deep Dive",
+    "tags": ["qr-system", "analytics", "usage"],
+    "style": "dark",
+    "timezone": "browser",
+    "refresh": "1m",
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "QR Scans Timeline",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[5m])) * 60",
+            "legendFormat": "Successful QR Redirects/min",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status!=\"302\"}[5m])) * 60",
+            "legendFormat": "Failed QR Redirects/min",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/api/v1/qr/.*/image\"}[5m])) * 60",
+            "legendFormat": "QR Image Generation/min",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "min": 0
+          }
+        },
+        "options": {
+          "tooltip": {"mode": "multi"},
+          "legend": {"displayMode": "table", "placement": "bottom"}
+        }
+      },
+      {
+        "id": 2,
+        "title": "QR Redirect Success Rate",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+        "targets": [{
+          "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[5m])) / sum(rate(app_http_requests_total{endpoint=~\"/r/.*\"}[5m])) * 100",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 95},
+                {"color": "green", "value": 99}
+              ]
+            }
+          }
+        },
+        "options": {
+          "showThresholdLabels": true,
+          "showThresholdMarkers": true
+        }
+      },
+      {
+        "id": 3,
+        "title": "QR Generation Performance",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 8, "x": 8, "y": 8},
+        "targets": [{
+          "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket{endpoint=~\"/api/v1/qr/.*/image\"}[5m])) by (le)) * 1000",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "displayName": "P95 Generation Time",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 100},
+                {"color": "red", "value": 500}
+              ]
+            }
+          }
+        },
+        "options": {
+          "colorMode": "background",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Total QR Codes Created",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 8, "x": 16, "y": 8},
+        "targets": [{
+          "expr": "sum(increase(app_http_requests_total{endpoint=\"/qr-create\",status=\"200\"}[24h]))",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "displayName": "QR Codes Created (24h)"
+          }
+        },
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area"
+        }
+      },
+      {
+        "id": 5,
+        "title": "QR List Page Views",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 8, "x": 8, "y": 12},
+        "targets": [{
+          "expr": "sum(increase(app_http_requests_total{endpoint=\"/qr-list\",status=\"200\"}[24h]))",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "displayName": "QR List Views (24h)"
+          }
+        },
+        "options": {
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 6,
+        "title": "Analytics Page Views",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 8, "x": 16, "y": 12},
+        "targets": [{
+          "expr": "sum(increase(app_http_requests_total{endpoint=~\"/qr/.*/analytics\",status=\"200\"}[24h]))",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "displayName": "Analytics Views (24h)"
+          }
+        },
+        "options": {
+          "colorMode": "value"
+        }
+      },
+      {
+        "id": 7,
+        "title": "Most Active QR Endpoints (Top 10)",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [{
+          "expr": "topk(10, sum by (endpoint) (increase(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[24h])))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "displayMode": "basic"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Value"},
+              "properties": [
+                {"id": "displayName", "value": "Scans (24h)"},
+                {"id": "unit", "value": "short"}
+              ]
+            },
+            {
+              "matcher": {"id": "byName", "options": "endpoint"},
+              "properties": [
+                {"id": "displayName", "value": "QR Endpoint"}
+              ]
+            }
+          ]
+        },
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "__name__": true,
+                "Time": true,
+                "instance": true,
+                "job": true,
+                "method": true,
+                "status": true
+              },
+              "indexByName": {},
+              "renameByName": {}
+            }
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Response Time Distribution",
+        "type": "heatmap",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [{
+          "expr": "sum(rate(app_http_request_duration_seconds_bucket{endpoint=~\"/r/.*\"}[5m])) by (le)",
+          "format": "heatmap",
+          "refId": "A"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "vis": false
+              },
+              "scaleDistribution": {
+                "type": "linear"
+              }
+            }
+          }
+        },
+        "options": {
+          "calculate": true,
+          "cellGap": 2,
+          "cellValues": {},
+          "color": {
+            "exponent": 0.5,
+            "fill": "dark-orange",
+            "mode": "spectrum",
+            "reverse": false,
+            "scale": "exponential",
+            "scheme": "Oranges",
+            "steps": 64
+          },
+          "exemplars": {
+            "color": "rgba(255,0,255,0.7)"
+          },
+          "filterValues": {
+            "le": 1e-9
+          },
+          "legend": {
+            "show": true
+          },
+          "rowsFrame": {
+            "layout": "auto"
+          },
+          "tooltip": {
+            "show": true,
+            "yHistogram": false
+          },
+          "yAxis": {
+            "axisPlacement": "left",
+            "reverse": false,
+            "unit": "s"
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Error Analysis",
+        "type": "timeseries",
+        "gridPos": {"h": 6, "w": 24, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=\"404\"}[5m])) * 60",
+            "legendFormat": "QR Not Found (404)/min",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=~\"5..\"}[5m])) * 60",
+            "legendFormat": "Server Errors (5xx)/min",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/api/v1/qr/.*/image\",status=~\"[45]..\"}[5m])) * 60",
+            "legendFormat": "Image Generation Errors/min",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "min": 0
+          }
+        },
+        "options": {
+          "tooltip": {"mode": "multi"},
+          "legend": {"displayMode": "table", "placement": "bottom"}
+        }
+      }
+    ],
+    "links": [
+      {
+        "title": "System Health",
+        "url": "/d/health/qr-system-health",
+        "type": "dashboards"
+      },
+      {
+        "title": "Refactoring Progress",
+        "url": "/d/refactor/qr-refactoring-progress",
+        "type": "dashboards"
+      }
+    ]
+} 
