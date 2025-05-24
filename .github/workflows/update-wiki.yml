@@ -4,7 +4,6 @@ on:
   push:
     branches: [ main, master ]
     paths:
-      - 'docs/**'
       - 'README.md'
       - 'GRAFANA.md'
       - 'WIKI.md'
@@ -78,15 +77,7 @@ jobs:
             fi
         }
         
-        # Update documentation pages from docs/
-        echo "📚 Syncing documentation from docs/ directory..."
-        
-        # Direct copies from docs (these will overwrite completely)
-        update_wiki_page "docs/traefik-configuration.md" "Traefik-Configuration.md" "Traefik Configuration"
-        update_wiki_page "docs/traefik-quick-reference.md" "Traefik-Quick-Reference.md" "Traefik Quick Reference"
-        update_wiki_page "docs/observatory-first-alerts.md" "Alert-System.md" "Alert System"
-        update_wiki_page "docs/grafana-dashboard-suite.md" "Grafana-Dashboards.md" "Grafana Dashboards"
-        update_wiki_page "docs/grafana-queries-reference.md" "Grafana-Queries-Reference.md" "Grafana Queries Reference"
+        # Note: docs/ directory is ignored in .gitignore and not available in public repo
         
         # Update main README content for System Architecture page
         if [ -f "README.md" ]; then

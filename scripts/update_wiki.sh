@@ -14,7 +14,6 @@ NC='\033[0m' # No Color
 
 # Configuration
 WIKI_DIR="wiki"
-DOCS_DIR="docs"
 MAIN_REPO_URL="https://github.com/gsinghjay/mvp_qr_gen"
 WIKI_REPO_URL="https://github.com/gsinghjay/mvp_qr_gen.wiki.git"
 
@@ -88,14 +87,8 @@ EOF
     fi
 }
 
-# Update existing documentation
-print_status "Syncing documentation from docs/ directory..."
-
-# Direct copies from docs
-update_wiki_page "$DOCS_DIR/traefik-configuration.md" "Traefik-Configuration.md" "Traefik Configuration"
-update_wiki_page "$DOCS_DIR/traefik-quick-reference.md" "Traefik-Quick-Reference.md" "Traefik Quick Reference"
-update_wiki_page "$DOCS_DIR/observatory-first-alerts.md" "Alert-System.md" "Alert System"
-update_wiki_page "$DOCS_DIR/grafana-dashboard-suite.md" "Grafana-Dashboards.md" "Grafana Dashboards"
+# Note: docs/ directory is ignored in .gitignore and not available in public repo
+print_status "Creating/updating wiki pages from available sources..."
 
 # Create placeholder pages for planned content
 print_status "Creating placeholder pages for planned content..."
