@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v0.31.2 (2025-05-24)
+
+### Bug Fixes
+
+- Remove docs/ references from wiki automation
+  ([`00448ea`](https://github.com/gsinghjay/mvp_qr_gen/commit/00448ea6d9ef0ab1865c6016a172a614f4621a94))
+
+### Documentation
+
+- Remove memory-bank from public repository
+  ([`1feb276`](https://github.com/gsinghjay/mvp_qr_gen/commit/1feb2764c92082d9fdf53cd57498146bc07a2b4e))
+
+- Test auto-sync workflow trigger
+  ([`b6da892`](https://github.com/gsinghjay/mvp_qr_gen/commit/b6da892683910b3ac46c9633ced96f71ff2b318d))
+
+
 ## v0.31.1 (2025-05-24)
 
 ### Bug Fixes
