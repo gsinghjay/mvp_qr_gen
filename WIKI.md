@@ -277,4 +277,6 @@ git log --oneline -5
 - **Update Script**: `scripts/update_wiki.sh`
 - **GitHub Actions**: `.github/workflows/update-wiki.yml`
 
-This wiki serves as the primary public documentation for the QR Code Generator project, providing comprehensive guidance for all user types while maintaining itself through automated processes. 
+This wiki serves as the primary public documentation for the QR Code Generator project, providing comprehensive guidance for all user types while maintaining itself through automated processes.
+
+<!-- Test auto-sync workflow trigger --> 
