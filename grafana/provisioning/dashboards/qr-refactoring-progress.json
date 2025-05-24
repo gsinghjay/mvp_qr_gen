@@ -17,7 +17,7 @@
         "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket{endpoint=~\"/r/.*\"}[5m])) by (le)) * 1000",
+            "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket{endpoint=~\"/r/.*\"}[1h])) by (le)) * 1000 or vector(0)",
             "refId": "A"
           }
         ],
@@ -46,7 +46,7 @@
         "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0},
         "targets": [
           {
-            "expr": "(1 - (sum(rate(app_http_requests_total{status=~\"5..\"}[5m])) / sum(rate(app_http_requests_total[5m])))) * 100",
+            "expr": "(1 - (sum(rate(app_http_requests_total{status=~\"5..\"}[1h])) / sum(rate(app_http_requests_total[1h])))) * 100 or vector(100)",
             "refId": "A"
           }
         ],
@@ -117,17 +117,17 @@
         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
         "targets": [
           {
-            "expr": "sum(rate(app_http_requests_total[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total[5m])) * 60 or vector(0)",
             "legendFormat": "Total Requests/min",
             "refId": "A"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\"}[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\"}[5m])) * 60 or vector(0)",
             "legendFormat": "QR Redirects/min",
             "refId": "B"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/api/v1/.*\"}[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/api/v1/.*\"}[5m])) * 60 or vector(0)",
             "legendFormat": "API Calls/min",
             "refId": "C"
           }
@@ -150,17 +150,17 @@
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
         "targets": [
           {
-            "expr": "histogram_quantile(0.50, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "expr": "histogram_quantile(0.50, sum(rate(app_http_request_duration_seconds_bucket[1h])) by (le)) * 1000 or vector(0)",
             "legendFormat": "P50 Latency",
             "refId": "A"
           },
           {
-            "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[1h])) by (le)) * 1000 or vector(0)",
             "legendFormat": "P95 Latency",
             "refId": "B"
           },
           {
-            "expr": "histogram_quantile(0.99, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "expr": "histogram_quantile(0.99, sum(rate(app_http_request_duration_seconds_bucket[1h])) by (le)) * 1000 or vector(0)",
             "legendFormat": "P99 Latency",
             "refId": "C"
           }
@@ -183,12 +183,12 @@
         "gridPos": {"h": 8, "w": 24, "x": 0, "y": 14},
         "targets": [
           {
-            "expr": "sum(rate(app_http_requests_total{status=~\"4..\"}[5m])) by (endpoint) * 100",
+            "expr": "sum(rate(app_http_requests_total{status=~\"4..\"}[5m])) by (endpoint) * 100 or vector(0)",
             "legendFormat": "4xx - {{endpoint}}",
             "refId": "A"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{status=~\"5..\"}[5m])) by (endpoint) * 100",
+            "expr": "sum(rate(app_http_requests_total{status=~\"5..\"}[5m])) by (endpoint) * 100 or vector(0)",
             "legendFormat": "5xx - {{endpoint}}",
             "refId": "B"
           }
