@@ -196,6 +196,81 @@ http:
         - dashboard-auth@file # Added Basic Auth
       priority: 800 # Very high priority
 
+    # --- Prometheus (Internal Only) ---
+    prometheus-router:
+      rule: "Host(`prometheus.10.1.6.12`) || (Host(`10.1.6.12`) && PathPrefix(`/prometheus`))"
+      service: prometheus-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file
+        - dashboard-auth@file
+        - security-headers@file
+      priority: 750
+
+    prometheus-secure-router:
+      rule: "Host(`prometheus.10.1.6.12`) || (Host(`10.1.6.12`) && PathPrefix(`/prometheus`))"
+      service: prometheus-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - ip-whitelist@file
+        - dashboard-auth@file
+        - security-headers@file
+      priority: 750
+
+    # --- Grafana (Internal Only) ---
+    grafana-router:
+      rule: "Host(`grafana.10.1.6.12`) || (Host(`10.1.6.12`) && PathPrefix(`/grafana`))"
+      service: grafana-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file
+        - dashboard-auth@file
+        - security-headers@file
+      priority: 740
+
+    grafana-secure-router:
+      rule: "Host(`grafana.10.1.6.12`) || (Host(`10.1.6.12`) && PathPrefix(`/grafana`))"
+      service: grafana-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - ip-whitelist@file
+        - dashboard-auth@file
+        - security-headers@file
+      priority: 740
+
+    # --- Grafana via webhost.hccc.edu (Internal Only) ---
+    grafana-webhost-router:
+      rule: "Host(`webhost.hccc.edu`)"
+      service: grafana-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file      # Same security as internal access
+        - dashboard-auth@file    # Same basic auth
+        - grafana-cors-headers@file  # CORS-enabled headers
+      priority: 745
+
+    grafana-webhost-secure-router:
+      rule: "Host(`webhost.hccc.edu`)"
+      service: grafana-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - ip-whitelist@file      # Same security as internal access
+        - dashboard-auth@file    # Same basic auth
+        - grafana-cors-headers@file  # CORS-enabled headers
+      priority: 745
+
   middlewares:
     redirect-to-https:
       redirectScheme:
@@ -248,6 +323,22 @@ http:
         contentSecurityPolicy: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; font-src 'self' https://cdn.jsdelivr.net; frame-ancestors 'self'; object-src 'none';" # Allows Bootstrap CDN, HTMX and Alpine.js from unpkg.com
         customFrameOptionsValue: "DENY"
 
+    grafana-cors-headers:
+      headers:
+        customResponseHeaders:
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "SAMEORIGIN"  # Allow Grafana to frame itself
+          X-XSS-Protection: "1; mode=block"
+          Access-Control-Allow-Origin: "*"
+          Access-Control-Allow-Methods: "GET,POST,OPTIONS,PUT,DELETE,PATCH"
+          Access-Control-Allow-Headers: "Accept,Authorization,Cache-Control,Content-Type,DNT,If-Modified-Since,Keep-Alive,Origin,User-Agent,X-Requested-With,X-Grafana-Org-Id,X-Panel-Id,X-Dashboard-Id"
+          Access-Control-Allow-Credentials: "true"
+          Access-Control-Max-Age: "86400"
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        forceSTSHeader: true
+        contentSecurityPolicy: "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; font-src 'self' https://cdn.jsdelivr.net; frame-ancestors 'self'; object-src 'none'; connect-src 'self' https://webhost.hccc.edu https://10.1.6.12;"
+
     dashboard-auth: # Basic Auth for dashboard/internal routes
       basicAuth:
         usersFile: "/etc/traefik/users.htpasswd"
@@ -259,6 +350,18 @@ http:
       loadBalancer:
         servers:
           - url: "http://api:8000" # Points to your FastAPI app container
+        passHostHeader: true
+
+    prometheus-service:
+      loadBalancer:
+        servers:
+          - url: "http://prometheus:9090"
+        passHostHeader: true
+
+    grafana-service:
+      loadBalancer:
+        servers:
+          - url: "http://grafana:3000"
         passHostHeader: true
 
 tls:

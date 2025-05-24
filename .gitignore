@@ -78,7 +78,6 @@ dynamic_qr_with_logo.png
 static_qr_with_logo.png
 repomix-output.xml
 .cursorignore
-memory-bank/
 .cursor/
 backups/
 database_reports/

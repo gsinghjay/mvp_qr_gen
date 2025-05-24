@@ -1,0 +1,270 @@
+apiVersion: 1
+
+# Alert rules for QR System Observatory-First Refactoring
+groups:
+  - name: qr_system_grafana_alerts
+    orgId: 1
+    folder: QR System Alerts
+    interval: 1m
+    rules:
+      # Critical QR Redirect Monitoring
+      - uid: qr_redirect_success_rate
+        title: QR Redirect Success Rate Monitor
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus
+            model:
+              expr: |
+                (
+                  sum(rate(traefik_service_requests_total{service="api-service",code=~"30[12]"}[5m]))
+                  /
+                  sum(rate(traefik_service_requests_total{service="api-service"}[5m]))
+                ) * 100
+              interval: ""
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasource:
+              type: __expr__
+              uid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 90
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          description: "QR redirect success rate is {{ $value }}%, which is below the 90% threshold. This is critical for business operations."
+          summary: "QR Redirect Success Rate Critical"
+        labels:
+          severity: critical
+          component: qr_redirects
+          refactoring: observatory_first
+
+      # API Performance Monitoring
+      - uid: api_response_time_monitor
+        title: API Response Time Monitor
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus
+            model:
+              expr: |
+                histogram_quantile(0.95, 
+                  sum(rate(traefik_service_request_duration_seconds_bucket[5m])) by (le, service)
+                ) * 1000
+              interval: ""
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasource:
+              type: __expr__
+              uid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 500
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Alerting
+        for: 3m
+        annotations:
+          description: "95th percentile API response time is {{ $value }}ms, which is above the 500ms threshold."
+          summary: "API Response Time High"
+        labels:
+          severity: warning
+          component: api_performance
+          refactoring: observatory_first
+
+      # System Health Monitoring
+      - uid: container_health_monitor
+        title: Container Health Monitor
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 60
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus
+            model:
+              expr: up{job=~"qr-app|traefik|prometheus"}
+              interval: ""
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasource:
+              type: __expr__
+              uid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: threshold
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 1m
+        annotations:
+          description: "Container {{ $labels.job }} is down or unreachable."
+          summary: "Container Down"
+        labels:
+          severity: critical
+          component: infrastructure
+          refactoring: observatory_first
+
+  - name: qr_system_refactoring_specific
+    orgId: 1
+    folder: QR System Refactoring
+    interval: 1m
+    rules:
+      # Baseline Comparison Alert
+      - uid: baseline_deviation_monitor
+        title: Baseline Performance Deviation
+        condition: C
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasource:
+              type: prometheus
+              uid: prometheus
+            model:
+              expr: |
+                (
+                  histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket[5m])) by (le))
+                  /
+                  histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket[1h])) by (le))
+                ) * 100
+              interval: ""
+              refId: A
+          - refId: C
+            queryType: ""
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasource:
+              type: __expr__
+              uid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 150
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - A
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              hide: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          description: "Current performance is {{ $value }}% of baseline, indicating potential regression during refactoring."
+          summary: "Performance Baseline Deviation"
+        labels:
+          severity: warning
+          component: performance_regression
+          refactoring: observatory_first 

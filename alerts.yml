@@ -1,0 +1,126 @@
+groups:
+  - name: qr_system_critical_alerts
+    rules:
+      # High API Error Rate Alert
+      - alert: HighAPIErrorRate
+        expr: |
+          (
+            sum(rate(traefik_service_requests_total{code=~"5.."}[5m])) by (service)
+            /
+            sum(rate(traefik_service_requests_total[5m])) by (service)
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "High API error rate detected"
+          description: "API error rate is {{ $value | humanizePercentage }} for service {{ $labels.service }}, which is above the 5% threshold."
+
+      # High API Latency Alert
+      - alert: HighAPILatency
+        expr: |
+          histogram_quantile(0.99, 
+            sum(rate(traefik_service_request_duration_seconds_bucket[5m])) by (le, service)
+          ) > 1
+        for: 3m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API latency detected"
+          description: "99th percentile API latency is {{ $value }}s for service {{ $labels.service }}, which is above 1 second threshold."
+
+      # QR Redirect Failure Rate Alert
+      - alert: QRRedirectFailureRate
+        expr: |
+          (
+            sum(rate(traefik_service_requests_total{service="api-service",code!~"30[12]"}[5m]))
+            /
+            sum(rate(traefik_service_requests_total{service="api-service"}[5m]))
+          ) > 0.10
+        for: 2m
+        labels:
+          severity: critical
+          component: qr_redirects
+        annotations:
+          summary: "High QR redirect failure rate detected"
+          description: "QR redirect failure rate is {{ $value | humanizePercentage }}, which is above the 10% threshold. This affects business-critical QR code functionality."
+
+      # Container Down Alert
+      - alert: ContainerDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Container is down"
+          description: "Container {{ $labels.job }} has been down for more than 1 minute."
+
+      # High Memory Usage Alert
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            container_memory_usage_bytes{name=~"qr_generator_.*"}
+            /
+            container_spec_memory_limit_bytes{name=~"qr_generator_.*"}
+          ) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High memory usage detected"
+          description: "Container {{ $labels.name }} memory usage is {{ $value | humanizePercentage }}, which is above 90% of the limit."
+
+      # Database Connection Issues Alert
+      - alert: DatabaseConnectionIssues
+        expr: |
+          sum(rate(traefik_service_requests_total{service="api-service",code="500"}[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Potential database connection issues"
+          description: "High rate of 500 errors detected ({{ $value }} per second), which may indicate database connectivity problems."
+
+  - name: qr_system_refactoring_alerts
+    rules:
+      # Performance Regression Alert (for during refactoring)
+      - alert: PerformanceRegression
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(traefik_service_request_duration_seconds_bucket[5m])) by (le, service)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: performance
+          refactoring: "true"
+        annotations:
+          summary: "Performance regression detected during refactoring"
+          description: "95th percentile response time is {{ $value }}s for service {{ $labels.service }}, which may indicate performance regression during refactoring."
+
+      # Unusual Traffic Pattern Alert
+      - alert: UnusualTrafficPattern
+        expr: |
+          (
+            sum(rate(traefik_service_requests_total[5m])) by (service)
+            /
+            avg_over_time(sum(rate(traefik_service_requests_total[5m])) by (service)[1h:5m])
+          ) > 2 or
+          (
+            sum(rate(traefik_service_requests_total[5m])) by (service)
+            /
+            avg_over_time(sum(rate(traefik_service_requests_total[5m])) by (service)[1h:5m])
+          ) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: traffic
+          refactoring: "true"
+        annotations:
+          summary: "Unusual traffic pattern detected"
+          description: "Traffic for service {{ $labels.service }} is {{ $value }}x the normal rate, which may indicate issues during refactoring." 
