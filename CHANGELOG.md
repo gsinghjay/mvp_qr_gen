@@ -1,6 +1,95 @@
 # CHANGELOG
 
 
+## v0.30.0 (2025-05-24)
+
+### Bug Fixes
+
+- Update analytics dashboard queries to prevent NaN values
+  ([`308679b`](https://github.com/gsinghjay/mvp_qr_gen/commit/308679bae6562ff0590055090e56fda7e127738d))
+
+- Update QR system health dashboard queries with proper fallbacks
+  ([`d54fa08`](https://github.com/gsinghjay/mvp_qr_gen/commit/d54fa080263bcfe83a62d19dbf72b174179bbdec))
+
+- Update refactoring progress dashboard with extended time windows
+  ([`721b3be`](https://github.com/gsinghjay/mvp_qr_gen/commit/721b3bedb02cde8ed1a61dd99a9c8491b35a5263))
+
+### Chores
+
+- Add cursor indexing ignore configuration
+  ([`86b92b7`](https://github.com/gsinghjay/mvp_qr_gen/commit/86b92b7cd07d9c038ae511ad47940c624942fe93))
+
+- Add monitoring service directories to gitignore
+  ([`0b39eb7`](https://github.com/gsinghjay/mvp_qr_gen/commit/0b39eb71772b2ac3c40b1cb58a2a4bc8ce0ba024))
+
+### Documentation
+
+- Add comprehensive Grafana monitoring guide for college staff
+  ([`99ebdf9`](https://github.com/gsinghjay/mvp_qr_gen/commit/99ebdf9231b51198f664a06c0b23a2e6f8fc6a84))
+
+- Add memory bank documentation for project context
+  ([`8226ae8`](https://github.com/gsinghjay/mvp_qr_gen/commit/8226ae866f3e19a6bf959cb68920a95047b17e63))
+
+- Add Observatory-First monitoring features to README
+  ([`d512caa`](https://github.com/gsinghjay/mvp_qr_gen/commit/d512caa4dcb0b0fdfd7b745941209520e1a9e705))
+
+- **memory-bank**: Update Observatory-First monitoring progress and CORS implementation
+  ([`453c9e7`](https://github.com/gsinghjay/mvp_qr_gen/commit/453c9e71dafd783ac62688b9b38f8c86fd9d6b3a))
+
+### Features
+
+- Add alerting and SLA overview dashboard for compliance monitoring
+  ([`164d71f`](https://github.com/gsinghjay/mvp_qr_gen/commit/164d71f9477f1f1be4834f81931765b6ae4ac1fd))
+
+- Add circuit breaker and feature flag monitoring dashboard
+  ([`05ca07a`](https://github.com/gsinghjay/mvp_qr_gen/commit/05ca07a955ee167d70c58f0423ae0bb1f9ad19ac))
+
+- Add detailed refactoring analysis dashboard for technical monitoring
+  ([`4855fb3`](https://github.com/gsinghjay/mvp_qr_gen/commit/4855fb3832f73d5066596c06cc52a59f0604009b))
+
+- Add Grafana dashboards and datasource configurations
+  ([`7be3f5b`](https://github.com/gsinghjay/mvp_qr_gen/commit/7be3f5b66d8c613102aa40083a7067e6905ed952))
+
+- Add Grafana routing configuration to Traefik
+  ([`6d21185`](https://github.com/gsinghjay/mvp_qr_gen/commit/6d21185d699088474654a029f9db57e13778f2f9))
+
+- Add Grafana, Loki, and Promtail services for monitoring
+  ([`0ddcbed`](https://github.com/gsinghjay/mvp_qr_gen/commit/0ddcbed492c1c22c0a51ff4aef76d72c7209b19a))
+
+- Add infrastructure deep dive dashboard for resource monitoring
+  ([`dd57c1e`](https://github.com/gsinghjay/mvp_qr_gen/commit/dd57c1e7b45d97f30ade685133b920d50aad90f6))
+
+- Add Loki configuration for log aggregation
+  ([`dd286fa`](https://github.com/gsinghjay/mvp_qr_gen/commit/dd286faf840f2a6553049eb2b6da59d06b565441))
+
+- Add Prometheus configuration for metrics collection
+  ([`7ddf6eb`](https://github.com/gsinghjay/mvp_qr_gen/commit/7ddf6ebe6c75f1571728429caaed1b9b84ef5a5c))
+
+- Add Promtail configuration for log shipping
+  ([`3236b2e`](https://github.com/gsinghjay/mvp_qr_gen/commit/3236b2e9e5bfda8f20a733377b8a7d9f6a356d49))
+
+- Add user experience monitoring dashboard for UX tracking
+  ([`25ed35f`](https://github.com/gsinghjay/mvp_qr_gen/commit/25ed35fbe9299cebd019ccacb2acaba2de2195cc))
+
+- **grafana**: Configure CORS support for cross-origin requests
+  ([`c493413`](https://github.com/gsinghjay/mvp_qr_gen/commit/c493413c723983ba0a41474d03013354bfc2047a))
+
+- **infrastructure**: Add Prometheus, Grafana, Loki monitoring stack to Docker Compose
+  ([`8c290b2`](https://github.com/gsinghjay/mvp_qr_gen/commit/8c290b240f5059f6d699365e870333ce8c46e00e))
+
+- **monitoring**: Add Grafana alerting configuration for comprehensive monitoring
+  ([`5ab0dbf`](https://github.com/gsinghjay/mvp_qr_gen/commit/5ab0dbf813ac56479dce86a1f77e5d999f875087))
+
+- **monitoring**: Add Observatory-First alert system with 8 critical rules
+  ([`89f98d2`](https://github.com/gsinghjay/mvp_qr_gen/commit/89f98d285d9ea974596648599edb684d38934e30))
+
+- **scripts**: Add alert testing and monitoring utility scripts
+  ([`d27d8a4`](https://github.com/gsinghjay/mvp_qr_gen/commit/d27d8a415ccd8a79f7ec53448dea3333cee74a53))
+
+- **traefik**: Add CORS support for Grafana with dedicated middleware
+  ([`40f87a7`](https://github.com/gsinghjay/mvp_qr_gen/commit/40f87a7472186d479eda8dafb79cd885179d380e))
+
+
 ## v0.29.0 (2025-05-23)
 
 ### Documentation
