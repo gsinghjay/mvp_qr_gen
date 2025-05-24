@@ -24,7 +24,9 @@ The GitHub Wiki serves as the **public documentation** for the QR Code Generator
 | Page | Source | Update Method |
 |------|--------|---------------|
 | **Alert System** | `docs/observatory-first-alerts.md` | Auto-sync |
+| **Dashboard Suite** | Manual creation | Manual editing |
 | **Grafana Dashboards** | `docs/grafana-dashboard-suite.md` | Auto-sync |
+| **Key Prometheus Queries for Developers** | Manual creation | Manual editing |
 | **Observatory Overview** | `GRAFANA.md` | Auto-sync |
 | **Traefik Quick Reference** | `docs/traefik-quick-reference.md` | Auto-sync |
 
@@ -170,7 +172,8 @@ git push origin master
 
 #### **Monitoring** (SRE/DevOps)
 - Observatory Overview
-- Grafana Dashboards
+- Dashboard Suite
+- Key Prometheus Queries for Developers
 - Alert System
 - Performance Monitoring
 
