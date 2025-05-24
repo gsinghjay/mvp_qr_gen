@@ -38,11 +38,18 @@
 
 ### 🔄 IN PROGRESS: Observatory-First Production-Safe Architectural Refactoring & Segno Optimization
 - **Current Phase**: Phase -1 - Observatory Setup (Tasks M.1-M.5)
-- **Progress**: ✅ Tasks M.1-M.2 COMPLETED - Prometheus & Grafana deployed and operational
-- **Active Focus**: Creating baseline dashboards and alerts (Tasks M.3-M.5)
+- **Progress**: ✅ Tasks M.1-M.4 COMPLETED - Full monitoring infrastructure operational
+- **Active Focus**: Task M.5 - Capturing 1 week of baseline metrics for comparison data
 - **Key Principle**: "Transform refactoring from high-risk endeavor into controlled, data-driven process"
 - **Reference**: `docs/plans/refactor.md` - Complete Observatory-First refactoring plan
 - **Benefits**: Data-driven decisions, full visibility, risk mitigation, professional observability
+
+### 📊 **Observatory Infrastructure Status - OPERATIONAL**
+- **Prometheus**: ✅ Operational - Scraping all targets (traefik, qr-app, prometheus)
+- **Grafana**: ✅ Operational - Accessible at localhost:3000 with comprehensive dashboards
+- **Alert System**: ✅ Operational - 8 critical alert rules monitoring production
+- **QR API**: ✅ Operational - Accessible via HTTPS through Traefik
+- **Monitoring Stack**: ✅ Complete - Ready for baseline data collection
 
 ### ✅ COMPLETED: Test Infrastructure Foundation
 - **Phase 1 Complete**: Directory structure, database setup, dependency overrides, factories
@@ -72,8 +79,19 @@
      - Created "QR System Refactoring Progress" dashboard for Observatory tracking
      - Created "QR Analytics Deep Dive" dashboard for usage insights
      - All dashboards operational with real-time Prometheus data
-   - **Task M.4**: Set Up Critical Baseline Alerts (2 SP)
-   - **Task M.5**: Capture 1 Week of Baseline Metrics (Observation Period)
+   - ✅ **Task M.4**: Set Up Critical Baseline Alerts (2 SP) - COMPLETED (May 24, 2025)
+     - Comprehensive `alerts.yml` with 8 critical alert rules deployed and operational
+     - Alert categories: Critical Business, Performance Monitoring, Infrastructure Health
+     - Business-critical alerts: QR redirect failures (>10%), API errors (>5%), container health
+     - Performance alerts: API latency (>1s), performance regression (>500ms), baseline deviation (>150%)
+     - Infrastructure alerts: Memory usage (>90%), database issues, unusual traffic patterns
+     - Notification channels: Email and webhook infrastructure configured
+     - Testing infrastructure: `scripts/test_alerts.sh` for validation
+     - Documentation: Complete alert system docs in `docs/observatory-first-alerts.md`
+   - 🔄 **Task M.5**: Capture 1 Week of Baseline Metrics (Observation Period) - IN PROGRESS
+     - Alert system operational and collecting baseline data
+     - Purpose: Observe normal patterns, peak times, error rates for threshold calibration
+     - Critical for before/after comparisons during refactoring
 
 2. **Safety Phase: Critical Safety Measures (Tasks S.1-S.5) - Enhanced with Monitoring**:
    - **Task S.1**: Establish & Test Comprehensive Backup and Restore Procedures (3 SP)
@@ -151,6 +169,14 @@
 - Made evidence-based decision on async migration based on real data
 - Implemented route warmup to eliminate cold start penalties
 
+### Observatory-First Infrastructure Success
+- Successfully deployed comprehensive Prometheus/Grafana monitoring stack
+- Implemented 8 critical alert rules covering business, performance, and infrastructure
+- Created comprehensive Grafana dashboards for real-time system monitoring
+- Established alert testing infrastructure with automated validation
+- Documented complete alert system rationale and maintenance procedures
+- **Alert System Operational**: All components monitoring production successfully
+
 ### Test Infrastructure Improvements
 - Established robust PostgreSQL test database with transaction isolation
 - Implemented factory pattern for consistent test data creation (QRCodeFactory, ScanLogFactory)
@@ -161,20 +187,19 @@
 
 ## Current Challenges
 
-1. **Observatory Infrastructure Setup**: Deploying and configuring Prometheus/Grafana monitoring stack
-2. **Baseline Data Collection**: Establishing comprehensive performance baselines before refactoring
-3. **Production Safety**: Ensuring QR redirect endpoint remains business-critical and unbroken
-4. **Code Style Standardization**: Implementing Python 3.12 features, PEP 8 with 100-char lines, SQLAlchemy 2.0 syntax
-5. **Segno Optimization Integration**: Implementing advanced SVG optimizations and enhanced color controls
+1. **Baseline Data Collection**: Collecting 1 week of comprehensive performance baselines for comparison
+2. **Alert Threshold Calibration**: Fine-tuning alert thresholds based on observed production patterns
+3. **Pattern Analysis**: Understanding normal traffic patterns, peak times, and error rates
+4. **Production Safety**: Ensuring QR redirect endpoint remains business-critical and unbroken
+5. **Preparation for Safety Phase**: Planning enhanced safety measures with monitoring in place
 
 ## Next Steps
 
-1. **Complete Observatory Setup** (Current Priority):
-   - **Task M.1**: Deploy Prometheus and configure metric targets
-   - **Task M.2**: Deploy Grafana and connect to Prometheus
-   - **Task M.3**: Create baseline Grafana dashboards
-   - **Task M.4**: Set up critical baseline alerts
-   - **Task M.5**: Collect 1 week of baseline metrics
+1. **Complete Task M.5** (Current Priority):
+   - Allow monitoring stack to collect 1 week of baseline metrics
+   - Analyze normal traffic patterns, peak times, error rates
+   - Calibrate alert thresholds based on observed production data
+   - Document baseline performance metrics for comparison
 
 2. **Execute Observatory-First Refactoring Phases**:
    - **Safety Phase**: Enhanced safety measures with Grafana monitoring in place

@@ -4,47 +4,77 @@
 
 The QR Code Generator follows a layered architecture with clear separation of concerns:
 
-```
-┌───────────────────────────────────────────────────────────────┐
-│                      Presentation Layer                        │
-│  ┌─────────────────┐             ┌──────────────────────┐     │
-│  │   Web Interface │             │ REST API Endpoints   │     │
-│  │  (Jinja2, HTML) │             │    (FastAPI)         │     │
-│  └─────────────────┘             └──────────────────────┘     │
-└───────────────────────────────────┬───────────────────────────┘
-                                    │
-┌───────────────────────────────────▼───────────────────────────┐
-│                       Service Layer                            │
-│  ┌─────────────────┐  ┌────────────────┐  ┌───────────────┐   │
-│  │  QR Service     │  │ Health Service │  │ Other Services│   │
-│  └─────────────────┘  └────────────────┘  └───────────────┘   │
-└───────────────────────────────────┬───────────────────────────┘
-                                    │
-┌───────────────────────────────────▼───────────────────────────┐
-│                    Repository Layer                            │
-│  ┌─────────────────────────────────────────────────────────┐  │
-│  │               Data Access Logic                          │  │
-│  └─────────────────────────────────────────────────────────┘  │
-└───────────────────────────────────┬───────────────────────────┘
-                                    │
-┌───────────────────────────────────▼───────────────────────────┐
-│                      Data Layer                                │
-│  ┌─────────────────────────────────────────────────────────┐  │
-│  │                  PostgreSQL Database                     │  │
-│  └─────────────────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph "Presentation Layer"
+        WEB[Web Interface<br/>Jinja2, HTML]
+        API[REST API Endpoints<br/>FastAPI]
+    end
+    
+    subgraph "Service Layer"
+        QRS[QR Service]
+        HS[Health Service]
+        OS[Other Services]
+    end
+    
+    subgraph "Repository Layer"
+        DAL[Data Access Logic<br/>QRCodeRepository<br/>ScanLogRepository]
+    end
+    
+    subgraph "Data Layer"
+        DB[(PostgreSQL Database)]
+    end
+    
+    WEB --> QRS
+    WEB --> HS
+    API --> QRS
+    API --> HS
+    API --> OS
+    
+    QRS --> DAL
+    HS --> DAL
+    OS --> DAL
+    
+    DAL --> DB
 ```
 
 ### Infrastructure Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              Docker Compose                                      │
-│  ┌───────────────┐     ┌───────────────┐     ┌───────────────┐     ┌──────────┐ │
-│  │ FastAPI App   │     │    Traefik    │     │  PostgreSQL   │     │PostgreSQL│ │
-│  │  Container    │     │   Container   │     │   Container   │     │   Test   │ │
-│  └───────────────┘     └───────────────┘     └───────────────┘     └──────────┘ │
-└─────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph "Docker Compose Environment"
+        subgraph "Application Stack"
+            APP[FastAPI App<br/>Container]
+            TRAEFIK[Traefik<br/>Edge Router]
+            POSTGRES[PostgreSQL<br/>Production DB]
+            POSTGRES_TEST[PostgreSQL<br/>Test DB]
+        end
+        
+        subgraph "Observatory Stack"
+            PROMETHEUS[Prometheus<br/>Metrics Collection]
+            GRAFANA[Grafana<br/>Dashboards & Alerts]
+            LOKI[Loki<br/>Log Aggregation]
+            PROMTAIL[Promtail<br/>Log Collection]
+        end
+    end
+    
+    subgraph "External Access"
+        USERS[Users]
+        ADMIN[Administrators]
+    end
+    
+    USERS --> TRAEFIK
+    ADMIN --> TRAEFIK
+    TRAEFIK --> APP
+    
+    APP --> POSTGRES
+    APP --> POSTGRES_TEST
+    
+    PROMETHEUS --> APP
+    PROMETHEUS --> TRAEFIK
+    GRAFANA --> PROMETHEUS
+    PROMTAIL --> LOKI
+    GRAFANA --> LOKI
 ```
 
 ## Key Technical Decisions
@@ -74,6 +104,11 @@ The QR Code Generator follows a layered architecture with clear separation of co
 ### 6. Test Isolation Pattern
 - **Decision**: Dedicated test database with transaction-based test isolation
 - **Implementation**: Separate PostgreSQL container, transaction rollback per test, dynamic database URL selection
+
+### 7. Observatory-First Monitoring Pattern
+- **Decision**: Comprehensive observability infrastructure before architectural changes
+- **Implementation**: Prometheus metrics collection, Grafana dashboards, comprehensive alerting
+- **Rationale**: Transform high-risk refactoring into controlled, data-driven process
 
 ## Design Patterns in Use
 
@@ -106,6 +141,11 @@ The QR Code Generator follows a layered architecture with clear separation of co
 - **Implementation**: Dedicated test database with transaction-based isolation
 - **Purpose**: Isolated, repeatable test environment without affecting production data
 - **Key Concepts**: Separate PostgreSQL container, transaction rollback, parallel test execution
+
+### 7. Observatory-First Refactoring Pattern
+- **Implementation**: Comprehensive monitoring infrastructure established before code changes
+- **Purpose**: Transform high-risk production refactoring into controlled, data-driven process
+- **Key Concepts**: Prometheus metrics, Grafana dashboards, alert-driven monitoring, baseline comparison
 
 ## Component Relationships
 
@@ -167,6 +207,35 @@ The QR Code Generator follows a layered architecture with clear separation of co
 2. Test execution: Each test runs in its own transaction
 3. Test teardown: Transaction rolled back, clean state maintained
 4. Parallel execution: Multiple tests use separate connections
+```
+
+### 5. Observatory-First Monitoring Flow
+```mermaid
+graph LR
+    subgraph "Data Collection"
+        TRAEFIK[Traefik Metrics]
+        APP[FastAPI App Metrics]
+    end
+    
+    subgraph "Processing & Storage"
+        PROMETHEUS[Prometheus<br/>Scrapes & Stores]
+        ALERTS[Alert Rules<br/>8 Critical Rules]
+    end
+    
+    subgraph "Visualization & Action"
+        GRAFANA[Grafana Dashboards<br/>Real-time Monitoring]
+        DECISIONS[Data-Driven<br/>Refactoring Decisions]
+        BASELINE[Baseline Data<br/>Before/After Comparison]
+    end
+    
+    TRAEFIK --> PROMETHEUS
+    APP --> PROMETHEUS
+    PROMETHEUS --> ALERTS
+    PROMETHEUS --> GRAFANA
+    PROMETHEUS --> BASELINE
+    GRAFANA --> DECISIONS
+    ALERTS --> DECISIONS
+    BASELINE --> DECISIONS
 ```
 
 ## Security Model
@@ -262,10 +331,13 @@ The QR Code Generator follows a layered architecture with clear separation of co
 - Check redirect URLs against allowlist
 - Validate image parameters and sizes
 
-### Monitoring and Alerting
-- Track redirect success rates for business-critical QR codes
-- Monitor API performance and error rates
-- Alert on unusual traffic patterns or failures
-- Log security events and access attempts
+### Observatory-First Monitoring and Alerting
+- **Comprehensive Alert System**: 8 critical alert rules covering business, performance, and infrastructure
+- **Business-Critical Monitoring**: QR redirect failure rate (>10%), API error rate (>5%), container health
+- **Performance Monitoring**: API latency (>1s), performance regression (>500ms), baseline deviation (>150%)
+- **Infrastructure Monitoring**: Memory usage (>90%), database issues, unusual traffic patterns
+- **Alert Testing**: Automated validation via `scripts/test_alerts.sh`
+- **Documentation**: Complete alert rationale in `docs/observatory-first-alerts.md`
+- **Baseline Collection**: 1 week of performance data for before/after refactoring comparisons
 
 *For detailed historical information and verbose examples, see docs/archive/memory-bank-archive_20250522_150324/*

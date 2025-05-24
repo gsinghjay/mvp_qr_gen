@@ -32,6 +32,32 @@
 - **TLS/HTTPS**: Wildcard certificate for *.hccc.edu
 - **IP-based Access Control**: Network-level security via Traefik
 
+### Observatory-First Monitoring Stack
+- **Prometheus**: Metrics collection and storage
+- **Grafana**: Visualization and dashboards
+- **Loki**: Log aggregation
+- **Promtail**: Log collection agent
+- **Alert System**: Comprehensive alerting for business, performance, and infrastructure
+
+### Observatory-First Monitoring Stack
+- **Prometheus**: Metrics collection and storage
+- **Grafana**: Visualization and dashboards
+- **Loki**: Log aggregation
+- **Promtail**: Log collection agent
+- **Alert System**: Comprehensive alerting for business, performance, and infrastructure
+
+### Observatory-First Monitoring Stack
+- **Prometheus**: Metrics collection and storage
+- **Grafana**: Visualization and dashboards
+- **Loki**: Log aggregation
+- **Promtail**: Log collection agent
+- **Alert System**: Comprehensive alerting for business, performance, and infrastructure
+- **Prometheus**: Metrics collection and storage
+- **Grafana**: Visualization and dashboards
+- **Loki**: Log aggregation
+- **Promtail**: Log collection agent
+- **Alert System**: Comprehensive alerting for business, performance, and infrastructure
+
 ## Development Setup
 
 ### Prerequisites
@@ -157,9 +183,10 @@ mypy>=1.8.0
 
 ### Docker Infrastructure
 - Multi-stage Docker build for optimized container size
-- Multiple containers: `api`, `traefik`, `postgres`, `postgres_test`
+- Multiple containers: `api`, `traefik`, `postgres`, `postgres_test`, `prometheus`, `grafana`, `loki`, `promtail`
 - Named volumes for persistent data storage
 - Health checks for service readiness
+- Observatory stack for comprehensive monitoring and alerting
 
 ### Traefik Configuration
 - **Static config** (`traefik.yml`): Entrypoints, providers, metrics, logging
@@ -358,6 +385,54 @@ except ValidationError as e:
 except DatabaseError as e:
     logger.error(f"Database error: {e}")
     raise
+```
+
+## Observatory-First Monitoring and Alerting
+
+### Comprehensive Alert System
+- **8 Critical Alert Rules**: Covering business, performance, and infrastructure
+- **Business-Critical Alerts**: QR redirect failures (>10%), API errors (>5%), container health
+- **Performance Alerts**: API latency (>1s), performance regression (>500ms), baseline deviation (>150%)
+- **Infrastructure Alerts**: Memory usage (>90%), database issues, unusual traffic patterns
+- **Alert Testing**: Automated validation via `scripts/test_alerts.sh`
+- **Documentation**: Complete alert rationale in `docs/observatory-first-alerts.md`
+
+### Monitoring Stack Configuration
+```yaml
+# Prometheus configuration
+prometheus:
+  scrape_configs:
+    - job_name: 'traefik'
+      targets: ['traefik:8082']
+    - job_name: 'qr-app'
+      targets: ['api:8000']
+  rule_files:
+    - "alerts.yml"
+
+# Grafana dashboards
+- QR System Health Overview
+- QR System Refactoring Progress  
+- QR Analytics Deep Dive
+```
+
+### Alert Rule Examples
+```yaml
+# Business-critical QR redirect monitoring
+- alert: QRRedirectFailureRate
+  expr: (non-30x responses / total responses) > 0.10
+  for: 2m
+  labels:
+    severity: critical
+    component: qr_redirects
+
+# Performance regression detection
+- alert: PerformanceRegression
+  expr: histogram_quantile(0.95, response_time) > 0.5
+  for: 5m
+  labels:
+    severity: warning
+    component: performance
+    refactoring: "true"
 ```
 
 ## Monitoring and Logging Patterns

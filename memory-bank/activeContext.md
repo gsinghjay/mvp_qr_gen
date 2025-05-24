@@ -56,30 +56,54 @@ We are now implementing a comprehensive **Observatory-First** production-safe ar
    - ✅ All dashboards operational and displaying real-time production data
    - ✅ Verified Prometheus integration and metric queries working correctly
 
-**Next Observatory Tasks**:
+✅ **Task M.4: Set Up Critical Baseline Alerts** (2 SP) - COMPLETED (May 24, 2025):
+   - ✅ **Prometheus Alert Rules**: Comprehensive `alerts.yml` with 8 critical alert rules
+   - ✅ **Alert Categories**: Critical Business, Performance Monitoring, Infrastructure Health
+   - ✅ **Alert Groups**: `qr_system_critical_alerts` and `qr_system_refactoring_alerts`
+   - ✅ **Business-Critical Alerts**: QR redirect failure rate, API error rate, container health
+   - ✅ **Performance Alerts**: API latency, performance regression, baseline deviation
+   - ✅ **Infrastructure Alerts**: Memory usage, database issues, traffic anomalies
+   - ✅ **Notification Channels**: Email and webhook notification infrastructure configured
+   - ✅ **Testing Infrastructure**: `scripts/test_alerts.sh` for validation and testing
+   - ✅ **Documentation**: Complete alert system documentation in `docs/observatory-first-alerts.md`
+   - ✅ **Alert System Operational**: All 8 alert rules loaded and monitoring production
 
-4. **Task M.4: Set Up Critical Baseline Alerts** (2 SP):
-   - Configure Prometheus/Grafana alerts for high API error rate, latency, redirect failures
-   - Set up notification channels (email, Slack)
-   - Test alert firing by temporarily adjusting thresholds
+**Current Observatory Task**:
 
-5. **Task M.5: Capture 1 Week of Baseline Metrics** (Observation Period):
-   - Allow monitoring stack to collect baseline performance data
-   - Observe normal patterns, peak times, error rates
-   - Adjust alert thresholds based on observed data
+🔄 **Task M.5: Capture 1 Week of Baseline Metrics** (Observation Period) - IN PROGRESS:
+   - **Status**: Alert system operational, collecting baseline data
+   - **Duration**: 1 week minimum for comprehensive baseline establishment
+   - **Purpose**: Observe normal patterns, peak times, error rates for threshold calibration
    - **Critical**: This data enables before/after comparisons during refactoring
+   - **Next Action**: Monitor and analyze patterns, adjust alert thresholds based on observed data
 
 **Observatory-First Principle**: "Transform refactoring from a high-risk endeavor into a controlled, data-driven process by establishing comprehensive observability FIRST."
 
 **Total Observatory Phase Effort**: 10 Story Points + 1 week observation period
 
+## Observatory Infrastructure Status (OPERATIONAL)
+
+### 📊 **Monitoring Stack - Fully Operational**
+- **Prometheus**: ✅ Operational - Scraping all targets (traefik, qr-app, prometheus)
+- **Grafana**: ✅ Operational - Accessible at localhost:3000 (admin/admin123)
+- **Alert System**: ✅ Operational - 8 critical alert rules loaded and monitoring
+- **QR API**: ✅ Operational - Accessible via HTTPS through Traefik
+- **Monitoring Stack**: ✅ Complete - Ready for baseline data collection
+
+### 🚨 **Alert System Details**
+- **Critical Business Alerts**: QR redirect failures (>10%), API errors (>5%), container health
+- **Performance Alerts**: API latency (>1s), performance regression (>500ms), baseline deviation (>150%)
+- **Infrastructure Alerts**: Memory usage (>90%), database issues, unusual traffic patterns
+- **Alert Testing**: Comprehensive test script validates all components
+- **Documentation**: Complete alert rationale and maintenance procedures
+
 ## Next Steps
 
-1. **Complete Observatory Setup (Current Priority)**:
-   - Deploy Prometheus and Grafana monitoring infrastructure
-   - Create comprehensive baseline dashboards and alerts
-   - Collect 1 week of baseline metrics for comparison data
-   - Establish data-driven decision making foundation
+1. **Complete Task M.5 (Current Priority)**:
+   - Allow monitoring stack to collect 1 week of baseline metrics
+   - Analyze normal traffic patterns, peak times, error rates
+   - Calibrate alert thresholds based on observed production data
+   - Document baseline performance metrics for comparison
 
 2. **Safety Phase (Enhanced with Monitoring)**:
    - Execute safety tasks (S.1-S.5) with Grafana monitoring in place
@@ -111,6 +135,13 @@ We are now implementing a comprehensive **Observatory-First** production-safe ar
 - **Risk Transformation**: Converting high-risk production refactoring into controlled, monitored process
 - **Professional Standards**: Industry-standard observability practices for production changes
 
+### Alert System Implementation Success
+- **Comprehensive Coverage**: 8 critical alert rules covering business, performance, and infrastructure
+- **Business-Critical Focus**: Stricter monitoring for QR redirects (business-critical functionality)
+- **Refactoring-Specific Alerts**: Dedicated alerts for monitoring during architectural changes
+- **Testing Infrastructure**: Automated validation ensures alert system reliability
+- **Documentation Excellence**: Complete alert rationale and maintenance procedures
+
 ### Enhanced Observatory Strategy
 - **Prometheus/Grafana Foundation**: Full metrics collection and visualization before refactoring begins
 - **Baseline Data Collection**: 1 week of performance baselines for before/after comparisons
@@ -130,18 +161,19 @@ We are now implementing a comprehensive **Observatory-First** production-safe ar
 
 ## Current Challenges
 
-1. **Observatory Infrastructure Setup**: Deploying and configuring Prometheus/Grafana monitoring stack
-2. **Baseline Data Collection**: Establishing comprehensive performance baselines before refactoring
-3. **Dashboard Design**: Creating effective Grafana dashboards for system health monitoring
-4. **Alert Calibration**: Setting appropriate alert thresholds based on observed production patterns
+1. **Baseline Data Collection**: Collecting 1 week of comprehensive performance baselines
+2. **Alert Threshold Calibration**: Fine-tuning alert thresholds based on observed production patterns
+3. **Pattern Analysis**: Understanding normal traffic patterns, peak times, and error rates
+4. **Preparation for Safety Phase**: Planning enhanced safety measures with monitoring in place
 
 ## Active Learning
 
-- Observatory-First approach transforms high-risk refactoring into data-driven process
-- Comprehensive monitoring infrastructure is essential before production architectural changes
-- Baseline metrics collection enables objective before/after performance comparisons
+- Observatory-First approach successfully transforms high-risk refactoring into data-driven process
+- Comprehensive alert system provides early warning for any issues during refactoring
+- Baseline metrics collection is critical for objective before/after performance comparisons
 - Grafana dashboards provide real-time visibility for go/no-go refactoring decisions
-- Professional observability practices are critical for production change management
+- Professional observability practices are essential for production change management
+- Alert system testing and validation ensures reliability during critical refactoring phases
 - 1 week baseline collection period provides sufficient data for comparison analysis
 
 ## Critical Production Safety Rules
@@ -151,10 +183,12 @@ The `/r/{short_id}` endpoint is business-critical. Any changes must:
 - Maintain backward compatibility
 - Include comprehensive testing
 - Have immediate rollback capability
-- Monitor redirect success rates
+- Monitor redirect success rates (now automated via alerts)
 
-### Refactoring Safety Patterns
+### Observatory-First Safety Patterns
+- **Alert-Driven Monitoring**: Comprehensive alert system monitors all critical metrics
 - **Feature Flag Pattern**: Use environment variables for gradual rollout
 - **Circuit Breaker Pattern**: Always implement fallback mechanisms
 - **Interface-Based Design**: Abstract implementations behind interfaces
 - **Metrics Logging**: Track performance and success rates for all new services
+- **Baseline Comparison**: Use collected baseline data for before/after analysis
