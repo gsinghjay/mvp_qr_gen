@@ -1,0 +1,172 @@
+name: Update Wiki Documentation
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'GRAFANA.md'
+      - 'WIKI.md'
+      - 'scripts/update_wiki.sh'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  update-wiki:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout main repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Checkout wiki repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.repository }}.wiki
+        path: wiki
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Configure Git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        
+    - name: Update wiki pages
+      run: |
+        # Create wiki directory structure
+        mkdir -p wiki
+        
+        # Function to update wiki page from docs
+        update_wiki_page() {
+            local source_file="$1"
+            local wiki_file="$2"
+            local description="$3"
+            
+            if [ -f "$source_file" ]; then
+                echo "✅ Updating $wiki_file from $source_file"
+                cp "$source_file" "wiki/$wiki_file"
+            else
+                echo "⚠️ $source_file not found, skipping $description"
+            fi
+        }
+        
+        # Function to create/update wiki page with header
+        create_wiki_page() {
+            local wiki_file="$1"
+            local title="$2"
+            local source_content="$3"
+            
+            echo "✅ Creating/updating wiki page: $wiki_file"
+            
+            # Add wiki header if it doesn't exist
+            if [ ! -f "wiki/$wiki_file" ] || ! grep -q "automatically maintained" "wiki/$wiki_file"; then
+                cat > "wiki/$wiki_file" << EOF
+        # $title
+        
+        $source_content
+        
+        ---
+        
+        *This page is automatically maintained from the main repository. Last updated: $(date '+%Y-%m-%d %H:%M:%S UTC')*
+        *For the latest updates, see the [project repository](https://github.com/${{ github.repository }})*
+        EOF
+            else
+                # Update existing page, preserving manual edits but updating timestamp
+                sed -i "s/Last updated: .*/Last updated: $(date '+%Y-%m-%d %H:%M:%S UTC')*/" "wiki/$wiki_file"
+            fi
+        }
+        
+        # Update documentation pages from docs/
+        echo "📚 Syncing documentation from docs/ directory..."
+        
+        # Direct copies from docs (these will overwrite completely)
+        update_wiki_page "docs/traefik-configuration.md" "Traefik-Configuration.md" "Traefik Configuration"
+        update_wiki_page "docs/traefik-quick-reference.md" "Traefik-Quick-Reference.md" "Traefik Quick Reference"
+        update_wiki_page "docs/observatory-first-alerts.md" "Alert-System.md" "Alert System"
+        update_wiki_page "docs/grafana-dashboard-suite.md" "Grafana-Dashboards.md" "Grafana Dashboards"
+        update_wiki_page "docs/grafana-queries-reference.md" "Grafana-Queries-Reference.md" "Grafana Queries Reference"
+        
+        # Update main README content for System Architecture page
+        if [ -f "README.md" ]; then
+            echo "✅ Updating System Architecture from README.md"
+            # Extract architecture section from README
+            sed -n '/## Infrastructure Architecture/,/```$/p' README.md > temp_arch.md
+            if [ -s temp_arch.md ]; then
+                create_wiki_page "System-Architecture.md" "System Architecture" "$(cat temp_arch.md)"
+            fi
+            rm -f temp_arch.md
+        fi
+        
+        # Update Grafana documentation
+        if [ -f "GRAFANA.md" ]; then
+            echo "✅ Updating Observatory Overview from GRAFANA.md"
+            create_wiki_page "Observatory-Overview.md" "Observatory Overview" "$(cat GRAFANA.md)"
+        fi
+        
+        # Update Wiki maintenance guide
+        if [ -f "WIKI.md" ]; then
+            echo "✅ Updating Wiki Maintenance Guide from WIKI.md"
+            create_wiki_page "Wiki-Maintenance-Guide.md" "Wiki Maintenance Guide" "$(cat WIKI.md)"
+        fi
+        
+    - name: Check for changes and commit
+      run: |
+        cd wiki
+        
+        # Check if there are any changes
+        if [ -n "$(git status --porcelain)" ]; then
+            echo "📝 Changes detected, committing to wiki..."
+            
+            # Add all changes
+            git add .
+            
+            # Create commit message
+            COMMIT_MSG="Auto-update wiki documentation from main repository
+            
+        Triggered by: ${{ github.event_name }}
+        Commit: ${{ github.sha }}
+        Branch: ${{ github.ref_name }}
+        
+        Updated documentation:
+        $(git diff --cached --name-only | sed 's/^/- /')
+        
+        Source: https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+            
+            git commit -m "$COMMIT_MSG"
+            
+            # Push changes
+            echo "🚀 Pushing changes to GitHub wiki..."
+            git push origin master
+            
+            echo "✅ Wiki updated successfully!"
+            echo "📚 Wiki URL: https://github.com/${{ github.repository }}/wiki"
+            
+        else
+            echo "ℹ️ No changes detected in wiki"
+        fi
+        
+    - name: Create summary
+      run: |
+        echo "## Wiki Update Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🔗 **Wiki URL**: https://github.com/${{ github.repository }}/wiki" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Updated Pages" >> $GITHUB_STEP_SUMMARY
+        
+        cd wiki
+        if [ -n "$(git log --oneline -1 2>/dev/null)" ]; then
+            echo "- ✅ Wiki updated successfully" >> $GITHUB_STEP_SUMMARY
+            git diff --name-only HEAD~1 HEAD 2>/dev/null | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY || echo "- Initial wiki setup" >> $GITHUB_STEP_SUMMARY
+        else
+            echo "- ℹ️ No changes needed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Key Wiki Pages" >> $GITHUB_STEP_SUMMARY
+        echo "- [Home](https://github.com/${{ github.repository }}/wiki/Home)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Getting Started](https://github.com/${{ github.repository }}/wiki/Getting-Started)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Traefik Configuration](https://github.com/${{ github.repository }}/wiki/Traefik-Configuration)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Observatory Overview](https://github.com/${{ github.repository }}/wiki/Observatory-Overview)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Wiki Maintenance Guide](https://github.com/${{ github.repository }}/wiki/Wiki-Maintenance-Guide)" >> $GITHUB_STEP_SUMMARY 
