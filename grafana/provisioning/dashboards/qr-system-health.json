@@ -19,7 +19,7 @@
         "type": "stat",
         "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
         "targets": [{
-          "expr": "sum(rate(traefik_service_requests_total{service=\"api-service@docker\",code=\"302\"}[5m])) / sum(rate(traefik_service_requests_total{service=\"api-service@docker\"}[5m])) * 100",
+          "expr": "sum(rate(traefik_service_requests_total{service=\"api-service@file\",code=\"302\"}[1h])) / sum(rate(traefik_service_requests_total{service=\"api-service@file\"}[1h])) * 100 or vector(0)",
           "refId": "A"
         }],
         "fieldConfig": {
@@ -55,7 +55,7 @@
         "type": "stat",
         "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
         "targets": [{
-          "expr": "sum(increase(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[5m]))",
+          "expr": "sum(increase(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[5m])) or vector(0)",
           "refId": "A"
         }],
         "fieldConfig": {
@@ -83,7 +83,7 @@
         "type": "stat",
         "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
         "targets": [{
-          "expr": "(sum(rate(app_http_requests_total{status=~\"5..\"}[5m])) / sum(rate(app_http_requests_total[5m]))) * 100",
+          "expr": "(sum(rate(app_http_requests_total{status=~\"5..\"}[1h])) / sum(rate(app_http_requests_total[1h]))) * 100 or vector(0)",
           "refId": "A"
         }],
         "fieldConfig": {
@@ -114,7 +114,7 @@
         "type": "stat",
         "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
         "targets": [{
-          "expr": "sum(rate(app_http_requests_total{endpoint=\"/health\",status=\"200\"}[5m])) / sum(rate(app_http_requests_total{endpoint=\"/health\"}[5m])) * 100",
+          "expr": "sum(rate(app_http_requests_total{endpoint=\"/health\",status=\"200\"}[1h])) / sum(rate(app_http_requests_total{endpoint=\"/health\"}[1h])) * 100 or vector(0)",
           "refId": "A"
         }],
         "fieldConfig": {
@@ -143,12 +143,12 @@
         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
-            "legendFormat": "{{endpoint}}",
+            "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket[1h])) by (le, endpoint)) or vector(0)",
+            "legendFormat": "{{endpoint}} (P95)",
             "refId": "A"
           },
           {
-            "expr": "histogram_quantile(0.50, sum(rate(app_http_request_duration_seconds_bucket[5m])) by (le, endpoint))",
+            "expr": "histogram_quantile(0.50, sum(rate(app_http_request_duration_seconds_bucket[1h])) by (le, endpoint)) or vector(0)",
             "legendFormat": "{{endpoint}} (P50)",
             "refId": "B"
           }
@@ -178,17 +178,17 @@
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
         "targets": [
           {
-            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\",status=\"302\"}[5m])) * 60 or vector(0)",
             "legendFormat": "QR Redirects/min",
             "refId": "A"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/api/v1/qr/.*/image\"}[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total{endpoint=~\"/api/v1/qr/.*/image\"}[5m])) * 60 or vector(0)",
             "legendFormat": "Image Generation/min",
             "refId": "B"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{endpoint=\"/health\"}[5m])) * 60",
+            "expr": "sum(rate(app_http_requests_total{endpoint=\"/health\"}[5m])) * 60 or vector(0)",
             "legendFormat": "Health Checks/min",
             "refId": "C"
           }
@@ -211,22 +211,22 @@
         "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
         "targets": [
           {
-            "expr": "sum(rate(app_http_requests_total{status=~\"2..\"}[5m])) by (status)",
+            "expr": "sum(rate(app_http_requests_total{status=~\"2..\"}[5m])) by (status) or vector(0)",
             "legendFormat": "2xx - {{status}}",
             "refId": "A"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{status=~\"3..\"}[5m])) by (status)",
+            "expr": "sum(rate(app_http_requests_total{status=~\"3..\"}[5m])) by (status) or vector(0)",
             "legendFormat": "3xx - {{status}}",
             "refId": "B"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{status=~\"4..\"}[5m])) by (status)",
+            "expr": "sum(rate(app_http_requests_total{status=~\"4..\"}[5m])) by (status) or vector(0)",
             "legendFormat": "4xx - {{status}}",
             "refId": "C"
           },
           {
-            "expr": "sum(rate(app_http_requests_total{status=~\"5..\"}[5m])) by (status)",
+            "expr": "sum(rate(app_http_requests_total{status=~\"5..\"}[5m])) by (status) or vector(0)",
             "legendFormat": "5xx - {{status}}",
             "refId": "D"
           }
