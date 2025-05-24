@@ -19,11 +19,15 @@ A robust QR code generation and management API built with FastAPI and PostgreSQL
 -   **Optimized First-Request Performance**: Uses FastAPI's lifespan context manager to pre-initialize critical code paths, eliminating cold-start delays for QR redirects and API endpoints.
 -   **Analytics Dashboard**: Detailed analytics for QR code usage with interactive charts and filtering.
 -   **Enhanced Scan Tracking**: User agent analysis for device, browser, and OS statistics.
+-   **Observatory-First Monitoring**: Comprehensive Grafana dashboard suite with 8 specialized monitoring views for system health, performance tracking, user experience, and infrastructure monitoring.
+-   **Production-Grade Observability**: Real-time metrics, SLA compliance monitoring, and data-driven refactoring support through Prometheus and Grafana integration.
 
 ## Documentation
 
 - **Project Documentation**: Available in the `docs/` directory
 - **API Documentation**: Interactive Swagger UI available at `/docs` endpoint
+- **Monitoring & Observability**: See `GRAFANA.md` for comprehensive monitoring dashboard guide
+- **Dashboard Suite**: 8 specialized Grafana dashboards for system monitoring, user experience, and infrastructure analysis
 - **Completed Features Archive**: See `docs/completed_features_archive.md` for details on implemented features
 
 ## Quick Start
@@ -45,7 +49,11 @@ To run the QR Code Generator locally using Docker Compose:
 -   **API Docs**: `https://localhost/docs`
 -   **API Base URL**: `https://localhost/api/v1`
 -   **Traefik Dashboard**: `http://localhost:8080/`
--   **Prometheus Metrics**: `http://localhost:8082/metrics`
+-   **Grafana Monitoring**: `http://localhost:3000/` (admin/admin)
+    -   8 specialized dashboards for comprehensive system monitoring
+    -   Log analysis and correlation with metrics
+-   **Prometheus Metrics**: `http://localhost:9090/`
+-   **Loki Logs**: `http://localhost:3100/` (integrated with Grafana)
 
 ### Docker Container Configuration
 
@@ -53,7 +61,10 @@ To run the QR Code Generator locally using Docker Compose:
 | :--------------------- | :--------------------------------------------- | :------------------- | :------------ | :----------------------- | :-------------------------------------------------------------- |
 | `qr_generator_api`     | FastAPI Application + Web UI                   | (via Traefik)        | 8000          | `qr_generator_network` | `qr_data`, `qr_logs`, `./app` (dev only)                        |
 | `qr_generator_postgres`| PostgreSQL Database                            | (internal only)      | 5432          | `qr_generator_network` | `postgres_data`                                                 |
-| `qr_generator_traefik` | Reverse Proxy, TLS, Routing, Security         | 80, 443, 8080, 8082  | N/A           | `qr_generator_network` | `docker.sock`, `traefik_certs`, `traefik_logs`                |
+| `qr_generator_traefik` | Reverse Proxy, TLS, Routing, Security         | 80, 443, 8080        | N/A           | `qr_generator_network` | `docker.sock`, `traefik_certs`, `traefik_logs`                |
+| `qr_generator_prometheus` | Metrics Collection & Storage                | 9090                 | 9090          | `qr_generator_network` | `prometheus_data`                                               |
+| `qr_generator_grafana` | Monitoring Dashboards & Visualization         | 3000                 | 3000          | `qr_generator_network` | `grafana_data`                                                  |
+| `qr_generator_loki` | Log Aggregation & Analysis                     | 3100                 | 3100          | `qr_generator_network` | `loki_data`                                                     |
 
 ## Security Setup
 
@@ -112,6 +123,20 @@ flowchart TD
          DB --> DB_VOL["Volume: postgres_data"]
          style APP fill:#ccf,stroke:#333,stroke-width:2px
     end
+
+    subgraph monitoring["Observatory Monitoring Stack"]
+        direction LR
+        PROMETHEUS[("Prometheus<br/>Metrics Collection")]
+        LOKI[("Loki<br/>Log Aggregation")]
+        GRAFANA[("Grafana<br/>8 Dashboard Suite<br/>+ Log Analysis")]
+        PROMETHEUS --> GRAFANA
+        LOKI --> GRAFANA
+        style PROMETHEUS fill:#fff3e0,stroke:#333,stroke-width:2px
+        style LOKI fill:#e3f2fd,stroke:#333,stroke-width:2px
+        style GRAFANA fill:#e8f5e8,stroke:#333,stroke-width:2px
+    end
+
+    api_service --> monitoring
 
     subgraph docker_build["Docker Build Process"]
         direction LR
