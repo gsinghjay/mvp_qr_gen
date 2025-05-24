@@ -82,3 +82,9 @@ repomix-output.xml
 backups/
 database_reports/
 repomix-output.md
+
+# Wiki - keep local wiki directory but don't track it in main repo
+wiki/
+
+# Memory Bank - private development notes
+memory-bank/
