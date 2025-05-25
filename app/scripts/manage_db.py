@@ -12,6 +12,8 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
+import time
 import traceback
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -62,6 +64,39 @@ class StructuredMessage:
 
 # Create _ as a shortcut for StructuredMessage
 _ = StructuredMessage
+
+
+class ProgressIndicator:
+    """Simple progress indicator for long-running operations."""
+    
+    def __init__(self, message: str, interval: float = 1.0):
+        self.message = message
+        self.interval = interval
+        self.running = False
+        self.thread = None
+        
+    def start(self):
+        """Start the progress indicator."""
+        self.running = True
+        self.thread = threading.Thread(target=self._show_progress)
+        self.thread.daemon = True
+        self.thread.start()
+        
+    def stop(self):
+        """Stop the progress indicator."""
+        self.running = False
+        if self.thread:
+            self.thread.join()
+            
+    def _show_progress(self):
+        """Show progress dots."""
+        dots = 0
+        while self.running:
+            dots = (dots + 1) % 4
+            progress = "." * dots + " " * (3 - dots)
+            print(f"\r{self.message}{progress}", end="", flush=True)
+            time.sleep(self.interval)
+        print()  # New line when done
 
 
 def setup_logging():
@@ -173,6 +208,10 @@ class DatabaseManager:
         # PostgreSQL backup using pg_dump
         backup_path = self.backup_dir / f"qrdb_{timestamp}.sql"
         try:
+            print(f"🔄 Creating PostgreSQL database backup...")
+            print(f"   Database: {POSTGRES_DB}")
+            print(f"   Destination: {backup_path}")
+            
             loggers["backups"].info(
                 _(
                     "Creating PostgreSQL database backup",
@@ -180,6 +219,22 @@ class DatabaseManager:
                     destination=str(backup_path),
                 )
             )
+            
+            # Test database connectivity first
+            print("🔍 Testing database connectivity...")
+            progress = ProgressIndicator("   Connecting to database")
+            progress.start()
+            
+            try:
+                with self.engine.connect() as connection:
+                    result = connection.execute(text("SELECT COUNT(*) FROM qr_codes"))
+                    qr_count = result.scalar()
+                    progress.stop()
+                    print(f"✅ Database connected successfully. Found {qr_count} QR codes to backup.")
+            except Exception as e:
+                progress.stop()
+                print(f"❌ Database connection failed: {e}")
+                raise
             
             # Create pg_dump command with proper environment variables for authentication
             env = os.environ.copy()
@@ -192,36 +247,91 @@ class DatabaseManager:
                 "-U", POSTGRES_USER,
                 "-d", POSTGRES_DB,
                 "-f", str(backup_path),
-                "--format=c"  # Custom format (compressed)
+                "--format=c",      # Custom format (compressed)
+                "--verbose",       # Verbose output for debugging
+                "--no-tablespaces", # Don't include tablespace info
+                "--no-privileges", # Don't dump privileges
+                "--no-owner"       # Don't dump ownership info
             ]
             
-            # Execute pg_dump
-            process = subprocess.run(
-                pg_dump_cmd,
-                env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                check=True,
-            )
+            print("🚀 Starting backup process...")
+            print(f"   Command: {' '.join(pg_dump_cmd[:7])} [credentials hidden]")
+            print("   Note: Backup will run while API is active (production-safe)")
             
-            # Log backup file size
-            backup_size = backup_path.stat().st_size
-            loggers["backups"].info(
-                _(
-                    "PostgreSQL backup created successfully",
-                    backup_path=str(backup_path),
-                    size_bytes=backup_size,
-                    stdout=process.stdout.decode(),
-                    stderr=process.stderr.decode(),
+            # Start progress indicator
+            backup_progress = ProgressIndicator("   Creating backup")
+            backup_progress.start()
+            
+            # Execute pg_dump with timeout and special handling for active connections
+            try:
+                # Use Popen for better control and to capture output in real-time
+                process = subprocess.Popen(
+                    pg_dump_cmd,
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
-            )
+                
+                # Wait for completion with timeout
+                stdout, stderr = process.communicate(timeout=300)  # 5 minute timeout
+                
+                backup_progress.stop()
+                
+                if process.returncode == 0:
+                    print("✅ Backup process completed successfully!")
+                    if stderr and "WARNING" in stderr:
+                        print(f"   Warnings: {stderr}")
+                else:
+                    print(f"❌ Backup process failed with exit code {process.returncode}")
+                    if stdout:
+                        print(f"   STDOUT: {stdout}")
+                    if stderr:
+                        print(f"   STDERR: {stderr}")
+                    raise subprocess.CalledProcessError(process.returncode, pg_dump_cmd, stdout, stderr)
+                
+            except subprocess.TimeoutExpired:
+                backup_progress.stop()
+                print("❌ Backup process timed out after 5 minutes")
+                process.kill()
+                process.wait()
+                raise
+            except Exception as e:
+                backup_progress.stop()
+                print(f"❌ Backup process failed: {e}")
+                raise
+            
+            # Check and report backup file size
+            if backup_path.exists():
+                backup_size = backup_path.stat().st_size
+                backup_size_mb = backup_size / (1024 * 1024)
+                print(f"📊 Backup file created: {backup_size:,} bytes ({backup_size_mb:.2f} MB)")
+                
+                loggers["backups"].info(
+                    _(
+                        "PostgreSQL backup created successfully",
+                        backup_path=str(backup_path),
+                        size_bytes=backup_size,
+                        stdout=process.stdout.decode(),
+                        stderr=process.stderr.decode(),
+                    )
+                )
+            else:
+                print("❌ Backup file was not created!")
+                raise FileNotFoundError(f"Backup file not found: {backup_path}")
             
             # Copy to external backups directory if it exists
             external_backup_dir = Path("/app/backups")
             if external_backup_dir.exists() and external_backup_dir.is_dir():
+                print("📁 Copying backup to external directory...")
                 external_backup_path = external_backup_dir / backup_path.name
                 try:
+                    copy_progress = ProgressIndicator("   Copying file")
+                    copy_progress.start()
                     shutil.copy2(backup_path, external_backup_path)
+                    copy_progress.stop()
+                    print(f"✅ Backup copied to: {external_backup_path}")
+                    
                     loggers["backups"].info(
                         _(
                             "Backup copied to external directory",
@@ -230,6 +340,8 @@ class DatabaseManager:
                         )
                     )
                 except Exception as e:
+                    copy_progress.stop()
+                    print(f"⚠️  Failed to copy backup to external directory: {e}")
                     loggers["errors"].warning(
                         _(
                             "Failed to copy backup to external directory",
@@ -238,17 +350,41 @@ class DatabaseManager:
                             destination=str(external_backup_path),
                         )
                     )
+            else:
+                print("ℹ️  External backup directory not available")
             
             yield backup_path
             
             # Cleanup old backups (keep last 5)
+            print("🧹 Cleaning up old backups...")
+            cleanup_progress = ProgressIndicator("   Cleaning old files")
+            cleanup_progress.start()
             self._cleanup_old_backups("sql")
+            cleanup_progress.stop()
+            print("✅ Cleanup completed")
             
+        except subprocess.TimeoutExpired as e:
+            print(f"❌ Backup operation timed out after {e.timeout} seconds")
+            loggers["errors"].error(
+                _(
+                    "PostgreSQL backup timed out",
+                    timeout=e.timeout,
+                    traceback=traceback.format_exc(),
+                )
+            )
+            raise
         except subprocess.CalledProcessError as e:
+            print(f"❌ PostgreSQL backup failed with exit code {e.returncode}")
+            if e.stdout:
+                print(f"   STDOUT: {e.stdout.decode()}")
+            if e.stderr:
+                print(f"   STDERR: {e.stderr.decode()}")
+            
             loggers["errors"].error(
                 _(
                     "PostgreSQL backup failed",
                     error=str(e),
+                    exit_code=e.returncode,
                     stdout=e.stdout.decode() if e.stdout else "",
                     stderr=e.stderr.decode() if e.stderr else "",
                     traceback=traceback.format_exc(),
@@ -256,6 +392,7 @@ class DatabaseManager:
             )
             raise
         except Exception as e:
+            print(f"❌ Backup failed with unexpected error: {e}")
             loggers["errors"].error(
                 _("Backup failed", error=str(e), traceback=traceback.format_exc())
             )
@@ -523,6 +660,186 @@ class DatabaseManager:
             )
             return False
 
+    def restore_database(self, backup_filename: str):
+        """
+        Restore database from a backup file.
+        
+        CRITICAL SAFETY NOTE: This operation should only be performed when the API service is stopped
+        to prevent data corruption and application crashes.
+        
+        Args:
+            backup_filename: Name of the backup file (e.g., 'qrdb_20250525_043343.sql')
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            print("🚨 CRITICAL SAFETY WARNING:")
+            print("   Database restore should only be performed with API service stopped")
+            print("   This operation will drop all tables and restore from backup")
+            print()
+            
+            # Safety warning
+            loggers["backups"].warning(
+                _(
+                    "CRITICAL: Database restore should only be performed with API service stopped",
+                    warning="This operation will drop all tables and restore from backup"
+                )
+            )
+            # Look for backup file in both internal and external backup directories
+            print(f"🔍 Searching for backup file: {backup_filename}")
+            backup_path = None
+            search_dirs = [self.backup_dir, Path("/app/backups")]
+            
+            for backup_dir in search_dirs:
+                potential_path = backup_dir / backup_filename
+                print(f"   Checking: {potential_path}")
+                if potential_path.exists():
+                    backup_path = potential_path
+                    print(f"✅ Found backup file: {backup_path}")
+                    break
+            
+            if not backup_path:
+                print(f"❌ Backup file '{backup_filename}' not found in any of these directories:")
+                for dir_path in search_dirs:
+                    print(f"   - {dir_path}")
+                
+                loggers["errors"].error(
+                    _(
+                        "Backup file not found",
+                        filename=backup_filename,
+                        searched_dirs=[str(self.backup_dir), "/app/backups"]
+                    )
+                )
+                return False
+            
+            loggers["backups"].info(
+                _(
+                    "Starting PostgreSQL database restore",
+                    backup_file=str(backup_path),
+                    database=POSTGRES_DB
+                )
+            )
+            
+            # Create a safety backup before restore
+            safety_backup_timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+            safety_backup_path = self.backup_dir / f"qrdb_{safety_backup_timestamp}_before_restore.sql"
+            
+            loggers["backups"].info(
+                _(
+                    "Creating safety backup before restore",
+                    destination=str(safety_backup_path)
+                )
+            )
+            
+            # Create safety backup
+            env = os.environ.copy()
+            env["PGPASSWORD"] = POSTGRES_PASSWORD
+            
+            safety_backup_cmd = [
+                "pg_dump",
+                "-h", POSTGRES_HOST,
+                "-p", POSTGRES_PORT,
+                "-U", POSTGRES_USER,
+                "-d", POSTGRES_DB,
+                "-f", str(safety_backup_path),
+                "--format=c"
+            ]
+            
+            subprocess.run(
+                safety_backup_cmd,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+            
+            loggers["backups"].info(
+                _(
+                    "Safety backup created successfully",
+                    backup_path=str(safety_backup_path)
+                )
+            )
+            
+            # Drop existing database content and restore
+            loggers["backups"].info(_("Dropping existing database content"))
+            
+            with self.engine.connect() as connection:
+                # Drop tables in correct order (considering foreign keys)
+                try:
+                    connection.execute(text("DROP TABLE IF EXISTS scan_logs CASCADE"))
+                    connection.execute(text("DROP TABLE IF EXISTS qr_codes CASCADE"))
+                    connection.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+                    connection.commit()
+                    loggers["backups"].info(_("Existing tables dropped successfully"))
+                except SQLAlchemyError as e:
+                    loggers["errors"].warning(
+                        _("Error dropping tables", error=str(e))
+                    )
+            
+            # Restore from backup using pg_restore
+            loggers["backups"].info(_("Restoring from backup file"))
+            
+            restore_cmd = [
+                "pg_restore",
+                "-h", POSTGRES_HOST,
+                "-p", POSTGRES_PORT,
+                "-U", POSTGRES_USER,
+                "-d", POSTGRES_DB,
+                "--no-owner",  # don't restore ownership
+                "--no-privileges",  # don't restore privileges
+                "--single-transaction",  # restore in a single transaction
+                "--exit-on-error",  # exit on first error
+                str(backup_path)
+            ]
+            
+            process = subprocess.run(
+                restore_cmd,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+                timeout=300,  # 5 minute timeout
+            )
+            
+            loggers["backups"].info(
+                _(
+                    "Database restore completed successfully",
+                    backup_file=str(backup_path),
+                    stdout=process.stdout.decode(),
+                    stderr=process.stderr.decode()
+                )
+            )
+            
+            # Validate the restored database
+            if self.validate_database():
+                loggers["backups"].info(_("Restored database validation successful"))
+                return True
+            else:
+                loggers["errors"].error(_("Restored database validation failed"))
+                return False
+                
+        except subprocess.CalledProcessError as e:
+            loggers["errors"].error(
+                _(
+                    "Database restore failed",
+                    error=str(e),
+                    stdout=e.stdout.decode() if e.stdout else "",
+                    stderr=e.stderr.decode() if e.stderr else "",
+                    traceback=traceback.format_exc(),
+                )
+            )
+            return False
+        except Exception as e:
+            loggers["errors"].error(
+                _(
+                    "Database restore failed",
+                    error=str(e),
+                    traceback=traceback.format_exc()
+                )
+            )
+            return False
+
 
 def run_cli():
     """Process command line arguments."""
@@ -532,10 +849,11 @@ def run_cli():
     parser.add_argument("--check", action="store_true", help="Check if migrations are needed")
     parser.add_argument("--validate", action="store_true", help="Validate database structure")
     parser.add_argument("--create-backup", action="store_true", help="Create a database backup")
+    parser.add_argument("--restore", type=str, help="Restore database from backup file (provide filename)")
 
     args = parser.parse_args()
 
-    if not (args.init or args.migrate or args.check or args.validate or args.create_backup):
+    if not (args.init or args.migrate or args.check or args.validate or args.create_backup or args.restore):
         parser.print_help()
         return
 
@@ -553,6 +871,21 @@ def run_cli():
         except Exception as e:
             loggers["errors"].error(
                 _("Failed to create backup", error=str(e))
+            )
+            sys.exit(1)
+
+    # Check for restore request
+    if args.restore:
+        try:
+            success = db_manager.restore_database(args.restore)
+            if success:
+                loggers["operations"].info(_("Database restored successfully"))
+            else:
+                loggers["errors"].error(_("Database restore failed"))
+                sys.exit(1)
+        except Exception as e:
+            loggers["errors"].error(
+                _("Failed to restore database", error=str(e))
             )
             sys.exit(1)
 
