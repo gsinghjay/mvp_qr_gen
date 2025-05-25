@@ -6,6 +6,7 @@ on:
     paths:
       - 'README.md'
       - 'GRAFANA.md'
+      - 'BACKUP-RESTORE.md'
       - 'WIKI.md'
       - 'scripts/update_wiki.sh'
   workflow_dispatch:  # Allow manual triggering
@@ -96,6 +97,12 @@ jobs:
             create_wiki_page "Observatory-Overview.md" "Observatory Overview" "$(cat GRAFANA.md)"
         fi
         
+        # Update Backup-Restore documentation
+        if [ -f "BACKUP-RESTORE.md" ]; then
+            echo "✅ Updating Backup & Recovery Guide from BACKUP-RESTORE.md"
+            create_wiki_page "Backup-Recovery-Guide.md" "Backup & Recovery Guide" "$(cat BACKUP-RESTORE.md)"
+        fi
+        
         # Update Wiki maintenance guide
         if [ -f "WIKI.md" ]; then
             echo "✅ Updating Wiki Maintenance Guide from WIKI.md"
@@ -160,4 +167,5 @@ jobs:
         echo "- [Getting Started](https://github.com/${{ github.repository }}/wiki/Getting-Started)" >> $GITHUB_STEP_SUMMARY
         echo "- [Traefik Configuration](https://github.com/${{ github.repository }}/wiki/Traefik-Configuration)" >> $GITHUB_STEP_SUMMARY
         echo "- [Observatory Overview](https://github.com/${{ github.repository }}/wiki/Observatory-Overview)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Backup & Recovery Guide](https://github.com/${{ github.repository }}/wiki/Backup-Recovery-Guide)" >> $GITHUB_STEP_SUMMARY
         echo "- [Wiki Maintenance Guide](https://github.com/${{ github.repository }}/wiki/Wiki-Maintenance-Guide)" >> $GITHUB_STEP_SUMMARY 
