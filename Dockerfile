@@ -50,7 +50,6 @@ RUN apt-get update \
 
 # Create non-root user and required directories with proper permissions
 RUN adduser --disabled-password --gecos '' appuser \
-    && usermod -aG docker appuser \
     && mkdir -p /app/data \
                 /app/data/backups \
                 /app/data/logs \
