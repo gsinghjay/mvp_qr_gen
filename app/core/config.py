@@ -95,7 +95,11 @@ class Settings(BaseSettings):
     QR_CODES_DIR: Path = QR_CODES_DIR
     DEFAULT_LOGO_PATH: Path = DEFAULT_LOGO_PATH
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_file=".env", 
+        case_sensitive=True,
+        extra="ignore"  # Ignore extra environment variables not defined in the model
+    )
 
 
 settings = Settings()
