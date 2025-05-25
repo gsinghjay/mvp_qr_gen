@@ -204,22 +204,81 @@ class DatabaseManager:
         """Stop the API service using docker-compose from host."""
         try:
             print("🛑 Stopping API service for safe database operations...")
-            print("   Note: API service control is managed externally")
             loggers["operations"].info(_("API service stop requested"))
             
-            # Since we're running inside the container, we can't directly control docker-compose
-            # This method serves as a placeholder for when called from shell scripts
-            # The actual API stopping should be handled by the calling shell script
-            print("⚠️  API service control should be managed by external shell scripts")
-            print("   This method is designed to be called from host-level scripts")
+            # Since we're running inside the container, we need to use docker-compose
+            # from the host context. We'll use a special approach that works from within containers.
             
-            loggers["operations"].warning(_(
-                "API service control requested from within container",
-                note="This should be handled by external shell scripts"
-            ))
-            
-            # Return False to indicate API was not stopped by this method
-            return False
+            # First, check if we can access docker-compose from within the container
+            # This works if docker.sock is mounted and docker-compose is available
+            try:
+                # Try to stop the API service using docker-compose
+                # We need to run this from the project directory context
+                stop_cmd = [
+                    "docker-compose", "-f", "/app/docker-compose.yml", 
+                    "stop", "api"
+                ]
+                
+                # Alternative approach: use docker commands directly
+                # Get the container name and stop it
+                container_name = "qr_generator_api"
+                
+                # Check if container is running
+                check_cmd = ["docker", "ps", "-q", "-f", f"name={container_name}"]
+                result = subprocess.run(
+                    check_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                
+                if result.returncode == 0 and result.stdout.strip():
+                    print(f"   Found running container: {container_name}")
+                    
+                    # Stop the container
+                    stop_cmd = ["docker", "stop", container_name]
+                    result = subprocess.run(
+                        stop_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    
+                    if result.returncode == 0:
+                        print("✅ API service stopped successfully")
+                        loggers["operations"].info(_(
+                            "API service stopped successfully",
+                            container_name=container_name
+                        ))
+                        return True
+                    else:
+                        print(f"❌ Failed to stop API service: {result.stderr}")
+                        loggers["errors"].error(_(
+                            "Failed to stop API service",
+                            error=result.stderr,
+                            container_name=container_name
+                        ))
+                        return False
+                else:
+                    print("ℹ️  API container not found or not running")
+                    loggers["operations"].info(_(
+                        "API container not found or not running",
+                        container_name=container_name
+                    ))
+                    return False
+                    
+            except subprocess.TimeoutExpired:
+                print("❌ Timeout while trying to stop API service")
+                loggers["errors"].error(_("Timeout while stopping API service"))
+                return False
+            except FileNotFoundError:
+                print("⚠️  Docker commands not available in container")
+                print("   API service control should be managed externally")
+                loggers["operations"].warning(_(
+                    "Docker commands not available in container",
+                    note="API service control should be managed externally"
+                ))
+                return False
                 
         except Exception as e:
             error_msg = f"Error in API service control: {e}"
@@ -227,28 +286,110 @@ class DatabaseManager:
             loggers["errors"].error(
                 _("Error in API service control", error=str(e), traceback=traceback.format_exc())
             )
-            raise
+            return False
 
     def _start_api_service_and_wait_healthy(self):
         """Start the API service and wait for it to become healthy."""
         try:
             print("🚀 Starting API service...")
-            print("   Note: API service control is managed externally")
             loggers["operations"].info(_("API service start requested"))
             
-            # Since we're running inside the container, we can't directly control docker-compose
-            # This method serves as a placeholder for when called from shell scripts
-            # The actual API starting should be handled by the calling shell script
-            print("⚠️  API service control should be managed by external shell scripts")
-            print("   This method is designed to be called from host-level scripts")
+            container_name = "qr_generator_api"
             
-            loggers["operations"].warning(_(
-                "API service control requested from within container",
-                note="This should be handled by external shell scripts"
-            ))
-            
-            # Return True to indicate the method completed (even though no actual start occurred)
-            return True
+            try:
+                # Start the container
+                start_cmd = ["docker", "start", container_name]
+                result = subprocess.run(
+                    start_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                if result.returncode == 0:
+                    print("✅ API service started successfully")
+                    loggers["operations"].info(_(
+                        "API service started successfully",
+                        container_name=container_name
+                    ))
+                    
+                    # Wait for the service to become healthy
+                    print("⏳ Waiting for API service to become healthy...")
+                    max_attempts = 30  # 30 seconds
+                    attempt = 0
+                    
+                    while attempt < max_attempts:
+                        try:
+                            # Check if container is running and healthy
+                            health_cmd = [
+                                "docker", "inspect", 
+                                "--format={{.State.Health.Status}}", 
+                                container_name
+                            ]
+                            
+                            health_result = subprocess.run(
+                                health_cmd,
+                                capture_output=True,
+                                text=True,
+                                timeout=5
+                            )
+                            
+                            if health_result.returncode == 0:
+                                health_status = health_result.stdout.strip()
+                                if health_status == "healthy":
+                                    print("✅ API service is healthy and ready")
+                                    loggers["operations"].info(_(
+                                        "API service is healthy and ready",
+                                        attempts=attempt + 1
+                                    ))
+                                    return True
+                                elif health_status == "unhealthy":
+                                    print("❌ API service is unhealthy")
+                                    loggers["errors"].error(_(
+                                        "API service is unhealthy",
+                                        attempts=attempt + 1
+                                    ))
+                                    return False
+                                else:
+                                    # Still starting up
+                                    print(f"   Health status: {health_status} (attempt {attempt + 1}/{max_attempts})")
+                            
+                            time.sleep(1)
+                            attempt += 1
+                            
+                        except subprocess.TimeoutExpired:
+                            print(f"   Health check timeout (attempt {attempt + 1}/{max_attempts})")
+                            attempt += 1
+                            time.sleep(1)
+                    
+                    print("❌ API service did not become healthy within timeout")
+                    loggers["errors"].error(_(
+                        "API service did not become healthy within timeout",
+                        max_attempts=max_attempts
+                    ))
+                    return False
+                    
+                else:
+                    print(f"❌ Failed to start API service: {result.stderr}")
+                    loggers["errors"].error(_(
+                        "Failed to start API service",
+                        error=result.stderr,
+                        container_name=container_name
+                    ))
+                    return False
+                    
+            except subprocess.TimeoutExpired:
+                print("❌ Timeout while trying to start API service")
+                loggers["errors"].error(_("Timeout while starting API service"))
+                return False
+            except FileNotFoundError:
+                print("⚠️  Docker commands not available in container")
+                print("   API service control should be managed externally")
+                loggers["operations"].warning(_(
+                    "Docker commands not available in container",
+                    note="API service control should be managed externally"
+                ))
+                return False
             
         except Exception as e:
             error_msg = f"Error in API service control: {e}"
@@ -256,7 +397,7 @@ class DatabaseManager:
             loggers["errors"].error(
                 _("Error in API service control", error=str(e), traceback=traceback.format_exc())
             )
-            raise
+            return False
 
     @contextmanager
     def backup_database(self, stop_api_service=False):
@@ -860,23 +1001,76 @@ class DatabaseManager:
                 "-U", POSTGRES_USER,
                 "-d", POSTGRES_DB,
                 "-f", str(safety_backup_path),
-                "--format=c"
+                "--format=c",      # Custom format (compressed)
+                "--verbose",       # Verbose output for debugging
+                "--no-tablespaces", # Don't include tablespace info
+                "--no-privileges", # Don't dump privileges
+                "--no-owner"       # Don't dump ownership info
             ]
             
-            subprocess.run(
-                safety_backup_cmd,
-                env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                check=True,
-            )
+            print("🚀 Creating safety backup before restore...")
+            print(f"   Command: {' '.join(safety_backup_cmd[:7])} [credentials hidden]")
             
-            loggers["backups"].info(
-                _(
-                    "Safety backup created successfully",
-                    backup_path=str(safety_backup_path)
+            # Start progress indicator for safety backup
+            safety_progress = ProgressIndicator("   Creating safety backup")
+            safety_progress.start()
+            
+            try:
+                # Execute pg_dump with timeout and better error handling
+                process = subprocess.Popen(
+                    safety_backup_cmd,
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
-            )
+                
+                # Wait for completion with timeout
+                stdout, stderr = process.communicate(timeout=180)  # 3 minute timeout for safety backup
+                
+                safety_progress.stop()
+                
+                if process.returncode == 0:
+                    print("✅ Safety backup created successfully!")
+                    if stderr and "WARNING" in stderr:
+                        print(f"   Warnings: {stderr}")
+                else:
+                    print(f"❌ Safety backup failed with exit code {process.returncode}")
+                    if stdout:
+                        print(f"   STDOUT: {stdout}")
+                    if stderr:
+                        print(f"   STDERR: {stderr}")
+                    raise subprocess.CalledProcessError(process.returncode, safety_backup_cmd, stdout, stderr)
+                
+            except subprocess.TimeoutExpired:
+                safety_progress.stop()
+                print("❌ Safety backup timed out after 3 minutes")
+                process.kill()
+                process.wait()
+                raise
+            except Exception as e:
+                safety_progress.stop()
+                print(f"❌ Safety backup failed: {e}")
+                raise
+            
+            # Check and report safety backup file size
+            if safety_backup_path.exists():
+                backup_size = safety_backup_path.stat().st_size
+                backup_size_mb = backup_size / (1024 * 1024)
+                print(f"📊 Safety backup created: {backup_size:,} bytes ({backup_size_mb:.2f} MB)")
+                
+                loggers["backups"].info(
+                    _(
+                        "Safety backup created successfully",
+                        backup_path=str(safety_backup_path),
+                        size_bytes=backup_size,
+                        stdout=stdout,
+                        stderr=stderr,
+                    )
+                )
+            else:
+                print("❌ Safety backup file was not created!")
+                raise FileNotFoundError(f"Safety backup file not found: {safety_backup_path}")
             
             # Drop existing database content and restore
             loggers["backups"].info(_("Dropping existing database content"))
@@ -1024,8 +1218,12 @@ def run_cli():
     # Check for restore request
     if args.restore:
         try:
-            # For restore, default to stopping API service unless explicitly disabled
-            stop_api = args.with_api_stop if hasattr(args, 'with_api_stop') else True
+            # For restore, default to stopping API service (True) unless explicitly disabled
+            # The --with-api-stop flag can be used to explicitly enable API stopping
+            stop_api = True  # Default to True for restore operations
+            if hasattr(args, 'with_api_stop'):
+                stop_api = args.with_api_stop
+            
             success = db_manager.restore_database(args.restore, stop_api_service=stop_api)
             if success:
                 loggers["operations"].info(_("Database restored successfully"))
