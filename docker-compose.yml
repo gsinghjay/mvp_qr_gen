@@ -74,7 +74,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pguser}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pguser} -d ${POSTGRES_DB:-qrdb}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -94,7 +94,7 @@ services:
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${TEST_POSTGRES_USER:-pguser_test}"]
+      test: ["CMD-SHELL", "pg_isready -U ${TEST_POSTGRES_USER:-pguser_test} -d ${TEST_POSTGRES_DB:-qrdb_test}"]
       interval: 10s
       timeout: 5s
       retries: 5
