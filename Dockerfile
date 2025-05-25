@@ -33,15 +33,24 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     TIMEOUT_KEEP_ALIVE=65 \
     PATH="/app/venv/bin:$PATH"
 
-# Install runtime dependencies only
+# Install runtime dependencies including Docker CLI for container management
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         curl \
         postgresql-client \
+        ca-certificates \
+        gnupg \
+        lsb-release \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user and required directories with proper permissions
 RUN adduser --disabled-password --gecos '' appuser \
+    && usermod -aG docker appuser \
     && mkdir -p /app/data \
                 /app/data/backups \
                 /app/data/logs \
