@@ -5,6 +5,38 @@
 
 set -e
 
+# Load environment variables from .env file
+if [ -f ".env" ]; then
+    echo "Loading environment variables from .env file..."
+    # Export variables to make them available to subshells
+    export $(grep -v '^#' .env | xargs)
+else
+    echo "❌ Error: .env file not found. Cannot proceed."
+    exit 1
+fi
+
+# Check required environment variables (fail fast)
+required_vars_backup=("POSTGRES_USER" "POSTGRES_DB")
+missing_vars_backup=()
+
+for var in "${required_vars_backup[@]}"; do
+    if [ -z "${!var}" ]; then
+        missing_vars_backup+=("$var")
+    fi
+done
+
+if [ ${#missing_vars_backup[@]} -gt 0 ]; then
+    echo "❌ Error: Required environment variables for production_backup.sh are not set:"
+    for var in "${missing_vars_backup[@]}"; do
+        echo "   - $var"
+    done
+    echo ""
+    echo "Please check your .env file and ensure these variables are set:"
+    echo "   POSTGRES_USER=pguser"
+    echo "   POSTGRES_DB=qrdb"
+    exit 1
+fi
+
 echo "=== PRODUCTION-SAFE DATABASE BACKUP ==="
 echo "Timestamp: $(date)"
 echo "Using enhanced manage_db.py with centralized API service management"
