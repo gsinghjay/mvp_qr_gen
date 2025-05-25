@@ -1,6 +1,139 @@
 # CHANGELOG
 
 
+## v0.32.0 (2025-05-25)
+
+### Bug Fixes
+
+- Implement hybrid API/DB testing with proper Traefik authentication
+  ([`f3abc26`](https://github.com/gsinghjay/mvp_qr_gen/commit/f3abc2624ea8ca62ab5582bbd410869b08dd7f08))
+
+- Resolve backup freezing and implement hybrid API/DB testing with Traefik auth
+  ([`9fb3b26`](https://github.com/gsinghjay/mvp_qr_gen/commit/9fb3b26857ce3fc4322c2f6bed3d35bdc0ed6fdb))
+
+- **docker**: Correct PostgreSQL health check database specification
+  ([`ac0f4d0`](https://github.com/gsinghjay/mvp_qr_gen/commit/ac0f4d08d94ef49d034edd5c79d101f898f4d31a))
+
+- Add -d parameter to pg_isready commands for both postgres services - Prevents 'database pguser
+  does not exist' errors in health checks - Ensures health checks connect to correct database names
+
+- **init**: Update script permissions handling for mounted volumes
+  ([`9ba6eb4`](https://github.com/gsinghjay/mvp_qr_gen/commit/9ba6eb41bc8b35ef85b25977395baad011d60bc7))
+
+### Chores
+
+- Remove obsolete test_api_restructure.sh script
+  ([`e3e647c`](https://github.com/gsinghjay/mvp_qr_gen/commit/e3e647c08316978b00e0a98e5294fc1891352355))
+
+- Remove unused Node.js package files
+  ([`10fdd76`](https://github.com/gsinghjay/mvp_qr_gen/commit/10fdd76ee9b930edc403fbf04c31b9e5f734d69a))
+
+### Documentation
+
+- Add new developer pages to wiki maintenance guide
+  ([`2e23006`](https://github.com/gsinghjay/mvp_qr_gen/commit/2e23006749807cf7b7143cae4f9385a92c4b42a8))
+
+- Add PromQL developer guide to main documentation links
+  ([`7092ab4`](https://github.com/gsinghjay/mvp_qr_gen/commit/7092ab4ed3163f792945a9bae9cd905383fcf781))
+
+- Enhance wiki maintenance guide and merge dashboard content into GRAFANA.md
+  ([`6d9c42a`](https://github.com/gsinghjay/mvp_qr_gen/commit/6d9c42af1e8a5e4f60a01a83bf054e3d6539eeb9))
+
+- Update BACKUP-RESTORE.md for public wiki with enhanced troubleshooting
+  ([`0a75ccb`](https://github.com/gsinghjay/mvp_qr_gen/commit/0a75ccb0f59c221b0d65c16536f1c8257f816743))
+
+- **backup**: Add comprehensive backup and restore operational procedures
+  ([`a8a92cd`](https://github.com/gsinghjay/mvp_qr_gen/commit/a8a92cd2e551c8f476d594569d3ae66b66c22b45))
+
+- **ci**: Update wiki workflow for S.1 refinement documentation
+  ([`c4add23`](https://github.com/gsinghjay/mvp_qr_gen/commit/c4add2387949fa84cf96c46d50506ce4823e20c8))
+
+### Features
+
+- **backup**: Add automatic alembic stamping and enhanced console output
+  ([`a953dfd`](https://github.com/gsinghjay/mvp_qr_gen/commit/a953dfd19a19f3cbcdd23609b65035c0df904440))
+
+- Add automatic alembic version stamping after database restore - Enhance validation with
+  step-by-step console feedback - Add API service control methods with --with-api-stop flag -
+  Improve error handling with detailed progress indicators
+
+- **backup**: Add production-safe backup script with service lifecycle management
+  ([`6079e87`](https://github.com/gsinghjay/mvp_qr_gen/commit/6079e877672e0757e920a3efc5e6766702dafb01))
+
+- **backup**: Add standardized .env loading and required variable validation
+  ([`d4b3368`](https://github.com/gsinghjay/mvp_qr_gen/commit/d4b3368e59c945f2fbfe2146bddd62c32050bec5))
+
+- **backup**: Centralize API service control with Docker integration and safety enhancements
+  ([`172cbde`](https://github.com/gsinghjay/mvp_qr_gen/commit/172cbdeab4d8bc8591d6b29e594e462ceedfa3c6))
+
+- **database**: Enhance manage_db.py with progress indicators and error handling
+  ([`46a5b94`](https://github.com/gsinghjay/mvp_qr_gen/commit/46a5b94f474f75ef5bb6d2df245114766a0599ab))
+
+- **db**: Enhance database manager with fail-fast validation and application-level health checks
+  ([`0518d75`](https://github.com/gsinghjay/mvp_qr_gen/commit/0518d75aaf569549fc11e79b5029c5fcd106b8f1))
+
+- **docker**: Add Docker CLI and container control capabilities for backup operations
+  ([`40fb1a7`](https://github.com/gsinghjay/mvp_qr_gen/commit/40fb1a739454eb47868fa29079bf153a607146c5))
+
+- **docker**: Mount Docker socket for API service container control during backups
+  ([`3317109`](https://github.com/gsinghjay/mvp_qr_gen/commit/3317109f71599ac6415b1d89a41d907caa6c0eb0))
+
+- **docker**: Mount scripts directory for immediate availability without rebuilds
+  ([`ac5b9c5`](https://github.com/gsinghjay/mvp_qr_gen/commit/ac5b9c53fb7d21d1e97b17dd47c0c96380b29f9a))
+
+- **init**: Add fail-fast environment variable validation and .env loading
+  ([`e133f07`](https://github.com/gsinghjay/mvp_qr_gen/commit/e133f0761753306b00ca9cbd0bf2fbbc68aa844d))
+
+- **restore**: Add production-safe restore script with service management
+  ([`127af22`](https://github.com/gsinghjay/mvp_qr_gen/commit/127af222afd79709ddb0f93b8ed32d93899516b3))
+
+- **restore**: Add standardized .env loading and required variable validation
+  ([`521363d`](https://github.com/gsinghjay/mvp_qr_gen/commit/521363dfe4dbf7578beb6d1b27aba1abd4215734))
+
+- **test**: Add comprehensive multi-stage restore verification
+  ([`9a0cefb`](https://github.com/gsinghjay/mvp_qr_gen/commit/9a0cefb258edd4ad120b5ced29b29ef7c7275f39))
+
+- Implement create/delete QR code state management - Add dual backup and restore verification
+  workflow - Include comprehensive cleanup and validation throughout
+
+- **test**: Implement comprehensive multi-stage backup/restore verification with env vars
+  ([`0318853`](https://github.com/gsinghjay/mvp_qr_gen/commit/0318853d88d2d349659d368e26dd9c3a73c09048))
+
+### Refactoring
+
+- **backup**: Convert to thin wrapper calling manage_db.py
+  ([`a56689b`](https://github.com/gsinghjay/mvp_qr_gen/commit/a56689b50ae3f483c7489c8c50da69504595ec31))
+
+- Delegate core backup operations to manage_db.py - Maintain host-level API service lifecycle
+  management - Simplify script logic while preserving production safety
+
+- **backup**: Simplify to thin wrapper around enhanced manage_db.py with improved UX
+  ([`1f0110d`](https://github.com/gsinghjay/mvp_qr_gen/commit/1f0110d2dd1a84963874354e02bab7360265fbc7))
+
+- **docker**: Optimize script handling for mounted volumes
+  ([`8fc64cf`](https://github.com/gsinghjay/mvp_qr_gen/commit/8fc64cf62e9865bb30b17c96713723fdec91d070))
+
+- **restore**: Convert to thin wrapper calling manage_db.py
+  ([`277ba02`](https://github.com/gsinghjay/mvp_qr_gen/commit/277ba020310933c5e367f06fb7999b05c2fe955a))
+
+- Delegate core restore operations to manage_db.py - Maintain host-level API service lifecycle
+  management - Preserve safety checks and verification reporting
+
+- **restore**: Simplify to thin wrapper with enhanced verification and safety warnings
+  ([`d7b08be`](https://github.com/gsinghjay/mvp_qr_gen/commit/d7b08bea3f583d435ebed04596e8ef746b636766))
+
+### Testing
+
+- **backup**: Add comprehensive backup and restore testing script
+  ([`ae445c5`](https://github.com/gsinghjay/mvp_qr_gen/commit/ae445c54e2ea999ed5c8ae0c9b1c53dcecfd5b86))
+
+- **backup**: Add simple backup test for debugging connection issues
+  ([`84dc616`](https://github.com/gsinghjay/mvp_qr_gen/commit/84dc6168bed3f825f438e649c348ebbdb7c06e3d))
+
+- **s1**: Add comprehensive test suite for S1 fast-failing enhancements
+  ([`6f00c59`](https://github.com/gsinghjay/mvp_qr_gen/commit/6f00c59358ca2456c88c88ac382d59825d85807b))
+
+
 ## v0.31.2 (2025-05-24)
 
 ### Bug Fixes
