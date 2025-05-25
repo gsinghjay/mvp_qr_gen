@@ -37,6 +37,7 @@ services:
       - qr_logs:/logs
       - ./app/tests:/app/app/tests # For development/testing if running tests inside container
       - ./app/scripts:/app/scripts # Mount scripts for immediate availability without rebuild
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Allow container to control Docker (for backup/restore API management)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
