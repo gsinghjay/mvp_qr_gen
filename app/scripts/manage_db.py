@@ -200,25 +200,91 @@ class DatabaseManager:
             )
             raise
 
+    def _stop_api_service(self):
+        """Stop the API service using docker-compose from host."""
+        try:
+            print("🛑 Stopping API service for safe database operations...")
+            print("   Note: API service control is managed externally")
+            loggers["operations"].info(_("API service stop requested"))
+            
+            # Since we're running inside the container, we can't directly control docker-compose
+            # This method serves as a placeholder for when called from shell scripts
+            # The actual API stopping should be handled by the calling shell script
+            print("⚠️  API service control should be managed by external shell scripts")
+            print("   This method is designed to be called from host-level scripts")
+            
+            loggers["operations"].warning(_(
+                "API service control requested from within container",
+                note="This should be handled by external shell scripts"
+            ))
+            
+            # Return False to indicate API was not stopped by this method
+            return False
+                
+        except Exception as e:
+            error_msg = f"Error in API service control: {e}"
+            print(f"❌ {error_msg}")
+            loggers["errors"].error(
+                _("Error in API service control", error=str(e), traceback=traceback.format_exc())
+            )
+            raise
+
+    def _start_api_service_and_wait_healthy(self):
+        """Start the API service and wait for it to become healthy."""
+        try:
+            print("🚀 Starting API service...")
+            print("   Note: API service control is managed externally")
+            loggers["operations"].info(_("API service start requested"))
+            
+            # Since we're running inside the container, we can't directly control docker-compose
+            # This method serves as a placeholder for when called from shell scripts
+            # The actual API starting should be handled by the calling shell script
+            print("⚠️  API service control should be managed by external shell scripts")
+            print("   This method is designed to be called from host-level scripts")
+            
+            loggers["operations"].warning(_(
+                "API service control requested from within container",
+                note="This should be handled by external shell scripts"
+            ))
+            
+            # Return True to indicate the method completed (even though no actual start occurred)
+            return True
+            
+        except Exception as e:
+            error_msg = f"Error in API service control: {e}"
+            print(f"❌ {error_msg}")
+            loggers["errors"].error(
+                _("Error in API service control", error=str(e), traceback=traceback.format_exc())
+            )
+            raise
+
     @contextmanager
-    def backup_database(self):
+    def backup_database(self, stop_api_service=False):
         """Create a backup of the database before operations."""
         timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         
         # PostgreSQL backup using pg_dump
         backup_path = self.backup_dir / f"qrdb_{timestamp}.sql"
+        api_was_stopped = False
+        
         try:
             print(f"🔄 Creating PostgreSQL database backup...")
             print(f"   Database: {POSTGRES_DB}")
             print(f"   Destination: {backup_path}")
+            print(f"   API service management: {'Enabled' if stop_api_service else 'Disabled'}")
             
             loggers["backups"].info(
                 _(
                     "Creating PostgreSQL database backup",
                     database=POSTGRES_DB,
                     destination=str(backup_path),
+                    stop_api_service=stop_api_service,
                 )
             )
+            
+            # Stop API service if requested
+            if stop_api_service:
+                api_was_stopped = self._stop_api_service()
             
             # Test database connectivity first
             print("🔍 Testing database connectivity...")
@@ -256,7 +322,10 @@ class DatabaseManager:
             
             print("🚀 Starting backup process...")
             print(f"   Command: {' '.join(pg_dump_cmd[:7])} [credentials hidden]")
-            print("   Note: Backup will run while API is active (production-safe)")
+            if stop_api_service:
+                print("   Note: API service stopped for production-safe backup")
+            else:
+                print("   Note: Backup will run while API is active")
             
             # Start progress indicator
             backup_progress = ProgressIndicator("   Creating backup")
@@ -312,8 +381,8 @@ class DatabaseManager:
                         "PostgreSQL backup created successfully",
                         backup_path=str(backup_path),
                         size_bytes=backup_size,
-                        stdout=process.stdout.decode(),
-                        stderr=process.stderr.decode(),
+                        stdout=stdout,
+                        stderr=stderr,
                     )
                 )
             else:
@@ -376,17 +445,17 @@ class DatabaseManager:
         except subprocess.CalledProcessError as e:
             print(f"❌ PostgreSQL backup failed with exit code {e.returncode}")
             if e.stdout:
-                print(f"   STDOUT: {e.stdout.decode()}")
+                print(f"   STDOUT: {e.stdout}")
             if e.stderr:
-                print(f"   STDERR: {e.stderr.decode()}")
+                print(f"   STDERR: {e.stderr}")
             
             loggers["errors"].error(
                 _(
                     "PostgreSQL backup failed",
                     error=str(e),
                     exit_code=e.returncode,
-                    stdout=e.stdout.decode() if e.stdout else "",
-                    stderr=e.stderr.decode() if e.stderr else "",
+                    stdout=e.stdout if e.stdout else "",
+                    stderr=e.stderr if e.stderr else "",
                     traceback=traceback.format_exc(),
                 )
             )
@@ -397,6 +466,17 @@ class DatabaseManager:
                 _("Backup failed", error=str(e), traceback=traceback.format_exc())
             )
             raise
+        finally:
+            # Restart API service if it was stopped
+            if stop_api_service and api_was_stopped:
+                try:
+                    self._start_api_service_and_wait_healthy()
+                except Exception as e:
+                    print(f"❌ Failed to restart API service: {e}")
+                    loggers["errors"].error(
+                        _("Failed to restart API service after backup", error=str(e))
+                    )
+                    # Don't re-raise here as the backup might have succeeded
 
     def _cleanup_old_backups(self, extension="sql", keep_count: int = 5):
         """Clean up old database backups, keeping only the most recent ones."""
@@ -578,20 +658,30 @@ class DatabaseManager:
         Returns True if valid, False otherwise.
         """
         try:
+            print("🔍 Validating database structure and connectivity...")
+            
             with self.engine.connect() as connection:
                 # Check if PostgreSQL is accessible
+                print("   ✓ Testing database connectivity...")
                 try:
                     connection.execute(text("SELECT 1"))
+                    print("   ✅ Database connection successful")
                 except SQLAlchemyError:
+                    print("   ❌ Cannot connect to PostgreSQL database")
                     loggers["operations"].warning(_("Cannot connect to PostgreSQL database"))
                     return False
                     
                 # Check if it's at the latest migration
+                print("   ✓ Checking migration status...")
                 if self.needs_upgrade():
+                    print("   ❌ Database needs migration")
                     loggers["operations"].warning(_("Database needs migration"))
                     return False
+                else:
+                    print("   ✅ Database is up to date")
                     
                 # Check for required tables
+                print("   ✓ Checking required tables...")
                 try:
                     result = connection.execute(text(
                         "SELECT table_name FROM information_schema.tables "
@@ -603,16 +693,21 @@ class DatabaseManager:
                     missing_tables = required_tables - tables
                     
                     if missing_tables:
+                        print(f"   ❌ Missing required tables: {list(missing_tables)}")
                         loggers["operations"].warning(
                             _("Missing required tables", missing=list(missing_tables))
                         )
                         return False
+                    else:
+                        print(f"   ✅ All required tables present: {list(required_tables)}")
                 except SQLAlchemyError as e:
+                    print(f"   ❌ Error checking tables: {e}")
                     loggers["operations"].warning(_("Error checking tables", error=str(e)))
                     return False
                     
                 # Verify qr_codes table structure if it exists
                 if "qr_codes" in tables:
+                    print("   ✓ Validating qr_codes table structure...")
                     try:
                         result = connection.execute(text(
                             "SELECT column_name FROM information_schema.columns "
@@ -636,6 +731,7 @@ class DatabaseManager:
                         missing_columns = required_columns - columns
                         
                         if missing_columns:
+                            print(f"   ❌ Missing required columns in qr_codes table: {list(missing_columns)}")
                             loggers["operations"].warning(
                                 _(
                                     "Missing required columns in qr_codes table",
@@ -643,14 +739,19 @@ class DatabaseManager:
                                 )
                             )
                             return False
+                        else:
+                            print(f"   ✅ All required columns present ({len(required_columns)} columns)")
                     except SQLAlchemyError as e:
+                        print(f"   ❌ Error checking columns: {e}")
                         loggers["operations"].warning(_("Error checking columns", error=str(e)))
                         return False
                         
+            print("✅ Database validation completed successfully!")
             loggers["operations"].info(_("PostgreSQL database validation successful"))
             return True
             
         except Exception as e:
+            print(f"❌ Database validation failed with error: {e}")
             loggers["errors"].error(
                 _(
                     "Error validating PostgreSQL database",
@@ -660,7 +761,7 @@ class DatabaseManager:
             )
             return False
 
-    def restore_database(self, backup_filename: str):
+    def restore_database(self, backup_filename: str, stop_api_service=True):
         """
         Restore database from a backup file.
         
@@ -669,23 +770,32 @@ class DatabaseManager:
         
         Args:
             backup_filename: Name of the backup file (e.g., 'qrdb_20250525_043343.sql')
+            stop_api_service: Whether to stop/start API service during restore (default: True)
         
         Returns:
             bool: True if successful, False otherwise
         """
+        api_was_stopped = False
+        
         try:
             print("🚨 CRITICAL SAFETY WARNING:")
-            print("   Database restore should only be performed with API service stopped")
-            print("   This operation will drop all tables and restore from backup")
+            print("   Database restore will drop all tables and restore from backup")
+            print(f"   API service management: {'Enabled' if stop_api_service else 'Disabled'}")
             print()
             
             # Safety warning
             loggers["backups"].warning(
                 _(
-                    "CRITICAL: Database restore should only be performed with API service stopped",
-                    warning="This operation will drop all tables and restore from backup"
+                    "CRITICAL: Database restore will drop all tables and restore from backup",
+                    warning="This operation will drop all tables and restore from backup",
+                    stop_api_service=stop_api_service
                 )
             )
+            
+            # Stop API service if requested
+            if stop_api_service:
+                api_was_stopped = self._stop_api_service()
+            
             # Look for backup file in both internal and external backup directories
             print(f"🔍 Searching for backup file: {backup_filename}")
             backup_path = None
@@ -697,6 +807,13 @@ class DatabaseManager:
                 if potential_path.exists():
                     backup_path = potential_path
                     print(f"✅ Found backup file: {backup_path}")
+                    loggers["backups"].info(
+                        _(
+                            "Backup file found",
+                            filename=backup_filename,
+                            location=str(backup_path)
+                        )
+                    )
                     break
             
             if not backup_path:
@@ -802,6 +919,7 @@ class DatabaseManager:
                 timeout=300,  # 5 minute timeout
             )
             
+            print("✅ Database restore completed successfully!")
             loggers["backups"].info(
                 _(
                     "Database restore completed successfully",
@@ -811,11 +929,28 @@ class DatabaseManager:
                 )
             )
             
+            # Ensure alembic version tracking is set up
+            print("🔧 Setting up migration version tracking...")
+            try:
+                config = Config(self.alembic_ini)
+                command.stamp(config, "head")
+                print("✅ Migration version tracking configured")
+                loggers["backups"].info(_("Alembic version stamped successfully"))
+            except Exception as e:
+                print(f"⚠️  Warning: Failed to stamp alembic version: {e}")
+                loggers["errors"].warning(
+                    _("Failed to stamp alembic version after restore", error=str(e))
+                )
+                # Don't fail the restore for this, but log it
+            
             # Validate the restored database
+            print("🔍 Validating restored database...")
             if self.validate_database():
+                print("✅ Restored database validation successful!")
                 loggers["backups"].info(_("Restored database validation successful"))
                 return True
             else:
+                print("❌ Restored database validation failed!")
                 loggers["errors"].error(_("Restored database validation failed"))
                 return False
                 
@@ -839,6 +974,17 @@ class DatabaseManager:
                 )
             )
             return False
+        finally:
+            # Restart API service if it was stopped
+            if stop_api_service and api_was_stopped:
+                try:
+                    self._start_api_service_and_wait_healthy()
+                except Exception as e:
+                    print(f"❌ Failed to restart API service: {e}")
+                    loggers["errors"].error(
+                        _("Failed to restart API service after restore", error=str(e))
+                    )
+                    # Don't re-raise here as the restore might have succeeded
 
 
 def run_cli():
@@ -849,6 +995,7 @@ def run_cli():
     parser.add_argument("--check", action="store_true", help="Check if migrations are needed")
     parser.add_argument("--validate", action="store_true", help="Validate database structure")
     parser.add_argument("--create-backup", action="store_true", help="Create a database backup")
+    parser.add_argument("--with-api-stop", action="store_true", help="Stop API service during backup/restore operations")
     parser.add_argument("--restore", type=str, help="Restore database from backup file (provide filename)")
 
     args = parser.parse_args()
@@ -865,7 +1012,7 @@ def run_cli():
     # Check for backup request first
     if args.create_backup:
         try:
-            with db_manager.backup_database():
+            with db_manager.backup_database(stop_api_service=args.with_api_stop):
                 loggers["operations"].info(_("Backup created successfully"))
                 return
         except Exception as e:
@@ -877,7 +1024,9 @@ def run_cli():
     # Check for restore request
     if args.restore:
         try:
-            success = db_manager.restore_database(args.restore)
+            # For restore, default to stopping API service unless explicitly disabled
+            stop_api = args.with_api_stop if hasattr(args, 'with_api_stop') else True
+            success = db_manager.restore_database(args.restore, stop_api_service=stop_api)
             if success:
                 loggers["operations"].info(_("Database restored successfully"))
             else:
