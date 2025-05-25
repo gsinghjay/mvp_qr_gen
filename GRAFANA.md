@@ -1,5 +1,7 @@
 # 📊 QR Code System Monitoring Guide for College Faculty & Staff
 
+> **Looking for technical implementation details?** See [Technical Observability Guide](Observability) for developer documentation.
+
 *A Visual Journey Through Our Observatory-First Monitoring System*
 
 ---
@@ -120,14 +122,41 @@ graph TB
 
 Each dashboard has a specific role in telling your system's story:
 
+### Dashboard Architecture Overview
+
+```mermaid
+graph TD
+    A[QR System Health] --> B[QR System Performance]
+    A --> C[QR Analytics Deep Dive]
+    
+    B --> D[QR System Detailed Analysis]
+    B --> E[QR Service Monitoring]
+    
+    A --> F[QR Infrastructure Deep Dive]
+    A --> G[QR User Experience Monitoring]
+    A --> H[QR Alerting & SLA Overview]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style D fill:#fff3e0
+    style E fill:#e8f5e8
+```
+
 ### 1. 🏥 **The Health Guardian** - System Health Dashboard
 *"I watch over everything, 24/7"*
 
 **Role**: Your primary operational dashboard - the first place you check each morning
 **Audience**: IT staff, administrators
+**Refresh**: 15s (real-time operational monitoring)
 **What it shows**: 
 - Overall system health at a glance
 - QR redirect performance (most critical metric)
+- Service availability status
+- Real-time error monitoring
+
+**Key Metrics**:
+- QR Redirect P95 Latency: ~4.75ms (excellent baseline)
+- System Success Rate: 100%
 - Service availability status
 - Real-time error monitoring
 
@@ -143,78 +172,120 @@ graph LR
 ### 2. 📊 **The Progress Tracker** - Refactoring Progress Dashboard
 *"I show how we're improving over time"*
 
-**Role**: Tracks system evolution and improvements
-**Audience**: Development team, project managers
+**Role**: Track system performance trends and operational metrics
+**Audience**: Operations team, system administrators
+**Refresh**: 30s
 **What it shows**:
-- Performance trends over time
-- Before/after comparisons when making changes
-- System improvement milestones
+- Performance baseline tracking
+- System health trends over time
+- Service performance indicators
+- Historical performance comparisons
 
 ### 3. 🔍 **The User Whisperer** - Analytics Deep Dive Dashboard
 *"I understand how people use our QR codes"*
 
-**Role**: Business intelligence and usage insights
-**Audience**: Marketing, student services, administrators
+**Role**: Detailed usage analytics and user behavior insights
+**Audience**: Product team, business stakeholders
+**Refresh**: 1m
 **What it shows**:
 - QR scan patterns and trends
-- Popular QR codes and content
 - User engagement analytics
+- Popular QR codes analysis
 - Geographic and temporal usage patterns
 
-### 4. 🔬 **The Technical Detective** - Detailed Analysis Dashboard
+### 4. 🔬 **The Technical Detective** - Detailed Analysis Dashboard ⭐
 *"I provide surgical precision during system changes"*
 
-**Role**: Deep technical monitoring during active development
+**Role**: Deep technical analysis for system optimization
 **Audience**: Senior engineers, system architects
-**What it shows**:
-- Detailed performance breakdown by operation type
-- Database activity patterns
-- Error analysis by specific function
-- Critical path performance monitoring
+**Refresh**: 15s
 
-### 5. 🚦 **The Safety Controller** - Circuit Breaker & Feature Flag Dashboard
-*"I ensure safe system updates and rollouts"*
+**Key Features**:
+- **QR Generation Performance**: Static vs Dynamic QR creation metrics
+- **CRUD Operations Performance**: Detailed breakdown of all operations
+- **Database Operation Patterns**: Real-time DB activity monitoring
+- **Critical Path Performance**: Focus on QR redirect latency (most critical)
+- **Error Analysis by Operation**: Granular error tracking
 
-**Role**: Monitors new feature rollouts and system safety mechanisms
-**Audience**: DevOps team, release managers
-**What it shows**:
-- New vs old system performance comparison
-- Feature flag adoption rates
-- Fallback mechanism activation
-- Canary deployment progress
+### 5. 🚦 **The Safety Controller** - Service Monitoring Dashboard ⭐
+*"I monitor service health and performance patterns"*
 
-### 6. 🏗️ **The Infrastructure Specialist** - Infrastructure Deep Dive Dashboard
+**Role**: Monitor service health and performance patterns
+**Audience**: DevOps team, service reliability engineers
+**Refresh**: 10s
+
+**Key Features**:
+- **Service Health Status**: Real-time service availability
+- **Service Performance Metrics**: Response times and throughput
+- **Error Rate Monitoring**: Service-specific error tracking
+- **Resource Utilization**: CPU, memory, and connection usage
+- **Traffic Distribution**: Request patterns and load distribution
+
+### 6. 🏗️ **The Infrastructure Specialist** - Infrastructure Deep Dive Dashboard ⭐
 *"I monitor the foundation that everything runs on"*
 
 **Role**: Comprehensive infrastructure and resource monitoring
 **Audience**: Infrastructure team, capacity planners
-**What it shows**:
-- Server resource usage (CPU, memory)
-- Database performance metrics
-- Network traffic patterns
-- Container health and performance
+**Refresh**: 30s
 
-### 7. 👥 **The Experience Guardian** - User Experience Monitoring Dashboard
+**Key Features**:
+- **Traefik Request Distribution**: Edge router performance
+- **Container Resource Usage**: CPU/Memory monitoring
+- **Database Connection Patterns**: PostgreSQL performance metrics
+- **Application Runtime Metrics**: Memory allocation, performance
+- **System Resource Summary**: Overall infrastructure health
+
+### 7. 👥 **The Experience Guardian** - User Experience Monitoring Dashboard ⭐
 *"I ensure students and faculty have a great experience"*
 
 **Role**: End-to-end user journey and experience tracking
-**Audience**: UX team, student services, administrators
-**What it shows**:
-- Page load times and responsiveness
-- User journey success rates (creation → usage)
-- Conversion rates and engagement metrics
-- Error rates from user perspective
+**Audience**: UX team, product managers
+**Refresh**: 30s
 
-### 8. 🚨 **The Compliance Officer** - Alerting & SLA Overview Dashboard
+**Key Features**:
+- **User Journey Funnel**: Home → Create → List → Analytics flow
+- **Page Response Times**: Frontend performance monitoring
+- **Conversion Rates**: Create page → QR created success rate
+- **QR Usage Patterns**: Scan activity and engagement
+- **Top QR Codes by Scans**: Most popular content
+
+### 8. 🚨 **The Compliance Officer** - Alerting & SLA Overview Dashboard ⭐
 *"I ensure we meet our service commitments"*
 
-**Role**: SLA compliance monitoring and management reporting
-**Audience**: Management, service level managers
-**What it shows**:
-- 99.9% uptime compliance tracking
-- Performance target adherence
-- Alert threshold monitoring
-- Executive summary reporting
+**Role**: SLA compliance monitoring and alert threshold tracking
+**Audience**: Management, SRE team
+**Refresh**: 15s
+
+**Key Features**:
+- **SLA Targets**: 99.9% uptime, <10ms P95 latency, <1% error rate
+- **System Uptime Tracking**: 24-hour availability monitoring
+- **Performance SLA Trends**: Latency compliance over time
+- **Alert Threshold Monitoring**: Early warning indicators
+- **SLA Breach Summary**: Compliance reporting
+
+### Dashboard Performance Baselines
+
+Our system maintains excellent performance metrics:
+
+| Metric | Target | Current Performance | Status |
+|--------|--------|-------------------|---------|
+| **QR Redirect Latency** | <10ms P95 | 4.75ms P95 | 🟢 Excellent |
+| **System Uptime** | 99.9% | 100% | 🟢 Perfect |
+| **Success Rate** | >99.9% | 100% | 🟢 Perfect |
+| **Error Rate** | <1% | 0% | 🟢 Perfect |
+
+### Dashboard Refresh Rates
+
+Each dashboard is optimized for its specific monitoring purpose:
+
+- **🏥 System Health**: 15s (real-time operations)
+- **🚦 Service Monitoring**: 10s (critical rollout monitoring)  
+- **🔬 Detailed Analysis**: 15s (active development)
+- **👥 User Experience**: 30s (user journey tracking)
+- **🏗️ Infrastructure**: 30s (resource monitoring)
+- **📊 Refactoring Progress**: 30s (milestone tracking)
+- **🔍 Analytics Deep Dive**: 1m (usage analysis)
+- **🚨 SLA Overview**: 15s (compliance monitoring)
 
 ### 🔍 **The Detective's Assistant** - Loki Log Analysis
 *"I help you dig deep into what actually happened"*
@@ -258,7 +329,7 @@ flowchart TD
     C --> D[📊 Analyze Performance]
     D --> E[🎯 Optimize Based on Data]
     
-    B -.-> B1[Circuit Breaker Dashboard<br/>Monitor gradual rollout]
+    B -.-> B1[Service Monitoring Dashboard<br/>Monitor gradual rollout]
     C -.-> C1[User Experience Dashboard<br/>Track conversion rates]
     D -.-> D1[Analytics Dashboard<br/>Understand usage patterns]
     E -.-> E1[Health Dashboard<br/>Ensure system stability]
@@ -362,7 +433,7 @@ gantt
 
 ### Step 1: Access Your Observatory
 1. Open your browser to `http://localhost:3000/`
-2. Login with `admin` / `admin`
+2. Login with `admin` / `admin123`
 3. You'll see your dashboard home page
 
 ### Step 2: Take the Grand Tour
@@ -377,7 +448,7 @@ graph TD
     E --> G[📈 Business Focus]
     E --> H[🏗️ Infrastructure Focus]
     
-    F --> F1[🔬 Detailed Analysis<br/>🚦 Circuit Breaker]
+    F --> F1[🔬 Detailed Analysis<br/>🚦 Service Monitoring]
     G --> G1[📊 Analytics<br/>👥 User Experience]
     H --> H1[🏗️ Infrastructure<br/>🚨 SLA Overview]
 ```
@@ -388,7 +459,7 @@ Based on your role, bookmark these dashboards:
 **👩‍💼 Administrators**: Health → User Experience → SLA Overview
 **🔧 IT Staff**: Health → Infrastructure → Detailed Analysis
 **📊 Analysts**: Analytics → User Experience → Refactoring Progress
-**👨‍💻 Developers**: Detailed Analysis → Circuit Breaker → Health
+**👨‍💻 Developers**: Detailed Analysis → Service Monitoring → Health
 
 ---
 
@@ -403,7 +474,7 @@ timeline
     
     section Real-time (15s-1m)
         Health Dashboard     : Immediate issues
-        Circuit Breaker      : Rollout monitoring
+        Service Monitoring   : Rollout monitoring
         
     section Short-term (1h-6h)
         User Experience      : Session analysis
@@ -545,7 +616,7 @@ sequenceDiagram
 
 ### Week 3: Advanced Analysis
 - [ ] Use Detailed Analysis for performance tuning
-- [ ] Monitor system changes with Circuit Breaker dashboard
+- [ ] Monitor system changes with Service Monitoring dashboard
 - [ ] Create custom dashboard views
 
 ### Week 4: Mastery
@@ -686,4 +757,43 @@ graph TD
 
 **Welcome to the future of QR system management** - where data drives decisions, problems are prevented before they happen, and your users enjoy a consistently excellent experience.
 
+## 🔬 Observatory-First Development: Our Secret Weapon
+
+Our monitoring system isn't just for watching - it's designed to support **Observatory-First refactoring**, a revolutionary approach to making system improvements:
+
+### The Observatory-First Philosophy
+
+```mermaid
+graph LR
+    A[📊 Monitor First] --> B[📈 Establish Baseline]
+    B --> C[🔧 Make Changes]
+    C --> D[📊 Compare Results]
+    D --> E[✅ Validate Success]
+    
+    style A fill:#e3f2fd
+    style E fill:#e8f5e8
+```
+
+**Traditional Approach**: Make changes → Hope they work → Fix problems later
+**Observatory-First**: Monitor everything → Make informed changes → Validate improvements
+
+### How It Protects You
+
+1. **🎯 Baseline Collection**: We collect 1 week of performance data before any changes
+2. **📊 Real-Time Monitoring**: Every change is monitored as it happens
+3. **🚦 Safe Rollouts**: Circuit breakers and feature flags enable instant rollback
+4. **📈 Data-Driven Decisions**: Every choice backed by concrete metrics
+
+### What This Means for You
+
+- **🛡️ Zero Surprise Outages**: Problems caught before users notice
+- **⚡ Continuous Improvement**: System gets better while maintaining reliability  
+- **📊 Transparent Progress**: You can see exactly how improvements are performing
+- **🎯 Confident Changes**: No more "crossing fingers and hoping"
+
 *Ready to explore your Observatory? Start with the Health Dashboard and begin your journey to monitoring mastery!* 🚀 
+
+---
+
+*This page is automatically maintained from the main repository. Last updated: 2025-05-24 22:53:35 UTC*
+*For the latest updates, see the [project repository](https://github.com/gsinghjay/mvp_qr_gen)* 

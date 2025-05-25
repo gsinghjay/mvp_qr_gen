@@ -73,6 +73,12 @@ Thumbs.db
 kb/
 local-research/
 docs/
+#docs/libraries/
+#docs/archive/
+#docs/plans/completed/
+#docs/plans/in-progress/
+#docs/plans/low-priority/
+#docs/plans/needs-tests/
 certs/
 dynamic_qr_with_logo.png
 static_qr_with_logo.png

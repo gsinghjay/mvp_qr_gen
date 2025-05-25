@@ -16,48 +16,52 @@ The GitHub Wiki serves as the **public documentation** for the QR Code Generator
 |------|---------|----------|--------------|
 | **[Home](https://github.com/gsinghjay/mvp_qr_gen/wiki/Home)** | Main navigation and overview | All users | Manual |
 | **[Getting Started](https://github.com/gsinghjay/mvp_qr_gen/wiki/Getting-Started)** | Quick setup guide | New users | Manual |
-| **[System Architecture](https://github.com/gsinghjay/mvp_qr_gen/wiki/System-Architecture)** | Technical overview | Developers | Auto (from README) |
-| **[Traefik Configuration](https://github.com/gsinghjay/mvp_qr_gen/wiki/Traefik-Configuration)** | Complete Traefik setup | DevOps | Auto (from docs/) |
+| **[System Architecture](https://github.com/gsinghjay/mvp_qr_gen/wiki/System-Architecture)** | Technical overview | Developers | Auto (from README.md) |
+| **[Observatory Overview](https://github.com/gsinghjay/mvp_qr_gen/wiki/Observatory-Overview)** | Monitoring overview | DevOps | Auto (from GRAFANA.md) |
+| **[Wiki Maintenance Guide](https://github.com/gsinghjay/mvp_qr_gen/wiki/Wiki-Maintenance-Guide)** | Wiki maintenance | Maintainers | Auto (from WIKI.md) |
 
 ### Documentation Pages
 
 | Page | Source | Update Method |
 |------|--------|---------------|
-| **Alert System** | `docs/observatory-first-alerts.md` | Auto-sync |
-| **Dashboard Suite** | Manual creation | Manual editing |
-| **Grafana Dashboards** | `docs/grafana-dashboard-suite.md` | Auto-sync |
-| **Key Prometheus Queries for Developers** | Manual creation | Manual editing |
-| **Observatory Overview** | `GRAFANA.md` | Auto-sync |
-| **Traefik Quick Reference** | `docs/traefik-quick-reference.md` | Auto-sync |
+| **Alert System** | Manual creation in wiki | Manual editing |
+| **Dashboard Suite** | Manual creation in wiki | Manual editing |
+| **Key Prometheus Queries for Developers** | Manual creation in wiki | Manual editing |
+| **Traefik Configuration** | Manual creation in wiki | Manual editing |
+| **Traefik Quick Reference** | Manual creation in wiki | Manual editing |
 
 ## 🔄 **Update Methods**
 
-### 1. Automatic Updates (Recommended)
+### 1. Automatic Updates (Limited Scope)
 
-The wiki is automatically updated via GitHub Actions when documentation changes:
+The wiki is automatically updated via GitHub Actions when specific documentation changes:
 
 **Triggers**:
 - Push to `main`/`master` branch
-- Changes to `docs/**`, `README.md`, or `GRAFANA.md`
+- Changes to `README.md`, `GRAFANA.md`, or `WIKI.md`
 - Manual workflow dispatch
 
-**What gets updated**:
-- All documentation from `docs/` directory
-- System architecture from `README.md`
-- Observatory overview from `GRAFANA.md`
+**What gets auto-synced**:
+- **System Architecture**: Extracted from `README.md` (Infrastructure Architecture section)
+- **Observatory Overview**: Complete content from `GRAFANA.md`
+- **Wiki Maintenance Guide**: Complete content from `WIKI.md`
 
-### 2. Manual Updates
+**Important Note**: The `docs/` directory is internal-only (ignored in .gitignore) and is **NOT** automatically synced to the wiki. Most wiki pages are created and maintained manually in the wiki repository.
 
-For pages that require manual editing (like Home and Getting Started):
+### 2. Manual Updates (Primary Method)
+
+Most wiki pages require manual editing directly in the wiki repository:
 
 ```bash
 # Clone the wiki repository
 git clone https://github.com/gsinghjay/mvp_qr_gen.wiki.git wiki
 cd wiki
 
-# Edit pages
+# Edit pages directly
 nano Home.md
 nano Getting-Started.md
+nano Alert-System.md
+nano Traefik-Configuration.md
 
 # Commit and push
 git add .
@@ -65,20 +69,22 @@ git commit -m "Update wiki documentation"
 git push origin master
 ```
 
-### 3. Script-Based Updates
+### 3. Script-Based Updates (Manual Sync Tool)
 
-Use the maintenance script for bulk updates:
+The maintenance script (`scripts/update_wiki.sh`) can be used for manual synchronization of additional content:
 
 ```bash
-# Run the update script
+# Run the update script for manual sync operations
 ./scripts/update_wiki.sh
 
-# This will:
-# - Pull latest wiki changes
-# - Sync documentation from docs/
-# - Create placeholder pages
-# - Commit and push changes
+# This script is designed for:
+# - Manual bulk updates
+# - Troubleshooting sync issues
+# - Creating placeholder pages
+# - Local development workflows
 ```
+
+**Note**: The script provides additional sync capabilities beyond the GitHub Actions workflow, but most content updates should be done directly in the wiki repository.
 
 ## 🛠️ **Maintenance Workflows**
 
