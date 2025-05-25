@@ -44,6 +44,23 @@ POSTGRES_DB = os.getenv("POSTGRES_DB", "qrdb")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 
+# Check required database environment variables (fail fast)
+REQUIRED_DB_ENV_VARS = [
+    "POSTGRES_USER", "POSTGRES_PASSWORD", 
+    "POSTGRES_DB", "POSTGRES_HOST", "POSTGRES_PORT", "PG_DATABASE_URL"
+]
+missing_vars_db = [var for var in REQUIRED_DB_ENV_VARS if not os.getenv(var)]
+if missing_vars_db:
+    print(f"❌ Error: Missing required database environment variables: {', '.join(missing_vars_db)}")
+    print("Please check your .env file and ensure these variables are set:")
+    print("   POSTGRES_USER=pguser")
+    print("   POSTGRES_PASSWORD=pgpassword")
+    print("   POSTGRES_DB=qrdb")
+    print("   POSTGRES_HOST=postgres")
+    print("   POSTGRES_PORT=5432")
+    print("   PG_DATABASE_URL=postgresql://...")
+    sys.exit(1)
+
 class StructuredMessage:
     """Structured logging message formatter."""
 
@@ -337,12 +354,41 @@ class DatabaseManager:
                             if health_result.returncode == 0:
                                 health_status = health_result.stdout.strip()
                                 if health_status == "healthy":
-                                    print("✅ API service is healthy and ready")
-                                    loggers["operations"].info(_(
-                                        "API service is healthy and ready",
-                                        attempts=attempt + 1
-                                    ))
-                                    return True
+                                    print("✅ Docker health check passed, performing application-level health check...")
+                                    
+                                    # Enhanced application-level health check via /health endpoint
+                                    print("   Performing application-level health check via /health endpoint...")
+                                    app_health_attempts = 15  # 15 attempts, 2 seconds apart = 30 seconds
+                                    for i in range(app_health_attempts):
+                                        try:
+                                            # This curl command is run by manage_db.py, which runs inside the API container
+                                            health_proc = subprocess.run(
+                                                ["curl", "-sf", f"http://localhost:{os.getenv('PORT', '8000')}/health"],
+                                                capture_output=True, text=True, timeout=5
+                                            )
+                                            if health_proc.returncode == 0:
+                                                health_json = json.loads(health_proc.stdout)
+                                                api_status = health_json.get("status")
+                                                db_check_status = health_json.get("checks", {}).get("database", {}).get("status")
+                                                print(f"   App health check attempt {i+1}: API status '{api_status}', DB check '{db_check_status}'")
+                                                if api_status == "healthy":
+                                                    loggers["operations"].info(_("Application /health confirmed healthy."))
+                                                    print("✅ API service is healthy and ready (database connectivity verified)")
+                                                    return True
+                                                if api_status == "degraded" and db_check_status == "pass":
+                                                    loggers["operations"].info(_("Application /health confirmed degraded but DB is responsive."))
+                                                    print("✅ API service is ready (degraded but database is operational)")
+                                                    return True  # Accept degraded state if DB is responsive
+                                            else:
+                                                print(f"   App health check attempt {i+1} failed: curl exit code {health_proc.returncode}")
+                                        except Exception as curl_err:
+                                            print(f"   App health check attempt {i+1} failed: {curl_err}")
+                                        time.sleep(2)  # Wait before retrying
+                                    
+                                    loggers["errors"].error(_("Application /health endpoint did not report healthy after multiple attempts."))
+                                    print("❌ Application /health endpoint did not report healthy")
+                                    return False  # API did not become fully healthy
+                                    
                                 elif health_status == "unhealthy":
                                     print("❌ API service is unhealthy")
                                     loggers["errors"].error(_(
