@@ -10,20 +10,25 @@ echo "Timestamp: $(date)"
 echo "Testing enhanced manage_db.py backup and restore functionality"
 echo
 
+# Load environment variables for database credentials
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
 # Function to get QR count
 get_qr_count() {
-    docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT COUNT(*) FROM qr_codes;" 2>/dev/null | tr -d ' \r\n' || echo "0"
+    docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM qr_codes;" 2>/dev/null | tr -d ' \r\n' || echo "0"
 }
 
 # Function to get scan count
 get_scan_count() {
-    docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT COUNT(*) FROM scan_logs;" 2>/dev/null | tr -d ' \r\n' || echo "0"
+    docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM scan_logs;" 2>/dev/null | tr -d ' \r\n' || echo "0"
 }
 
 # Function to check if QR exists by content
 qr_exists() {
     local content="$1"
-    local count=$(docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT COUNT(*) FROM qr_codes WHERE content = '$content';" 2>/dev/null | tr -d ' \r\n' || echo "0")
+    local count=$(docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM qr_codes WHERE content = '$content';" 2>/dev/null | tr -d ' \r\n' || echo "0")
     [ "$count" -gt "0" ]
 }
 
@@ -39,7 +44,7 @@ create_test_qr() {
 # Function to delete QR by content
 delete_qr_by_content() {
     local content="$1"
-    local qr_id=$(docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT id FROM qr_codes WHERE content = '$content' LIMIT 1;" 2>/dev/null | tr -d ' \r\n' || echo "")
+    local qr_id=$(docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT id FROM qr_codes WHERE content = '$content' LIMIT 1;" 2>/dev/null | tr -d ' \r\n' || echo "")
     if [ -n "$qr_id" ]; then
         docker-compose exec api curl -s -X DELETE "http://localhost:8000/api/v1/qr/$qr_id" > /dev/null 2>&1
         echo "Deleted QR with ID: $qr_id"
@@ -131,7 +136,7 @@ fi
 echo
 echo "🔄 Step 5: Restore Backup A"
 echo "Restoring from Backup A: $BACKUP_A_FILENAME"
-if docker-compose exec api python /app/scripts/manage_db.py --restore "$BACKUP_A_FILENAME" --with-api-stop; then
+if docker-compose exec api python /app/scripts/manage_db.py --restore "$BACKUP_A_FILENAME"; then
     echo "✅ Backup A restore completed"
 else
     echo "❌ Backup A restore failed"
@@ -168,7 +173,7 @@ echo "✅ Initial test QR correctly absent after Backup A restore"
 echo
 echo "🔄 Step 7: Restore Backup B"
 echo "Restoring from Backup B: $BACKUP_B_FILENAME"
-if docker-compose exec api python /app/scripts/manage_db.py --restore "$BACKUP_B_FILENAME" --with-api-stop; then
+if docker-compose exec api python /app/scripts/manage_db.py --restore "$BACKUP_B_FILENAME"; then
     echo "✅ Backup B restore completed"
 else
     echo "❌ Backup B restore failed"
