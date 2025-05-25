@@ -1,6 +1,4 @@
 # Docker Compose configuration for QR Generator
-version: '3.8'
-
 services:
   api:
     build: .
@@ -38,6 +36,7 @@ services:
       - ./app/tests:/app/app/tests # For development/testing if running tests inside container
       - ./app/scripts:/app/scripts # Mount scripts for immediate availability without rebuild
       - /var/run/docker.sock:/var/run/docker.sock:ro # Allow container to control Docker (for backup/restore API management)
+      - ./.env:/app/.env:ro # Mount .env file for init.sh script
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
