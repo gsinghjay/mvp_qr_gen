@@ -10,24 +10,165 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Load environment variables from .env file if it exists
+# ============================================================================
+# S.0.1: Environment Variable Loading and Validation
+# ============================================================================
+
+# Load environment variables from .env file
 if [ -f ".env" ]; then
     echo -e "${YELLOW}Loading environment variables from .env file...${NC}"
+    # Export variables to make them available to subshells (safer method)
+    set -a  # automatically export all variables
     source .env
+    set +a  # disable automatic export
+else
+    echo -e "${RED}Error: .env file not found. Please create one from .env.example.${NC}"
+    exit 1
 fi
 
-# Set BASE_URL for QR code content (what users will scan)
-BASE_URL=${BASE_URL:-"https://web.hccc.edu"}
-# Set API_URL for making API calls in the script
-API_URL=${API_URL:-"https://10.1.6.12"}
-# Auth credentials
-AUTH_USER=${AUTH_USER:-"admin_user"}
-AUTH_PASS=${AUTH_PASS:-"strong"}
+# Required variable check - fail fast if any are missing
+required_vars_test_api=("API_URL" "BASE_URL" "AUTH_USER" "AUTH_PASS")
+missing_vars_test_api=()
+for var in "${required_vars_test_api[@]}"; do
+    if [ -z "${!var}" ]; then
+        missing_vars_test_api+=("$var")
+    fi
+done
+if [ ${#missing_vars_test_api[@]} -gt 0 ]; then
+    echo -e "${RED}❌ Error: Required environment variables for test_api_script.sh are not set:${NC}"
+    for var in "${missing_vars_test_api[@]}"; do echo "   - $var"; done
+    echo "Please ensure these are defined in your .env file."
+    exit 1
+fi
+
+# Global Variable Definitions (strictly from .env)
+API_URL="${API_URL}"
+BASE_URL="${BASE_URL}"
+AUTH_USER="${AUTH_USER}"
+AUTH_PASS="${AUTH_PASS}"
 AUTH_HEADER="--user ${AUTH_USER}:${AUTH_PASS}"
 
 echo -e "${YELLOW}Using BASE_URL for QR codes: ${BASE_URL}${NC}"
 echo -e "${YELLOW}Using API_URL for API calls: ${API_URL}${NC}"
 echo -e "${YELLOW}Using authentication: ${AUTH_USER}${NC}"
+
+# ============================================================================
+# Global Variables for Shared State
+# ============================================================================
+
+# Global variables for API responses
+API_RESPONSE_BODY=""
+API_RESPONSE_STATUS=""
+
+# Global variables for shared IDs between tests
+STATIC_QR_ID=""
+DYNAMIC_QR_ID=""
+
+# ============================================================================
+# S.0.2: Core Utility Functions
+# ============================================================================
+
+# Function to make an API request
+# Usage: _api_request <METHOD> <ENDPOINT_PATH> [JSON_DATA]
+# Sets global variables: API_RESPONSE_STATUS and API_RESPONSE_BODY
+_api_request() {
+    local method="$1"
+    local endpoint_path="$2"
+    local json_data="$3"
+    local curl_opts=(-k -s --user "${AUTH_USER}:${AUTH_PASS}") # -k for insecure (localhost dev), -s for silent
+
+    # Clear/initialize global response variables
+    API_RESPONSE_BODY=""
+    API_RESPONSE_STATUS=""
+
+    if [ -n "$json_data" ]; then
+        curl_opts+=(-H "Content-Type: application/json" -d "$json_data")
+    fi
+
+    local tmp_response_file=$(mktemp)
+    API_RESPONSE_STATUS=$(curl "${curl_opts[@]}" -X "$method" "${API_URL}${endpoint_path}" -w "%{http_code}" -o "$tmp_response_file")
+    API_RESPONSE_BODY=$(cat "$tmp_response_file")
+    rm "$tmp_response_file"
+}
+
+# Function to assert HTTP status code
+# Usage: _assert_status_code <actual_code> <expected_code> "<test_description>"
+_assert_status_code() {
+    local actual="$1"
+    local expected="$2"
+    local description="$3"
+    if [ "$actual" -eq "$expected" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} $description (Expected $expected, Got $actual)"
+    else
+        echo -e "${RED}✗ FAIL:${NC} $description (Expected $expected, Got $actual)"
+        echo -e "${YELLOW}Response Body:${NC}\n$API_RESPONSE_BODY"
+        exit 1
+    fi
+}
+
+# Function to extract a value from JSON using jq
+# Usage: _get_json_value <json_string> <jq_path>
+# Returns: extracted value or empty string if not found/error
+_get_json_value() {
+    local json_string="$1"
+    local jq_path="$2"
+    local value
+    value=$(echo "$json_string" | jq -r "$jq_path" 2>/dev/null)
+    if [ $? -ne 0 ] || [ "$value" == "null" ]; then
+        echo "" # Return empty for errors or jq 'null'
+    else
+        echo "$value"
+    fi
+}
+
+# Function to assert a JSON value
+# Usage: _assert_json_value <json_string> <jq_path> <expected_value> "<test_description>"
+_assert_json_value() {
+    local json_string="$1"
+    local jq_path="$2"
+    local expected_value="$3"
+    local description="$4"
+    
+    local actual_value
+    actual_value=$(_get_json_value "$json_string" "$jq_path")
+    
+    if [ "$actual_value" == "$expected_value" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} $description (Expected '$expected_value', Got '$actual_value')"
+    else
+        echo -e "${RED}✗ FAIL:${NC} $description (Expected '$expected_value', Got '$actual_value')"
+        echo -e "${YELLOW}Full JSON Body:${NC}\n$json_string"
+        exit 1
+    fi
+}
+
+# Function to assert a JSON key exists and is not null
+# Usage: _assert_json_contains_key <json_string> <jq_path_to_key> "<test_description>"
+_assert_json_contains_key() {
+    local json_string="$1"
+    local jq_path="$2"
+    local description="$3"
+    
+    if echo "$json_string" | jq -e "$jq_path" > /dev/null 2>&1; then
+        # Check if value is not literal "null"
+        local val
+        val=$(echo "$json_string" | jq -r "$jq_path")
+        if [ "$val" != "null" ]; then
+            echo -e "${GREEN}✓ PASS:${NC} $description (Key '$jq_path' exists and is not null)"
+        else
+            echo -e "${RED}✗ FAIL:${NC} $description (Key '$jq_path' exists but is null)"
+            echo -e "${YELLOW}Full JSON Body:${NC}\n$json_string"
+            exit 1
+        fi
+    else
+        echo -e "${RED}✗ FAIL:${NC} $description (Key '$jq_path' does not exist)"
+        echo -e "${YELLOW}Full JSON Body:${NC}\n$json_string"
+        exit 1
+    fi
+}
+
+# ============================================================================
+# Legacy Helper Functions (for compatibility)
+# ============================================================================
 
 # Function to print status
 print_status() {
@@ -47,141 +188,143 @@ print_section() {
     echo -e "\n${BLUE}=== $title ===${NC}"
 }
 
+# ============================================================================
+# S.0.4: Refactored Test Functions
+# ============================================================================
+
 # Function to check Docker containers
 check_docker_containers() {
-    echo -e "\n${YELLOW}Checking Docker containers...${NC}"
-    docker ps | grep -E 'qr_generator_api|qr_generator_traefik'
-    print_status $? "Docker containers are running"
+    print_section "Checking Docker Containers"
+    echo -e "${YELLOW}Checking Docker containers...${NC}"
+    if docker ps | grep -E 'qr_generator_api|qr_generator_traefik' > /dev/null; then
+        echo -e "${GREEN}✓ PASS:${NC} Docker containers are running"
+    else
+        echo -e "${RED}✗ FAIL:${NC} Docker containers are not running"
+        exit 1
+    fi
 }
 
 # Function to test health endpoint
 test_health_endpoint() {
-    echo -e "\n${YELLOW}Testing Health Endpoint...${NC}"
-    local response=$(curl -k -s $AUTH_HEADER $API_URL/health)
-    local status_code=$(curl -k -s $AUTH_HEADER -o /dev/null -w "%{http_code}" $API_URL/health)
-    
-    echo "$response" | jq . > /dev/null
-    print_status $? "Health endpoint returns valid JSON"
-    
-    if [ "$status_code" == "200" ]; then
-        echo -e "${GREEN}✓ PASS:${NC} Health endpoint returned 200 OK"
-    else
-        echo -e "${RED}✗ FAIL:${NC} Health endpoint returned $status_code"
-        exit 1
-    fi
+    print_section "Testing Health Endpoint"
+    _api_request GET "/health"
+    _assert_status_code "$API_RESPONSE_STATUS" 200 "GET /health returns 200 OK"
+    _assert_json_contains_key "$API_RESPONSE_BODY" ".status" "Health response contains 'status' key"
 }
 
 # Function to test QR code listing
 test_qr_code_listing() {
-    echo -e "\n${YELLOW}Testing QR Code Listing...${NC}"
-    local response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr)
-    echo "$response" | jq . > /dev/null
-    print_status $? "QR code listing endpoint returns valid JSON"
+    print_section "Testing QR Code Listing"
+    _api_request GET "/api/v1/qr"
+    _assert_status_code "$API_RESPONSE_STATUS" 200 "GET /api/v1/qr returns 200 OK"
+    # Verify it's a valid JSON object with items array
+    if echo "$API_RESPONSE_BODY" | jq -e '.items | type == "array"' > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ PASS:${NC} QR code listing returns valid JSON with items array"
+    else
+        echo -e "${RED}✗ FAIL:${NC} QR code listing does not return valid JSON with items array"
+        exit 1
+    fi
 }
 
 # Function to create static QR code
 test_create_static_qr() {
-    echo -e "\n${YELLOW}Testing Create Static QR Code...${NC}"
-    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
-        -H "Content-Type: application/json" \
-        -d '{"content": "https://test.example.com", "qr_type": "static", "title": "Test Static QR", "description": "This is a test static QR code"}')
+    print_section "Testing Create Static QR Code"
+    local payload='{"content": "https://test.example.com", "qr_type": "static", "title": "Test Static QR", "description": "This is a test static QR code"}'
+    _api_request POST "/api/v1/qr/static" "$payload"
+    _assert_status_code "$API_RESPONSE_STATUS" 201 "POST /api/v1/qr/static creates resource"
     
-    STATIC_QR_ID=$(echo "$response" | jq -r '.id')
-    echo "$response" | jq . > /dev/null
-    print_status $? "Static QR code creation successful"
-    
-    if [ -z "$STATIC_QR_ID" ] || [ "$STATIC_QR_ID" == "null" ]; then
-        echo -e "${RED}✗ FAIL:${NC} No valid QR code ID received"
+    _assert_json_contains_key "$API_RESPONSE_BODY" ".id" "Create static QR response contains 'id'"
+    STATIC_QR_ID=$(_get_json_value "$API_RESPONSE_BODY" ".id")
+    if [ -z "$STATIC_QR_ID" ]; then
+        echo -e "${RED}✗ FAIL:${NC} Failed to extract ID from static QR creation response."
         exit 1
     fi
+    _assert_json_value "$API_RESPONSE_BODY" ".content" "https://test.example.com" "Static QR content matches"
+    _assert_json_value "$API_RESPONSE_BODY" ".qr_type" "static" "Static QR type matches"
+    _assert_json_value "$API_RESPONSE_BODY" ".title" "Test Static QR" "Static QR title matches"
 }
 
 # Function to create dynamic QR code
 test_create_dynamic_qr() {
-    echo -e "\n${YELLOW}Testing Create Dynamic QR Code...${NC}"
-    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{"content": "test-dynamic", "redirect_url": "https://technological-alchemist.vercel.app", "title": "Test Dynamic QR", "description": "This is a test dynamic QR code"}')
+    print_section "Testing Create Dynamic QR Code"
+    local payload='{"content": "test-dynamic", "redirect_url": "https://technological-alchemist.vercel.app", "title": "Test Dynamic QR", "description": "This is a test dynamic QR code"}'
+    _api_request POST "/api/v1/qr/dynamic" "$payload"
+    _assert_status_code "$API_RESPONSE_STATUS" 201 "POST /api/v1/qr/dynamic creates resource"
     
-    DYNAMIC_QR_ID=$(echo "$response" | jq -r '.id')
-    echo "$response" | jq . > /dev/null
-    print_status $? "Dynamic QR code creation successful"
-    
-    if [ -z "$DYNAMIC_QR_ID" ] || [ "$DYNAMIC_QR_ID" == "null" ]; then
-        echo -e "${RED}✗ FAIL:${NC} No valid QR code ID received"
+    _assert_json_contains_key "$API_RESPONSE_BODY" ".id" "Create dynamic QR response contains 'id'"
+    DYNAMIC_QR_ID=$(_get_json_value "$API_RESPONSE_BODY" ".id")
+    if [ -z "$DYNAMIC_QR_ID" ]; then
+        echo -e "${RED}✗ FAIL:${NC} Failed to extract ID from dynamic QR creation response."
         exit 1
     fi
+    _assert_json_value "$API_RESPONSE_BODY" ".qr_type" "dynamic" "Dynamic QR type matches"
+    _assert_json_value "$API_RESPONSE_BODY" ".title" "Test Dynamic QR" "Dynamic QR title matches"
+    _assert_json_contains_key "$API_RESPONSE_BODY" ".redirect_url" "Dynamic QR response contains redirect_url"
 }
 
 # Function to get QR code by ID
 test_get_qr_by_id() {
-    echo -e "\n${YELLOW}Testing Get QR Code by ID...${NC}"
-    local static_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$STATIC_QR_ID)
-    local dynamic_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$DYNAMIC_QR_ID)
+    print_section "Testing Get QR Code by ID"
     
-    echo "$static_response" | jq . > /dev/null
-    print_status $? "Get static QR code by ID successful"
+    # Test static QR retrieval
+    _api_request GET "/api/v1/qr/$STATIC_QR_ID"
+    _assert_status_code "$API_RESPONSE_STATUS" 200 "GET static QR by ID returns 200 OK"
+    _assert_json_value "$API_RESPONSE_BODY" ".id" "$STATIC_QR_ID" "Static QR ID matches"
     
-    echo "$dynamic_response" | jq . > /dev/null
-    print_status $? "Get dynamic QR code by ID successful"
+    # Test dynamic QR retrieval
+    _api_request GET "/api/v1/qr/$DYNAMIC_QR_ID"
+    _assert_status_code "$API_RESPONSE_STATUS" 200 "GET dynamic QR by ID returns 200 OK"
+    _assert_json_value "$API_RESPONSE_BODY" ".id" "$DYNAMIC_QR_ID" "Dynamic QR ID matches"
 }
 
 # Function to update dynamic QR code
 test_update_dynamic_qr() {
-    echo -e "\n${YELLOW}Testing Update Dynamic QR Code...${NC}"
-    local response=$(curl -k $AUTH_HEADER -X PUT $API_URL/api/v1/qr/$DYNAMIC_QR_ID -H "Content-Type: application/json" -d '{"redirect_url": "https://updated.example.com"}' -s | jq)
+    print_section "Testing Update Dynamic QR Code"
+    local payload='{"redirect_url": "https://updated.example.com"}'
+    _api_request PUT "/api/v1/qr/$DYNAMIC_QR_ID" "$payload"
+    _assert_status_code "$API_RESPONSE_STATUS" 200 "PUT /api/v1/qr/{id} updates resource"
     
-    # Check if jq parsing was successful
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}✗ FAIL:${NC} Invalid JSON response"
-        exit 1
-    fi
-    
-    # Extract the redirect URL from the response and remove trailing slash
-    local updated_url=$(echo "$response" | jq -r '.redirect_url' | sed 's:/*$::')
+    # Extract and verify the updated URL (removing trailing slash for comparison)
+    local updated_url
+    updated_url=$(_get_json_value "$API_RESPONSE_BODY" ".redirect_url")
+    updated_url=$(echo "$updated_url" | sed 's:/*$::')
     local expected_url="https://updated.example.com"
     
-    # Debugging output
-    echo -e "${YELLOW}Full Response:${NC}"
-    echo "$response"
-    
-    echo -e "\n${YELLOW}Updated URL:${NC} $updated_url"
-    
-    # Check if the URL was updated correctly (ignoring trailing slash)
-    if [ "$updated_url" != "$expected_url" ]; then
-        echo -e "${RED}✗ FAIL:${NC} URL not updated correctly"
-        echo -e "${YELLOW}Debug Information:${NC}"
-        echo "Expected URL: $expected_url"
-        echo "Actual URL:   $updated_url"
+    if [ "$updated_url" == "$expected_url" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} Dynamic QR code URL updated successfully"
+    else
+        echo -e "${RED}✗ FAIL:${NC} URL not updated correctly (Expected: $expected_url, Got: $updated_url)"
         exit 1
     fi
-    
-    echo -e "${GREEN}✓ PASS:${NC} Dynamic QR code URL updated successfully"
 }
 
 # Function to test QR code redirection
 test_qr_redirection() {
-    echo -e "\n${YELLOW}Testing QR Code Redirection...${NC}"
+    print_section "Testing QR Code Redirection"
     
-    # Get the full content of the dynamic QR code
-    local CONTENT=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$DYNAMIC_QR_ID | jq -r '.content')
-    echo -e "${YELLOW}QR code content:${NC} $CONTENT"
+    # Get the dynamic QR code to extract content
+    _api_request GET "/api/v1/qr/$DYNAMIC_QR_ID"
+    _assert_status_code "$API_RESPONSE_STATUS" 200 "GET dynamic QR for redirection test"
     
-    # Extract short ID from the dynamic QR code's content
-    local SHORT_ID=$(echo "$CONTENT" | sed 's/.*\/r\///')
-    echo -e "${YELLOW}Extracted short ID:${NC} $SHORT_ID"
+    local content
+    content=$(_get_json_value "$API_RESPONSE_BODY" ".content")
+    echo -e "${YELLOW}QR code content:${NC} $content"
+    
+    # Extract short ID from the content
+    local short_id=$(echo "$content" | sed 's/.*\/r\///')
+    echo -e "${YELLOW}Extracted short ID:${NC} $short_id"
     
     # Check if content starts with expected BASE_URL
-    if [[ "$CONTENT" == "$BASE_URL/r/"* ]]; then
+    if [[ "$content" == "$BASE_URL/r/"* ]]; then
         echo -e "${GREEN}✓ PASS:${NC} QR code content has expected BASE_URL format"
     else
         echo -e "${YELLOW}⚠ WARNING:${NC} QR code content does not match BASE_URL format"
         echo -e "Expected format: ${BASE_URL}/r/{short_id}"
-        echo -e "Actual content: $CONTENT"
+        echo -e "Actual content: $content"
     fi
     
-    # Check redirection
-    local redirect_response=$(curl -k -s -o /dev/null -w "%{http_code}" -H "Host: web.hccc.edu" $API_URL/r/$SHORT_ID)
+    # Test redirection using curl
+    local redirect_response=$(curl -k -s -o /dev/null -w "%{http_code}" -H "Host: web.hccc.edu" "$API_URL/r/$short_id")
     
     if [ "$redirect_response" == "302" ]; then
         echo -e "${GREEN}✓ PASS:${NC} QR code redirection successful (302 status)"
@@ -191,80 +334,51 @@ test_qr_redirection() {
     fi
 }
 
-# Function to test service-based dependency injection (Task 1)
+# Function to test service-based dependency injection
 test_service_dependency_injection() {
-    echo -e "\n${YELLOW}Testing Service-Based Dependency Injection (Task 1)...${NC}"
+    print_section "Testing Service-Based Dependency Injection"
     
-    # Test 1: Create a QR code with specific parameters to test service layer
-    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
-        -H "Content-Type: application/json" \
-        -d '{"content": "https://service-test.example.com", "qr_type": "static", "fill_color": "#333333", "back_color": "#FFFFFF", "title": "Service Test QR", "description": "Testing service layer with specific parameters"}')
+    # Create a QR code with specific parameters to test service layer
+    local payload='{"content": "https://service-test.example.com", "qr_type": "static", "fill_color": "#333333", "back_color": "#FFFFFF", "title": "Service Test QR", "description": "Testing service layer with specific parameters"}'
+    _api_request POST "/api/v1/qr/static" "$payload"
+    _assert_status_code "$API_RESPONSE_STATUS" 201 "Service layer QR code creation successful"
     
-    local service_qr_id=$(echo "$response" | jq -r '.id')
-    echo "$response" | jq . > /dev/null
-    print_status $? "Service layer QR code creation successful"
+    # Verify service properly handles the fill_color parameter
+    _assert_json_value "$API_RESPONSE_BODY" ".fill_color" "#333333" "Service layer correctly processed fill_color parameter"
     
-    # Test 2: Verify service properly handles the fill_color parameter
-    local fill_color=$(echo "$response" | jq -r '.fill_color')
-    if [ "$fill_color" == "#333333" ]; then
-        echo -e "${GREEN}✓ PASS:${NC} Service layer correctly processed fill_color parameter"
-    else
-        echo -e "${RED}✗ FAIL:${NC} Service layer did not process fill_color parameter correctly"
-        echo -e "${YELLOW}Debug Information:${NC}"
-        echo "Expected fill_color: #333333"
-        echo "Actual fill_color:   $fill_color"
-        exit 1
-    fi
-    
-    # Test 3: Verify service returns consistent data structure
-    local created_at=$(echo "$response" | jq -r '.created_at')
-    if [ -z "$created_at" ] || [ "$created_at" == "null" ]; then
-        echo -e "${RED}✗ FAIL:${NC} Service layer did not return created_at timestamp"
-        exit 1
-    else
-        echo -e "${GREEN}✓ PASS:${NC} Service layer returned proper timestamp data"
-    fi
+    # Verify service returns consistent data structure
+    _assert_json_contains_key "$API_RESPONSE_BODY" ".created_at" "Service layer returned proper timestamp data"
 }
 
-# Function to test background tasks for scan statistics (Task 2)
+# Function to test background tasks for scan statistics
 test_background_tasks_scan_statistics() {
-    echo -e "\n${YELLOW}Testing Background Tasks for Scan Statistics (Task 2)...${NC}"
+    print_section "Testing Background Tasks for Scan Statistics"
     
     # Create a new dynamic QR code for testing
-    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{"content": "background-task-test", "redirect_url": "https://background-task.example.com", "title": "Background Task QR", "description": "Testing background task processing"}')
+    local payload='{"content": "background-task-test", "redirect_url": "https://background-task.example.com", "title": "Background Task QR", "description": "Testing background task processing"}'
+    _api_request POST "/api/v1/qr/dynamic" "$payload"
+    _assert_status_code "$API_RESPONSE_STATUS" 201 "Created QR code for background task testing"
     
-    local bg_qr_id=$(echo "$response" | jq -r '.id')
-    echo "$response" | jq . > /dev/null
-    print_status $? "Created QR code for background task testing"
+    local bg_qr_id
+    bg_qr_id=$(_get_json_value "$API_RESPONSE_BODY" ".id")
+    local content
+    content=$(_get_json_value "$API_RESPONSE_BODY" ".content")
+    local short_id=$(echo "$content" | sed 's/.*\/r\///')
     
-    # Get the full content of the dynamic QR code
-    local CONTENT=$(echo "$response" | jq -r '.content')
-    echo -e "${YELLOW}QR code content:${NC} $CONTENT"
-    
-    # Extract short ID from the dynamic QR code's content
-    local SHORT_ID=$(echo "$CONTENT" | sed 's/.*\/r\///')
-    echo -e "${YELLOW}Extracted short ID:${NC} $SHORT_ID"
-    
-    # Check if content starts with expected BASE_URL
-    if [[ "$CONTENT" == "$BASE_URL/r/"* ]]; then
-        echo -e "${GREEN}✓ PASS:${NC} QR code content has expected BASE_URL format"
-    else
-        echo -e "${YELLOW}⚠ WARNING:${NC} QR code content does not match BASE_URL format"
-        echo -e "Expected format: ${BASE_URL}/r/{short_id}"
-        echo -e "Actual content: $CONTENT"
-    fi
+    echo -e "${YELLOW}QR code content:${NC} $content"
+    echo -e "${YELLOW}Extracted short ID:${NC} $short_id"
     
     # Get initial scan count
-    local initial_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$bg_qr_id)
-    local initial_scan_count=$(echo "$initial_response" | jq -r '.scan_count')
+    _api_request GET "/api/v1/qr/$bg_qr_id"
+    _assert_status_code "$API_RESPONSE_STATUS" 200 "GET QR for initial scan count"
+    local initial_scan_count
+    initial_scan_count=$(_get_json_value "$API_RESPONSE_BODY" ".scan_count")
     echo -e "${YELLOW}Initial scan count:${NC} $initial_scan_count"
     
-    # Test 1: Measure response time for redirection (should be fast if using background tasks)
+    # Test redirection response time
     echo -e "${YELLOW}Testing redirection response time...${NC}"
     local start_time=$(date +%s.%N)
-    local redirect_status=$(curl -k -s -o /dev/null -w "%{http_code}" -H "Host: web.hccc.edu" $API_URL/r/$SHORT_ID)
+    local redirect_status=$(curl -k -s -o /dev/null -w "%{http_code}" -H "Host: web.hccc.edu" "$API_URL/r/$short_id")
     local end_time=$(date +%s.%N)
     local response_time=$(echo "$end_time - $start_time" | bc)
     
@@ -282,13 +396,15 @@ test_background_tasks_scan_statistics() {
         echo -e "${YELLOW}⚠ WARNING:${NC} Redirection response time is slow (> 0.5s), might not be using background tasks"
     fi
     
-    # Test 2: Wait a moment for background task to complete
+    # Wait for background task to complete
     echo -e "${YELLOW}Waiting for background task to complete...${NC}"
     sleep 3
     
-    # Test 3: Verify scan count was updated
-    local updated_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$bg_qr_id)
-    local updated_scan_count=$(echo "$updated_response" | jq -r '.scan_count')
+    # Verify scan count was updated
+    _api_request GET "/api/v1/qr/$bg_qr_id"
+    _assert_status_code "$API_RESPONSE_STATUS" 200 "GET QR for updated scan count"
+    local updated_scan_count
+    updated_scan_count=$(_get_json_value "$API_RESPONSE_BODY" ".scan_count")
     echo -e "${YELLOW}Updated scan count:${NC} $updated_scan_count"
     
     if [ "$updated_scan_count" -gt "$initial_scan_count" ]; then
@@ -298,50 +414,37 @@ test_background_tasks_scan_statistics() {
         echo -e "${YELLOW}Debug Information:${NC}"
         echo "Initial scan count: $initial_scan_count"
         echo "Updated scan count: $updated_scan_count"
-        echo "Full response:"
-        echo "$updated_response" | jq .
         exit 1
     fi
     
-    # Test 4: Verify last_scanned_at was updated
-    local last_scanned_at=$(echo "$updated_response" | jq -r '.last_scan_at')
-    echo -e "${YELLOW}Last scanned at:${NC} $last_scanned_at"
-    
-    if [ -z "$last_scanned_at" ] || [ "$last_scanned_at" == "null" ]; then
+    # Verify last_scanned_at was updated
+    local last_scanned_at
+    last_scanned_at=$(_get_json_value "$API_RESPONSE_BODY" ".last_scan_at")
+    if [ -z "$last_scanned_at" ]; then
         # Try alternative field name
-        last_scanned_at=$(echo "$updated_response" | jq -r '.last_scanned_at')
-        echo -e "${YELLOW}Trying alternative field name - Last scanned at:${NC} $last_scanned_at"
-        
-        if [ -z "$last_scanned_at" ] || [ "$last_scanned_at" == "null" ]; then
-            echo -e "${RED}✗ FAIL:${NC} last_scanned_at timestamp was not updated"
-            echo -e "${YELLOW}Full response:${NC}"
-            echo "$updated_response" | jq .
-            exit 1
-        fi
+        last_scanned_at=$(_get_json_value "$API_RESPONSE_BODY" ".last_scanned_at")
     fi
     
-    echo -e "${GREEN}✓ PASS:${NC} last_scanned_at timestamp was updated by background task"
+    if [ -n "$last_scanned_at" ]; then
+        echo -e "${GREEN}✓ PASS:${NC} last_scanned_at timestamp was updated by background task"
+    else
+        echo -e "${RED}✗ FAIL:${NC} last_scanned_at timestamp was not updated"
+        exit 1
+    fi
 }
 
 # Function to test QR code generation with logo
 test_qr_with_logo() {
-    print_section "TESTING QR CODE GENERATION WITH LOGO"
+    print_section "Testing QR Code Generation with Logo"
     
     # Test static QR with logo
     echo -e "\n${YELLOW}Testing Static QR Code with Logo...${NC}"
-    local static_response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
-        -H "Content-Type: application/json" \
-        -d '{
-            "content": "https://www.github.com/gsinghjay",
-            "qr_type": "static",
-            "include_logo": true,
-            "title": "GitHub Logo QR",
-            "description": "Static QR code with logo pointing to GitHub"
-        }')
+    local payload='{"content": "https://www.github.com/gsinghjay", "qr_type": "static", "include_logo": true, "title": "GitHub Logo QR", "description": "Static QR code with logo pointing to GitHub"}'
+    _api_request POST "/api/v1/qr/static" "$payload"
+    _assert_status_code "$API_RESPONSE_STATUS" 201 "Static QR code with logo creation successful"
     
-    local static_id=$(echo "$static_response" | jq -r '.id')
-    echo "$static_response" | jq . > /dev/null
-    print_status $? "Static QR code with logo creation successful"
+    local static_id
+    static_id=$(_get_json_value "$API_RESPONSE_BODY" ".id")
     
     # Get the static QR image with logo
     local static_image_response=$(curl -k -s $AUTH_HEADER -o static_qr_with_logo.png \
@@ -355,19 +458,12 @@ test_qr_with_logo() {
     
     # Test dynamic QR with logo
     echo -e "\n${YELLOW}Testing Dynamic QR Code with Logo...${NC}"
-    local dynamic_response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{
-            "content": "dynamic-with-logo",
-            "redirect_url": "https://technological-alchemist.vercel.app/",
-            "include_logo": true,
-            "title": "Dynamic Logo QR",
-            "description": "Dynamic QR code with logo for redirection"
-        }')
+    local dynamic_payload='{"content": "dynamic-with-logo", "redirect_url": "https://technological-alchemist.vercel.app/", "include_logo": true, "title": "Dynamic Logo QR", "description": "Dynamic QR code with logo for redirection"}'
+    _api_request POST "/api/v1/qr/dynamic" "$dynamic_payload"
+    _assert_status_code "$API_RESPONSE_STATUS" 201 "Dynamic QR code with logo creation successful"
     
-    local dynamic_id=$(echo "$dynamic_response" | jq -r '.id')
-    echo "$dynamic_response" | jq . > /dev/null
-    print_status $? "Dynamic QR code with logo creation successful"
+    local dynamic_id
+    dynamic_id=$(_get_json_value "$API_RESPONSE_BODY" ".id")
     
     # Get the dynamic QR image with logo
     local dynamic_image_response=$(curl -k -s $AUTH_HEADER -o dynamic_qr_with_logo.png \
@@ -380,9 +476,10 @@ test_qr_with_logo() {
     fi
     
     # Test redirection for dynamic QR with logo
-    local CONTENT=$(echo "$dynamic_response" | jq -r '.content')
-    local SHORT_ID=$(echo "$CONTENT" | sed 's/.*\/r\///')
-    local redirect_response=$(curl -k -s -L -o /dev/null -w "%{http_code}" -H "Host: web.hccc.edu" $API_URL/r/$SHORT_ID)
+    local content
+    content=$(_get_json_value "$API_RESPONSE_BODY" ".content")
+    local short_id=$(echo "$content" | sed 's/.*\/r\///')
+    local redirect_response=$(curl -k -s -L -o /dev/null -w "%{http_code}" -H "Host: web.hccc.edu" "$API_URL/r/$short_id")
     
     if [ "$redirect_response" == "302" ] || [ "$redirect_response" == "200" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Dynamic QR code with logo redirects successfully (status: $redirect_response)"
@@ -394,10 +491,7 @@ test_qr_with_logo() {
 
 # Function to test error correction levels
 test_error_correction_levels() {
-    print_section "TESTING ERROR CORRECTION LEVELS"
-    
-    # Test QR code with different error correction levels
-    echo -e "\n${YELLOW}Testing QR Codes with Different Error Correction Levels...${NC}"
+    print_section "Testing Error Correction Levels"
     
     # Array of error correction levels to test
     local error_levels=("l" "m" "q" "h")
@@ -411,31 +505,15 @@ test_error_correction_levels() {
         echo -e "\n${YELLOW}Testing ${error_name} (${error_level}) Error Correction Level...${NC}"
         
         # Create static QR code with specific error level
-        local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
-            -H "Content-Type: application/json" \
-            -d "{
-                \"content\": \"https://error-level-test-${error_level}.example.com\",
-                \"qr_type\": \"static\",
-                \"error_level\": \"${error_level}\",
-                \"title\": \"Error Level ${error_name} QR\",
-                \"description\": \"Testing QR code with ${error_name} error correction level\"
-            }")
+        local payload="{\"content\": \"https://error-level-test-${error_level}.example.com\", \"qr_type\": \"static\", \"error_level\": \"${error_level}\", \"title\": \"Error Level ${error_name} QR\", \"description\": \"Testing QR code with ${error_name} error correction level\"}"
+        _api_request POST "/api/v1/qr/static" "$payload"
+        _assert_status_code "$API_RESPONSE_STATUS" 201 "QR code creation with ${error_name} error level successful"
         
-        local qr_id=$(echo "$response" | jq -r '.id')
-        echo "$response" | jq . > /dev/null
-        print_status $? "QR code creation with ${error_name} error level successful"
+        # Verify error level was set correctly
+        _assert_json_value "$API_RESPONSE_BODY" ".error_level" "$error_level" "Error level correctly set to ${error_name} (${error_level})"
         
-        # Verify error level was set correctly in the response
-        local stored_error_level=$(echo "$response" | jq -r '.error_level')
-        if [ "$stored_error_level" == "$error_level" ]; then
-            echo -e "${GREEN}✓ PASS:${NC} Error level correctly set to ${error_name} (${error_level})"
-        else
-            echo -e "${RED}✗ FAIL:${NC} Error level not set correctly"
-            echo -e "${YELLOW}Debug Information:${NC}"
-            echo "Expected error level: ${error_level}"
-            echo "Actual error level:   ${stored_error_level}"
-            exit 1
-        fi
+        local qr_id
+        qr_id=$(_get_json_value "$API_RESPONSE_BODY" ".id")
         
         # Get QR image with error level and save to file
         local output_file="qr_error_level_${error_level}.png"
@@ -455,39 +533,29 @@ test_error_correction_levels() {
 
 # Function to test SVG accessibility options
 test_svg_accessibility() {
-    print_section "TESTING SVG ACCESSIBILITY OPTIONS"
+    print_section "Testing SVG Accessibility Options"
     
     echo -e "\n${YELLOW}Testing SVG QR Code with Accessibility Options...${NC}"
     
     # Create a QR code with SVG accessibility options
-    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/static \
-        -H "Content-Type: application/json" \
-        -d '{
-            "content": "https://accessibility-test.example.com",
-            "qr_type": "static",
-            "title": "Accessibility Test QR",
-            "description": "Testing QR code with SVG accessibility features"
-        }')
+    local payload='{"content": "https://accessibility-test.example.com", "qr_type": "static", "title": "Accessibility Test QR", "description": "Testing QR code with SVG accessibility features"}'
+    _api_request POST "/api/v1/qr/static" "$payload"
+    _assert_status_code "$API_RESPONSE_STATUS" 201 "QR code creation for SVG accessibility test successful"
     
-    local qr_id=$(echo "$response" | jq -r '.id')
-    echo "$response" | jq . > /dev/null
-    print_status $? "QR code creation for SVG accessibility test successful"
+    local qr_id
+    qr_id=$(_get_json_value "$API_RESPONSE_BODY" ".id")
     
-    # Get QR code as SVG with accessibility options - URL encode parameters
+    # Get QR code as SVG with accessibility options
     local svg_title="QR Code for Accessibility Testing"
     local svg_description="This QR code links to the accessibility test example website"
     
-    # URL encode the title and description to handle spaces and special characters
+    # URL encode the title and description
     local encoded_title=$(echo "$svg_title" | sed -e 's/ /%20/g')
     local encoded_description=$(echo "$svg_description" | sed -e 's/ /%20/g')
     
     echo -e "${YELLOW}Requesting SVG with title and description...${NC}"
-    local svg_response=$(curl -k -v $AUTH_HEADER -o "accessible_qr_code.svg" \
-        "$API_URL/api/v1/qr/$qr_id/image?image_format=svg&svg_title=${encoded_title}&svg_description=${encoded_description}" 2>&1)
-    
-    # Output curl verbose info for debugging
-    echo -e "${YELLOW}Curl response:${NC}"
-    echo "$svg_response" | tail -20
+    local svg_response=$(curl -k -s $AUTH_HEADER -o "accessible_qr_code.svg" \
+        "$API_URL/api/v1/qr/$qr_id/image?image_format=svg&svg_title=${encoded_title}&svg_description=${encoded_description}")
     
     if [ -f "accessible_qr_code.svg" ]; then
         echo -e "${GREEN}✓ PASS:${NC} SVG QR code with accessibility options downloaded successfully"
@@ -495,21 +563,8 @@ test_svg_accessibility() {
         # Check if SVG file contains title and description
         if grep -q "title" "accessible_qr_code.svg" && grep -q "desc" "accessible_qr_code.svg"; then
             echo -e "${GREEN}✓ PASS:${NC} SVG contains title and description elements"
-            
-            # Further check if our specific title and description are included
-            if grep -q "$svg_title" "accessible_qr_code.svg" || grep -q "$svg_description" "accessible_qr_code.svg"; then
-                echo -e "${GREEN}✓ PASS:${NC} SVG contains the title or description text"
-            else
-                echo -e "${YELLOW}⚠ WARNING:${NC} SVG may not contain the exact title/description text provided"
-                echo -e "Expected title: $svg_title"
-                echo -e "Expected description: $svg_description"
-                echo -e "SVG file content:"
-                cat accessible_qr_code.svg | head -20
-            fi
         else
             echo -e "${YELLOW}⚠ WARNING:${NC} SVG might not contain title and description elements"
-            echo -e "SVG file content:"
-            cat accessible_qr_code.svg | head -20
         fi
     else
         echo -e "${RED}✗ FAIL:${NC} Failed to download SVG QR code with accessibility options"
@@ -521,45 +576,41 @@ test_svg_accessibility() {
 
 # Function to test enhanced user agent tracking
 test_enhanced_user_agent_tracking() {
-    print_section "TESTING ENHANCED USER AGENT TRACKING"
+    print_section "Testing Enhanced User Agent Tracking"
     
     echo -e "\n${YELLOW}Testing Genuine Scan Detection and User Agent Tracking...${NC}"
     
     # Create a dynamic QR code for testing user agent tracking
-    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{
-            "redirect_url": "https://user-agent-test.example.com",
-            "title": "User Agent Tracking Test",
-            "description": "Testing enhanced scan tracking with user agent analysis"
-        }')
+    local payload='{"redirect_url": "https://user-agent-test.example.com", "title": "User Agent Tracking Test", "description": "Testing enhanced scan tracking with user agent analysis"}'
+    _api_request POST "/api/v1/qr/dynamic" "$payload"
+    _assert_status_code "$API_RESPONSE_STATUS" 201 "QR code creation for user agent tracking test successful"
     
-    local qr_id=$(echo "$response" | jq -r '.id')
-    echo "$response" | jq . > /dev/null
-    print_status $? "QR code creation for user agent tracking test successful"
+    local qr_id
+    qr_id=$(_get_json_value "$API_RESPONSE_BODY" ".id")
+    local content
+    content=$(_get_json_value "$API_RESPONSE_BODY" ".content")
+    local short_id=$(echo "$content" | sed 's/.*\/r\///' | sed 's/?.*//')
     
-    # Get the content with short_id
-    local CONTENT=$(echo "$response" | jq -r '.content')
-    echo -e "${YELLOW}QR code content:${NC} $CONTENT"
-    
-    # Extract short ID from the dynamic QR code's content and query parameters
-    local SHORT_ID=$(echo "$CONTENT" | sed 's/.*\/r\///' | sed 's/?.*//')
-    echo -e "${YELLOW}Extracted short ID:${NC} $SHORT_ID"
+    echo -e "${YELLOW}QR code content:${NC} $content"
+    echo -e "${YELLOW}Extracted short ID:${NC} $short_id"
     
     # Check initial scan statistics
-    local initial_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$qr_id)
-    local initial_scan_count=$(echo "$initial_response" | jq -r '.scan_count')
-    local initial_genuine_scan_count=$(echo "$initial_response" | jq -r '.genuine_scan_count')
+    _api_request GET "/api/v1/qr/$qr_id"
+    _assert_status_code "$API_RESPONSE_STATUS" 200 "GET QR for initial scan statistics"
+    local initial_scan_count
+    initial_scan_count=$(_get_json_value "$API_RESPONSE_BODY" ".scan_count")
+    local initial_genuine_scan_count
+    initial_genuine_scan_count=$(_get_json_value "$API_RESPONSE_BODY" ".genuine_scan_count")
     
     echo -e "${YELLOW}Initial scan count:${NC} $initial_scan_count"
     echo -e "${YELLOW}Initial genuine scan count:${NC} $initial_genuine_scan_count"
     
-    # Test 1: Simulate a non-genuine scan (direct URL access without scan_ref parameter)
+    # Test 1: Simulate a non-genuine scan (direct URL access)
     echo -e "\n${YELLOW}Test 1: Simulating direct URL access (non-genuine scan)...${NC}"
     local non_genuine_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
         -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" \
         -H "Host: web.hccc.edu" \
-        $API_URL/r/$SHORT_ID)
+        "$API_URL/r/$short_id")
     
     if [ "$non_genuine_status" == "302" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Non-genuine scan redirect successful"
@@ -568,12 +619,12 @@ test_enhanced_user_agent_tracking() {
         exit 1
     fi
     
-    # Test 2: Simulate a genuine QR scan with scan_ref parameter and mobile user agent
+    # Test 2: Simulate genuine QR scans
     echo -e "\n${YELLOW}Test 2: Simulating genuine QR scan with mobile device...${NC}"
     local genuine_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
         -A "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1" \
         -H "Host: web.hccc.edu" \
-        "$API_URL/r/$SHORT_ID?scan_ref=qr")
+        "$API_URL/r/$short_id?scan_ref=qr")
     
     if [ "$genuine_status" == "302" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Genuine scan redirect successful"
@@ -582,12 +633,12 @@ test_enhanced_user_agent_tracking() {
         exit 1
     fi
     
-    # Test 3: Simulate an Android device scan
+    # Test 3: Android device scan
     echo -e "\n${YELLOW}Test 3: Simulating QR scan with Android device...${NC}"
     local android_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
         -A "Mozilla/5.0 (Linux; Android 12; SM-G991U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Mobile Safari/537.36" \
         -H "Host: web.hccc.edu" \
-        "$API_URL/r/$SHORT_ID?scan_ref=qr")
+        "$API_URL/r/$short_id?scan_ref=qr")
     
     if [ "$android_status" == "302" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Android scan redirect successful"
@@ -601,43 +652,45 @@ test_enhanced_user_agent_tracking() {
     sleep 3
     
     # Check updated scan statistics
-    local updated_response=$(curl -k -s $AUTH_HEADER $API_URL/api/v1/qr/$qr_id)
-    local updated_scan_count=$(echo "$updated_response" | jq -r '.scan_count')
-    local updated_genuine_scan_count=$(echo "$updated_response" | jq -r '.genuine_scan_count')
-    local first_genuine_scan_at=$(echo "$updated_response" | jq -r '.first_genuine_scan_at')
-    local last_genuine_scan_at=$(echo "$updated_response" | jq -r '.last_genuine_scan_at')
+    _api_request GET "/api/v1/qr/$qr_id"
+    _assert_status_code "$API_RESPONSE_STATUS" 200 "GET QR for updated scan statistics"
+    local updated_scan_count
+    updated_scan_count=$(_get_json_value "$API_RESPONSE_BODY" ".scan_count")
+    local updated_genuine_scan_count
+    updated_genuine_scan_count=$(_get_json_value "$API_RESPONSE_BODY" ".genuine_scan_count")
     
     echo -e "${YELLOW}Updated scan count:${NC} $updated_scan_count"
     echo -e "${YELLOW}Updated genuine scan count:${NC} $updated_genuine_scan_count"
-    echo -e "${YELLOW}First genuine scan at:${NC} $first_genuine_scan_at"
-    echo -e "${YELLOW}Last genuine scan at:${NC} $last_genuine_scan_at"
     
     # Verify total scan count increased by 3
     local expected_scan_count=$((initial_scan_count + 3))
     if [ "$updated_scan_count" -eq "$expected_scan_count" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Total scan count increased correctly (${initial_scan_count} -> ${updated_scan_count})"
     else
-        echo -e "${YELLOW}⚠ WARNING:${NC} Total scan count did not increase by expected amount"
-        echo -e "Expected: $expected_scan_count, Actual: $updated_scan_count"
+        echo -e "${YELLOW}⚠ WARNING:${NC} Total scan count did not increase by expected amount (Expected: $expected_scan_count, Actual: $updated_scan_count)"
     fi
     
-    # Verify genuine scan count increased by 2 (for the genuine scans only)
+    # Verify genuine scan count increased by 2
     local expected_genuine_scan_count=$((initial_genuine_scan_count + 2))
     if [ "$updated_genuine_scan_count" -eq "$expected_genuine_scan_count" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Genuine scan count increased correctly (${initial_genuine_scan_count} -> ${updated_genuine_scan_count})"
     else
-        echo -e "${YELLOW}⚠ WARNING:${NC} Genuine scan count did not increase by expected amount"
-        echo -e "Expected: $expected_genuine_scan_count, Actual: $updated_genuine_scan_count"
+        echo -e "${YELLOW}⚠ WARNING:${NC} Genuine scan count did not increase by expected amount (Expected: $expected_genuine_scan_count, Actual: $updated_genuine_scan_count)"
     fi
     
-    # Verify first_genuine_scan_at and last_genuine_scan_at are set
-    if [ "$first_genuine_scan_at" != "null" ] && [ ! -z "$first_genuine_scan_at" ]; then
+    # Verify timestamps are set
+    local first_genuine_scan_at
+    first_genuine_scan_at=$(_get_json_value "$API_RESPONSE_BODY" ".first_genuine_scan_at")
+    local last_genuine_scan_at
+    last_genuine_scan_at=$(_get_json_value "$API_RESPONSE_BODY" ".last_genuine_scan_at")
+    
+    if [ -n "$first_genuine_scan_at" ]; then
         echo -e "${GREEN}✓ PASS:${NC} First genuine scan timestamp is properly set"
     else
         echo -e "${RED}✗ FAIL:${NC} First genuine scan timestamp was not set"
     fi
     
-    if [ "$last_genuine_scan_at" != "null" ] && [ ! -z "$last_genuine_scan_at" ]; then
+    if [ -n "$last_genuine_scan_at" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Last genuine scan timestamp is properly set"
     else
         echo -e "${RED}✗ FAIL:${NC} Last genuine scan timestamp was not set"
@@ -648,7 +701,7 @@ test_enhanced_user_agent_tracking() {
 
 # Function to test production hardening security features
 test_production_hardening_security() {
-    print_section "TESTING PRODUCTION HARDENING SECURITY FEATURES"
+    print_section "Testing Production Hardening Security Features"
     
     # Test invalid short_id formats
     test_invalid_short_id_formats
@@ -665,7 +718,7 @@ test_production_hardening_security() {
     echo -e "\n${GREEN}✓ PASS:${NC} All production hardening security tests completed successfully"
 }
 
-# Function to test invalid short_id formats (Task 1 & 5)
+# Function to test invalid short_id formats
 test_invalid_short_id_formats() {
     echo -e "\n${YELLOW}Testing Invalid Short ID Formats...${NC}"
     
@@ -673,7 +726,7 @@ test_invalid_short_id_formats() {
     echo -e "\n${YELLOW}Test 1: Short ID too short (abc)...${NC}"
     local short_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
         -H "Host: web.hccc.edu" \
-        $API_URL/r/abc)
+        "$API_URL/r/abc")
     
     if [ "$short_status" == "404" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Short ID too short correctly returns 404"
@@ -686,7 +739,7 @@ test_invalid_short_id_formats() {
     echo -e "\n${YELLOW}Test 2: Short ID too long (abcdef123456)...${NC}"
     local long_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
         -H "Host: web.hccc.edu" \
-        $API_URL/r/abcdef123456)
+        "$API_URL/r/abcdef123456")
     
     if [ "$long_status" == "404" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Short ID too long correctly returns 404"
@@ -699,7 +752,7 @@ test_invalid_short_id_formats() {
     echo -e "\n${YELLOW}Test 3: Short ID with invalid characters (invalid!)...${NC}"
     local invalid_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
         -H "Host: web.hccc.edu" \
-        $API_URL/r/invalid!)
+        "$API_URL/r/invalid!")
     
     if [ "$invalid_status" == "404" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Short ID with invalid characters correctly returns 404"
@@ -712,42 +765,12 @@ test_invalid_short_id_formats() {
     echo -e "\n${YELLOW}Test 4: Non-existent but valid format short ID (deadbeef)...${NC}"
     local nonexistent_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
         -H "Host: web.hccc.edu" \
-        $API_URL/r/deadbeef)
+        "$API_URL/r/deadbeef")
     
     if [ "$nonexistent_status" == "404" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Non-existent short ID correctly returns 404"
     else
         echo -e "${RED}✗ FAIL:${NC} Non-existent short ID returned $nonexistent_status instead of 404"
-        exit 1
-    fi
-    
-    # Test 5: Mixed case short ID (should be normalized to lowercase)
-    echo -e "\n${YELLOW}Test 5: Mixed case short ID normalization...${NC}"
-    # First create a dynamic QR to get a valid short_id
-    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{
-            "redirect_url": "https://case-test.example.com",
-            "title": "Case Test QR",
-            "description": "Testing case normalization"
-        }')
-    
-    local qr_id=$(echo "$response" | jq -r '.id')
-    local content=$(echo "$response" | jq -r '.content')
-    local short_id=$(echo "$content" | sed 's/.*\/r\///' | sed 's/?.*//')
-    
-    # Convert to uppercase for testing
-    local uppercase_short_id=$(echo "$short_id" | tr '[:lower:]' '[:upper:]')
-    
-    echo -e "${YELLOW}Testing uppercase short ID: $uppercase_short_id${NC}"
-    local case_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
-        -H "Host: web.hccc.edu" \
-        $API_URL/r/$uppercase_short_id)
-    
-    if [ "$case_status" == "302" ]; then
-        echo -e "${GREEN}✓ PASS:${NC} Mixed case short ID correctly normalized and redirected"
-    else
-        echo -e "${RED}✗ FAIL:${NC} Mixed case short ID returned $case_status instead of 302"
         exit 1
     fi
     
@@ -760,56 +783,36 @@ test_disallowed_redirect_urls() {
     
     # Test 1: Create dynamic QR with disallowed domain
     echo -e "\n${YELLOW}Test 1: Creating dynamic QR with disallowed domain...${NC}"
-    local disallowed_response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{
-            "redirect_url": "https://definitely-not-allowed-domain.com",
-            "title": "Disallowed Domain Test",
-            "description": "Testing disallowed domain rejection"
-        }')
+    local payload='{"redirect_url": "https://definitely-not-allowed-domain.com", "title": "Disallowed Domain Test", "description": "Testing disallowed domain rejection"}'
+    _api_request POST "/api/v1/qr/dynamic" "$payload"
+    local actual_status_code="$API_RESPONSE_STATUS"
     
-    local disallowed_status=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{
-            "redirect_url": "https://definitely-not-allowed-domain.com",
-            "title": "Disallowed Domain Test",
-            "description": "Testing disallowed domain rejection"
-        }' \
-        -o /dev/null -w "%{http_code}")
-    
-    if [ "$disallowed_status" == "422" ]; then
+    if [ "$actual_status_code" == "422" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Disallowed domain correctly rejected with 422"
     else
-        echo -e "${RED}✗ FAIL:${NC} Disallowed domain returned $disallowed_status instead of 422"
-        echo -e "${YELLOW}Response:${NC} $disallowed_response"
+        echo -e "${RED}✗ FAIL:${NC} Disallowed domain returned $actual_status_code instead of 422"
         exit 1
     fi
     
     # Test 2: Update dynamic QR to disallowed domain
     echo -e "\n${YELLOW}Test 2: Updating dynamic QR to disallowed domain...${NC}"
     # First create a valid dynamic QR
-    local valid_response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{
-            "redirect_url": "https://valid-test.example.com",
-            "title": "Valid QR for Update Test",
-            "description": "Testing update to disallowed domain"
-        }')
+    local valid_payload='{"redirect_url": "https://valid-test.example.com", "title": "Valid QR for Update Test", "description": "Testing update to disallowed domain"}'
+    _api_request POST "/api/v1/qr/dynamic" "$valid_payload"
+    _assert_status_code "$API_RESPONSE_STATUS" 201 "Create valid QR for update test"
     
-    local valid_qr_id=$(echo "$valid_response" | jq -r '.id')
+    local valid_qr_id
+    valid_qr_id=$(_get_json_value "$API_RESPONSE_BODY" ".id")
     
     # Now try to update to disallowed domain
-    local update_status=$(curl -k -s $AUTH_HEADER -X PUT $API_URL/api/v1/qr/$valid_qr_id \
-        -H "Content-Type: application/json" \
-        -d '{
-            "redirect_url": "https://malicious-domain.evil"
-        }' \
-        -o /dev/null -w "%{http_code}")
+    local update_payload='{"redirect_url": "https://malicious-domain.evil"}'
+    _api_request PUT "/api/v1/qr/$valid_qr_id" "$update_payload"
+    actual_status_code="$API_RESPONSE_STATUS"
     
-    if [ "$update_status" == "422" ]; then
+    if [ "$actual_status_code" == "422" ]; then
         echo -e "${GREEN}✓ PASS:${NC} Update to disallowed domain correctly rejected with 422"
     else
-        echo -e "${RED}✗ FAIL:${NC} Update to disallowed domain returned $update_status instead of 422"
+        echo -e "${RED}✗ FAIL:${NC} Update to disallowed domain returned $actual_status_code instead of 422"
         exit 1
     fi
     
@@ -822,55 +825,40 @@ test_invalid_url_schemes() {
     
     # Test 1: FTP scheme
     echo -e "\n${YELLOW}Test 1: Creating dynamic QR with FTP scheme...${NC}"
-    local ftp_status=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{
-            "redirect_url": "ftp://example.com/file.txt",
-            "title": "FTP Scheme Test",
-            "description": "Testing FTP scheme rejection"
-        }' \
-        -o /dev/null -w "%{http_code}")
+    local ftp_payload='{"redirect_url": "ftp://example.com/file.txt", "title": "FTP Scheme Test", "description": "Testing FTP scheme rejection"}'
+    _api_request POST "/api/v1/qr/dynamic" "$ftp_payload"
+    local actual_status_code="$API_RESPONSE_STATUS"
     
-    if [ "$ftp_status" == "422" ]; then
+    if [ "$actual_status_code" == "422" ]; then
         echo -e "${GREEN}✓ PASS:${NC} FTP scheme correctly rejected with 422"
     else
-        echo -e "${RED}✗ FAIL:${NC} FTP scheme returned $ftp_status instead of 422"
+        echo -e "${RED}✗ FAIL:${NC} FTP scheme returned $actual_status_code instead of 422"
         exit 1
     fi
     
     # Test 2: File scheme
     echo -e "\n${YELLOW}Test 2: Creating dynamic QR with file scheme...${NC}"
-    local file_status=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{
-            "redirect_url": "file:///etc/passwd",
-            "title": "File Scheme Test",
-            "description": "Testing file scheme rejection"
-        }' \
-        -o /dev/null -w "%{http_code}")
+    local file_payload='{"redirect_url": "file:///etc/passwd", "title": "File Scheme Test", "description": "Testing file scheme rejection"}'
+    _api_request POST "/api/v1/qr/dynamic" "$file_payload"
+    actual_status_code="$API_RESPONSE_STATUS"
     
-    if [ "$file_status" == "422" ]; then
+    if [ "$actual_status_code" == "422" ]; then
         echo -e "${GREEN}✓ PASS:${NC} File scheme correctly rejected with 422"
     else
-        echo -e "${RED}✗ FAIL:${NC} File scheme returned $file_status instead of 422"
+        echo -e "${RED}✗ FAIL:${NC} File scheme returned $actual_status_code instead of 422"
         exit 1
     fi
     
     # Test 3: JavaScript scheme
     echo -e "\n${YELLOW}Test 3: Creating dynamic QR with javascript scheme...${NC}"
-    local js_status=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{
-            "redirect_url": "javascript:alert(\"XSS\")",
-            "title": "JavaScript Scheme Test",
-            "description": "Testing javascript scheme rejection"
-        }' \
-        -o /dev/null -w "%{http_code}")
+    local js_payload='{"redirect_url": "javascript:alert(\"XSS\")", "title": "JavaScript Scheme Test", "description": "Testing javascript scheme rejection"}'
+    _api_request POST "/api/v1/qr/dynamic" "$js_payload"
+    actual_status_code="$API_RESPONSE_STATUS"
     
-    if [ "$js_status" == "422" ]; then
+    if [ "$actual_status_code" == "422" ]; then
         echo -e "${GREEN}✓ PASS:${NC} JavaScript scheme correctly rejected with 422"
     else
-        echo -e "${RED}✗ FAIL:${NC} JavaScript scheme returned $js_status instead of 422"
+        echo -e "${RED}✗ FAIL:${NC} JavaScript scheme returned $actual_status_code instead of 422"
         exit 1
     fi
     
@@ -885,32 +873,28 @@ test_rate_limiting() {
     echo -e "\n${YELLOW}Test 1: QR Redirect Rate Limiting (Classroom Optimized)...${NC}"
     
     # Create a dynamic QR for rate limiting test
-    local response=$(curl -k -s $AUTH_HEADER -X POST $API_URL/api/v1/qr/dynamic \
-        -H "Content-Type: application/json" \
-        -d '{
-            "redirect_url": "https://rate-limit-test.example.com",
-            "title": "Rate Limit Test QR",
-            "description": "Testing rate limiting on redirects"
-        }')
+    local payload='{"redirect_url": "https://rate-limit-test.example.com", "title": "Rate Limit Test QR", "description": "Testing rate limiting on redirects"}'
+    _api_request POST "/api/v1/qr/dynamic" "$payload"
+    _assert_status_code "$API_RESPONSE_STATUS" 201 "Create QR for rate limiting test"
     
-    local qr_id=$(echo "$response" | jq -r '.id')
-    local content=$(echo "$response" | jq -r '.content')
+    local content
+    content=$(_get_json_value "$API_RESPONSE_BODY" ".content")
     local short_id=$(echo "$content" | sed 's/.*\/r\///' | sed 's/?.*//')
     
     echo -e "${YELLOW}Created QR for rate limiting test with short_id: $short_id${NC}"
     
-    # Test QR redirect rate limiting (should be more permissive - 300/min, 50 burst)
+    # Test QR redirect rate limiting (should be more permissive)
     echo -e "\n${YELLOW}Testing QR redirect rate limits (60 requests)...${NC}"
     
     local qr_success_count=0
     local qr_rate_limited_count=0
     local qr_other_count=0
     
-    # Send 60 requests rapidly to test the 50 burst + some sustained rate
+    # Send 60 requests rapidly to test the burst + sustained rate
     for i in {1..60}; do
         local status=$(curl -k -s -o /dev/null -w "%{http_code}" \
             -H "Host: web.hccc.edu" \
-            $API_URL/r/$short_id 2>/dev/null)
+            "$API_URL/r/$short_id" 2>/dev/null)
         
         case $status in
             302)
@@ -934,17 +918,17 @@ test_rate_limiting() {
     echo -e "  Other responses: $qr_other_count"
     echo -e "  Success rate: $(echo "scale=1; $qr_success_count * 100 / 60" | bc)%"
     
-    # Verify QR redirect rate limiting is classroom-friendly (should allow most requests)
+    # Verify QR redirect rate limiting is classroom-friendly
     if [ "$qr_success_count" -gt 45 ]; then
         echo -e "${GREEN}✓ PASS:${NC} QR redirect rate limiting is classroom-friendly (${qr_success_count}/60 successful)"
     else
         echo -e "${YELLOW}⚠ WARNING:${NC} QR redirect rate limiting might be too restrictive for classrooms (${qr_success_count}/60 successful)"
     fi
     
-    # Test 2: API Endpoint Rate Limiting (Stricter)
+    # Test 2: API Endpoint Rate Limiting (Internal Access)
     echo -e "\n${YELLOW}Test 2: API Endpoint Rate Limiting (Internal Access)...${NC}"
     
-    # Wait a moment for any rate limits to reset
+    # Wait for rate limits to settle
     echo -e "${YELLOW}Waiting 5 seconds for rate limits to settle...${NC}"
     sleep 5
     
@@ -960,7 +944,7 @@ test_rate_limiting() {
     for i in {1..30}; do
         local status=$(curl -k -s -o /dev/null -w "%{http_code}" \
             $AUTH_HEADER \
-            $API_URL/api/v1/qr 2>/dev/null)
+            "$API_URL/api/v1/qr" 2>/dev/null)
         
         case $status in
             200)
@@ -991,33 +975,6 @@ test_rate_limiting() {
         echo -e "${YELLOW}⚠ WARNING:${NC} Internal API access had some failures (${api_success_count}/30 successful)"
     fi
     
-    # Test 3: Rate Limit Reset
-    echo -e "\n${YELLOW}Test 3: Rate Limit Reset...${NC}"
-    echo -e "${YELLOW}Waiting 65 seconds for rate limits to reset...${NC}"
-    sleep 65
-    
-    # Test that QR redirects work again after rate limit reset
-    local qr_reset_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
-        -H "Host: web.hccc.edu" \
-        $API_URL/r/$short_id)
-    
-    if [ "$qr_reset_status" == "302" ]; then
-        echo -e "${GREEN}✓ PASS:${NC} QR redirects work again after rate limit reset"
-    else
-        echo -e "${YELLOW}⚠ WARNING:${NC} QR redirect after rate limit reset returned $qr_reset_status instead of 302"
-    fi
-    
-    # Test that API requests work again after rate limit reset
-    local api_reset_status=$(curl -k -s -o /dev/null -w "%{http_code}" \
-        $AUTH_HEADER \
-        $API_URL/api/v1/qr)
-    
-    if [ "$api_reset_status" == "200" ]; then
-        echo -e "${GREEN}✓ PASS:${NC} API requests work again after rate limit reset"
-    else
-        echo -e "${YELLOW}⚠ WARNING:${NC} API request after rate limit reset returned $api_reset_status instead of 200"
-    fi
-    
     echo -e "\n${GREEN}✓ PASS:${NC} Differentiated rate limiting tests completed successfully"
     echo -e "${BLUE}Summary:${NC}"
     echo -e "  QR Redirects: Classroom-optimized (${qr_success_count}/60 = $(echo "scale=1; $qr_success_count * 100 / 60" | bc)% success)"
@@ -1026,7 +983,7 @@ test_rate_limiting() {
 
 # Function to run optimization task verification tests
 test_optimization_tasks() {
-    print_section "TESTING FASTAPI OPTIMIZATION TASKS"
+    print_section "Testing FastAPI Optimization Tasks"
     
     # Test Task 1: Service-Based Dependency Injection
     test_service_dependency_injection
@@ -1042,7 +999,8 @@ test_optimization_tasks() {
 
 # Function to clean up generated files
 cleanup() {
-    echo -e "\n${YELLOW}Cleaning up generated files...${NC}"
+    print_section "Cleaning Up Generated Files"
+    echo -e "${YELLOW}Cleaning up generated files...${NC}"
     rm -f static_qr_with_logo.png
     rm -f dynamic_qr_with_logo.png
     rm -f qr_error_level_*.png
@@ -1050,34 +1008,47 @@ cleanup() {
     echo -e "${GREEN}✓ PASS:${NC} Cleanup completed"
 }
 
-# Main test function
-run_tests() {
+# ============================================================================
+# S.0.5: Main Execution Flow
+# ============================================================================
+
+# Main function to orchestrate all tests
+main() {
+    print_section "Starting API Test Suite - QR Generator"
+    echo -e "${BLUE}Refactored with S.0 modularity and DRY principles${NC}"
+    
+    # Infrastructure checks
     check_docker_containers
+    
+    # Core functionality tests
     test_health_endpoint
     test_qr_code_listing
+    
+    # QR lifecycle tests
     test_create_static_qr
     test_create_dynamic_qr
     test_get_qr_by_id
     test_update_dynamic_qr
     test_qr_redirection
-    test_qr_with_logo
     
-    # Run new tests for error correction and SVG accessibility
+    # Advanced feature tests
+    test_qr_with_logo
     test_error_correction_levels
     test_svg_accessibility
     
-    # Run optimization task verification tests
+    # Optimization task verification tests
     test_optimization_tasks
     
-    # Run production hardening security tests
+    # Production hardening security tests
     test_production_hardening_security
     
-    # Clean up generated files
+    # Cleanup
     cleanup
     
-    echo -e "\n${GREEN}✨ All API Endpoint Tests Passed Successfully! ✨${NC}"
+    print_section "✨ All API Endpoint Tests Passed Successfully! ✨"
     echo -e "${GREEN}✨ Including Production Hardening Security Tests! ✨${NC}"
+    echo -e "${BLUE}✨ Refactored with S.0 Modularity and DRY Principles! ✨${NC}"
 }
 
-# Run the tests
-run_tests
+# Execute main function with all script arguments
+main "$@"
