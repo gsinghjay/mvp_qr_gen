@@ -74,6 +74,32 @@ groups:
           summary: "High memory usage detected"
           description: "Container {{ $labels.name }} memory usage is {{ $value | humanizePercentage }}, which is above 90% of the limit."
 
+      # Health Status Degraded Alert (catches disk/memory/CPU issues)
+      - alert: HealthStatusDegraded
+        expr: |
+          increase(traefik_service_requests_total{service="api-service",code="200"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: system_health
+        annotations:
+          summary: "Monitor health endpoint for degraded status"
+          description: "Health endpoint is responding but may report 'degraded' status. Check system metrics: disk usage (>90%), memory usage (>90%), CPU usage (>90%), or database connectivity issues. Manual health check recommended: curl -k -u admin_user:strongpassword https://10.1.6.12/health"
+
+      # Health Endpoint Unavailable Alert
+      - alert: HealthEndpointUnavailable
+        expr: |
+          sum(rate(traefik_service_requests_total{service="api-service",code!="200"}[5m])) by (service) > 0.1
+          or
+          absent(up{job="qr-app"})
+        for: 1m
+        labels:
+          severity: critical
+          component: health
+        annotations:
+          summary: "Health endpoint unavailable"
+          description: "Health endpoint is returning errors or service is down. Immediate investigation required."
+
       # Database Connection Issues Alert
       - alert: DatabaseConnectionIssues
         expr: |
