@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Production-safe database restore script
-# This script properly manages service lifecycle during restore operations
+# Now a thin wrapper around the enhanced manage_db.py
 
 set -e
 
@@ -16,94 +16,30 @@ fi
 echo "=== PRODUCTION-SAFE DATABASE RESTORE ==="
 echo "Backup file: $BACKUP_FILE"
 echo "Timestamp: $(date)"
+echo "Using enhanced manage_db.py with API service management"
 echo
 
-# Verify backup file exists
-echo "1. Verifying backup file exists..."
-if ! docker-compose exec api test -f "/app/data/backups/$BACKUP_FILE" && ! docker-compose exec api test -f "/app/backups/$BACKUP_FILE"; then
-    echo "❌ Backup file $BACKUP_FILE not found in either /app/data/backups/ or /app/backups/"
-    exit 1
-fi
-echo "✅ Backup file found"
-
 # Get current database state for verification
-echo "2. Recording current database state..."
-QR_COUNT_BEFORE=$(docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT COUNT(*) FROM qr_codes;" | tr -d ' \r\n')
-SCAN_COUNT_BEFORE=$(docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT COUNT(*) FROM scan_logs;" | tr -d ' \r\n')
+echo "1. Recording current database state..."
+QR_COUNT_BEFORE=$(docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT COUNT(*) FROM qr_codes;" 2>/dev/null | tr -d ' \r\n' || echo "unknown")
+SCAN_COUNT_BEFORE=$(docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT COUNT(*) FROM scan_logs;" 2>/dev/null | tr -d ' \r\n' || echo "unknown")
 echo "✅ Current state: $QR_COUNT_BEFORE QR codes, $SCAN_COUNT_BEFORE scan logs"
 
-# Create safety backup
-echo "3. Creating safety backup before restore..."
-SAFETY_BACKUP_NAME="safety_backup_$(date +%Y%m%d_%H%M%S).sql"
-docker-compose exec api python /app/scripts/manage_db.py --create-backup
-echo "✅ Safety backup created"
-
-# Stop API service to prevent database access during restore
-echo "4. Stopping API service for safe restore..."
-docker-compose stop api
-echo "✅ API service stopped"
-
-# Wait a moment for connections to close
-echo "Waiting 5 seconds for connections to close..."
-sleep 5
-
-# Perform the restore
-echo "5. Performing database restore..."
-if docker-compose exec postgres bash -c "
-    export PGPASSWORD=pgpassword
-    # Find the backup file
-    if [ -f '/app/data/backups/$BACKUP_FILE' ]; then
-        BACKUP_PATH='/app/data/backups/$BACKUP_FILE'
-    elif [ -f '/app/backups/$BACKUP_FILE' ]; then
-        BACKUP_PATH='/app/backups/$BACKUP_FILE'
-    else
-        echo 'Backup file not found'
-        exit 1
-    fi
-    
-    # Drop existing tables
-    psql -h localhost -U pguser -d qrdb -c 'DROP TABLE IF EXISTS scan_logs CASCADE;'
-    psql -h localhost -U pguser -d qrdb -c 'DROP TABLE IF EXISTS qr_codes CASCADE;'
-    psql -h localhost -U pguser -d qrdb -c 'DROP TABLE IF EXISTS alembic_version CASCADE;'
-    
-    # Restore from backup
-    pg_restore -h localhost -U pguser -d qrdb --no-owner --no-privileges --single-transaction --exit-on-error \"\$BACKUP_PATH\"
-"; then
-    echo "✅ Database restore completed successfully"
+# Execute restore using manage_db.py with API service management
+echo "2. Starting production-safe restore via manage_db.py..."
+if docker-compose exec api python /app/scripts/manage_db.py --restore "$BACKUP_FILE" --with-api-stop; then
+    echo "✅ Production-safe restore completed successfully!"
+    echo "Restore completed with API service lifecycle management"
 else
-    echo "❌ Database restore failed"
-    echo "Starting API service..."
-    docker-compose start api
-    exit 1
-fi
-
-# Start API service
-echo "6. Starting API service..."
-docker-compose start api
-
-# Wait for API to be healthy
-echo "7. Waiting for API to become healthy..."
-timeout=60
-counter=0
-while [ $counter -lt $timeout ]; do
-    if docker-compose exec api curl -f http://localhost:8000/health >/dev/null 2>&1; then
-        echo "✅ API service is healthy"
-        break
-    fi
-    echo "Waiting for API to be ready... ($counter/$timeout)"
-    sleep 2
-    counter=$((counter+2))
-done
-
-if [ $counter -ge $timeout ]; then
-    echo "❌ API service failed to become healthy within $timeout seconds"
+    echo "❌ Production-safe restore failed"
+    echo "Check the manage_db.py logs for detailed error information"
     exit 1
 fi
 
 # Verify restore results
-echo "8. Verifying restore results..."
-QR_COUNT_AFTER=$(docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT COUNT(*) FROM qr_codes;" | tr -d ' \r\n')
-SCAN_COUNT_AFTER=$(docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT COUNT(*) FROM scan_logs;" | tr -d ' \r\n')
+echo "3. Verifying restore results..."
+QR_COUNT_AFTER=$(docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT COUNT(*) FROM qr_codes;" 2>/dev/null | tr -d ' \r\n' || echo "unknown")
+SCAN_COUNT_AFTER=$(docker-compose exec postgres psql -U pguser -d qrdb -t -c "SELECT COUNT(*) FROM scan_logs;" 2>/dev/null | tr -d ' \r\n' || echo "unknown")
 
 echo "Restore Results:"
 echo "  QR codes before: $QR_COUNT_BEFORE"
@@ -111,8 +47,8 @@ echo "  QR codes after:  $QR_COUNT_AFTER"
 echo "  Scan logs before: $SCAN_COUNT_BEFORE"
 echo "  Scan logs after:  $SCAN_COUNT_AFTER"
 
-# Validate database structure
-echo "9. Validating database structure..."
+# Validate database structure using manage_db.py
+echo "4. Validating database structure..."
 if docker-compose exec api python /app/scripts/manage_db.py --validate; then
     echo "✅ Database validation passed"
 else
@@ -123,4 +59,4 @@ fi
 echo
 echo "🎉 PRODUCTION-SAFE RESTORE COMPLETED SUCCESSFULLY!"
 echo "Database has been safely restored from $BACKUP_FILE"
-echo "API service is running and healthy" 
+echo "All operations managed by enhanced manage_db.py with proper API lifecycle control" 
