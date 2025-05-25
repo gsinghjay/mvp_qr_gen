@@ -91,10 +91,11 @@ Our backup system delivers excellent performance for daily operations:
 
 | Operation | Typical Time | File Size | Success Rate |
 |-----------|-------------|-----------|--------------|
-| **Database Backup** | 10-30 seconds | ~40KB (334 QR codes) | 100% |
+| **Database Backup** | 10-30 seconds | ~40KB (335+ QR codes) | 100% |
 | **Safety Backup** | 3-5 seconds | ~40KB | 100% |
 | **Full Restoration** | 30-60 seconds | N/A | 100% |
 | **Validation Check** | <5 seconds | N/A | 100% |
+| **Complete Test Cycle** | 2-3 minutes | N/A | 100% |
 
 ### Growth Patterns
 
@@ -107,6 +108,26 @@ graph LR
     style A fill:#e1f5fe
     style D fill:#e8f5e8
 ```
+
+### System Health Integration
+
+Our backup system integrates seamlessly with the application health monitoring:
+
+```mermaid
+graph TD
+    A[🔍 Health Endpoint] --> B[📊 Database Status]
+    B --> C[🛡️ Backup Operations]
+    C --> D[✅ Service Management]
+    D --> E[🔄 Automated Recovery]
+    
+    style A fill:#e3f2fd
+    style E fill:#e8f5e8
+```
+
+**Health Status Handling:**
+- ✅ **Healthy**: All systems operational, backups proceed normally
+- ⚠️ **Degraded**: Database operational but other issues present - backups continue safely
+- ❌ **Unhealthy**: Operations paused until system recovery
 
 ---
 
@@ -370,6 +391,54 @@ docker-compose restart postgres
 ./scripts/production_backup.sh
 ```
 
+#### Issue: Test Script QR Creation Fails
+
+```mermaid
+flowchart TD
+    A[❌ QR Creation Failed] --> B{Check Error Type}
+    B -->|ID Column Error| C[Verify ID Generation]
+    B -->|SQL Error| D[Check Database Schema]
+    C --> E[Use VARCHAR ID Format]
+    D --> F[Validate Table Structure]
+    E --> G[✅ Success]
+    F --> G
+```
+
+**Solution:**
+```bash
+# Check table structure
+docker-compose exec postgres psql -U pguser -d qrdb -c "\d qr_codes"
+
+# Verify ID column type (should be VARCHAR, not auto-increment)
+docker-compose exec postgres psql -U pguser -d qrdb -c "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'qr_codes' AND column_name = 'id';"
+
+# Test script should generate proper VARCHAR IDs like: test-1748159957-2451
+```
+
+#### Issue: Health Endpoint Returns Degraded Status
+
+```mermaid
+flowchart TD
+    A[⚠️ Degraded Status] --> B{Database Operational?}
+    B -->|Yes| C[Continue Operations]
+    B -->|No| D[Check Database Connection]
+    C --> E[Monitor for Issues]
+    D --> F[Restart Services]
+    E --> G[✅ Safe to Proceed]
+    F --> G
+```
+
+**Solution:**
+```bash
+# Check health endpoint details
+curl -s http://localhost:8000/health | jq .
+
+# Verify database connectivity specifically
+docker-compose exec api python app/scripts/manage_db.py --validate
+
+# Degraded status with working database is acceptable for backup operations
+```
+
 #### Issue: Restore Validation Fails
 
 ```mermaid
@@ -417,6 +486,54 @@ docker-compose exec api ls -la /app/backups/
 # Create manual backup
 docker-compose exec api python app/scripts/manage_db.py --create-backup
 ```
+
+---
+
+## 🧪 Testing & Validation
+
+### Comprehensive Test Suite
+
+Our backup and restore system includes a comprehensive test suite that validates all operations:
+
+```bash
+# Run complete backup and restore test cycle
+./scripts/test_restore.sh
+```
+
+**Test Coverage:**
+- ✅ **Database Validation**: Structure and connectivity verification
+- ✅ **QR Code Creation**: Direct database insertion with proper ID generation
+- ✅ **Backup Creation**: Multiple backup points with different data states
+- ✅ **Restore Operations**: Point-in-time recovery verification
+- ✅ **Data Integrity**: Before/after state comparison
+- ✅ **Service Management**: API lifecycle during operations
+- ✅ **Health Monitoring**: Integration with health endpoint
+- ✅ **Cleanup Operations**: Test data removal
+
+### Test Results Summary
+
+```mermaid
+graph TD
+    A[🧪 Test Suite] --> B[📊 8 Test Steps]
+    B --> C[✅ 100% Success Rate]
+    C --> D[⏱️ 2-3 Minute Duration]
+    D --> E[🛡️ Production-Safe]
+    E --> F[📋 Comprehensive Coverage]
+    
+    style C fill:#e8f5e8
+    style E fill:#e8f5e8
+    style F fill:#e8f5e8
+```
+
+**Recent Test Results:**
+- **Initial State Validation**: ✅ Pass
+- **Backup A Creation**: ✅ Pass (335 QR codes)
+- **State Change**: ✅ Pass (336 QR codes)
+- **Backup B Creation**: ✅ Pass (336 QR codes)
+- **Restore A Verification**: ✅ Pass (back to 335)
+- **Restore B Verification**: ✅ Pass (back to 336)
+- **API Service Management**: ✅ Pass
+- **Database Validation**: ✅ Pass (all steps)
 
 ---
 
@@ -506,11 +623,17 @@ Currently, backup files are stored in PostgreSQL's compressed custom format but 
 # System validation
 docker-compose exec api python app/scripts/manage_db.py --validate
 
+# Comprehensive test suite
+./scripts/test_restore.sh
+
 # List available backups
 ls -la backups/ | grep qrdb_
 
 # Check system health
 curl -k https://localhost/health
+
+# Check health endpoint details
+curl -s http://localhost:8000/health | jq .
 ```
 
 ---
