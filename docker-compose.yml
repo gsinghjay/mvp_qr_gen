@@ -36,6 +36,8 @@ services:
       - ./backups:/app/backups
       - qr_logs:/logs
       - ./app/tests:/app/app/tests # For development/testing if running tests inside container
+      - ./app/scripts:/app/scripts # Mount scripts for immediate availability without rebuild
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Allow container to control Docker (for backup/restore API management)
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -73,7 +75,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pguser}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pguser} -d ${POSTGRES_DB:-qrdb}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -93,7 +95,7 @@ services:
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${TEST_POSTGRES_USER:-pguser_test}"]
+      test: ["CMD-SHELL", "pg_isready -U ${TEST_POSTGRES_USER:-pguser_test} -d ${TEST_POSTGRES_DB:-qrdb_test}"]
       interval: 10s
       timeout: 5s
       retries: 5

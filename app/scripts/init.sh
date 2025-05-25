@@ -1,6 +1,42 @@
 #!/bin/bash
 set -e
 
+# Load environment variables from .env file
+if [ -f ".env" ]; then
+    echo "Loading environment variables from .env file..."
+    # Export variables to make them available to subshells
+    export $(grep -v '^#' .env | xargs)
+else
+    echo "❌ Error: .env file not found. Cannot proceed."
+    exit 1
+fi
+
+# Check required environment variables (fail fast)
+required_vars_init=("POSTGRES_USER" "POSTGRES_PASSWORD" "POSTGRES_DB" "POSTGRES_HOST" "ENVIRONMENT" "PORT")
+missing_vars_init=()
+
+for var in "${required_vars_init[@]}"; do
+    if [ -z "${!var}" ]; then
+        missing_vars_init+=("$var")
+    fi
+done
+
+if [ ${#missing_vars_init[@]} -gt 0 ]; then
+    echo "❌ Error: Required environment variables for init.sh are not set:"
+    for var in "${missing_vars_init[@]}"; do
+        echo "   - $var"
+    done
+    echo ""
+    echo "Please check your .env file and ensure these variables are set:"
+    echo "   POSTGRES_USER=pguser"
+    echo "   POSTGRES_PASSWORD=pgpassword"
+    echo "   POSTGRES_DB=qrdb"
+    echo "   POSTGRES_HOST=postgres"
+    echo "   ENVIRONMENT=development|production"
+    echo "   PORT=8000"
+    exit 1
+fi
+
 # PostgreSQL is now the only database type
 echo "PostgreSQL database system enabled"
 
@@ -50,6 +86,8 @@ backup_database() {
 echo "Setting up data directory..."
 mkdir -p "/app/data"
 chmod -R 777 "/app/data"
+
+# Note: Script permissions are set on host side for mounted volumes
 
 # Create external backups directory if it doesn't exist
 if [ -d "/app/backups" ]; then
