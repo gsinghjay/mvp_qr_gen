@@ -5,6 +5,38 @@
 
 set -e
 
+# Load environment variables from .env file
+if [ -f ".env" ]; then
+    echo "Loading environment variables from .env file..."
+    # Export variables to make them available to subshells
+    export $(grep -v '^#' .env | xargs)
+else
+    echo "❌ Error: .env file not found. Cannot proceed."
+    exit 1
+fi
+
+# Check required environment variables (fail fast)
+required_vars_restore=("POSTGRES_USER" "POSTGRES_DB")
+missing_vars_restore=()
+
+for var in "${required_vars_restore[@]}"; do
+    if [ -z "${!var}" ]; then
+        missing_vars_restore+=("$var")
+    fi
+done
+
+if [ ${#missing_vars_restore[@]} -gt 0 ]; then
+    echo "❌ Error: Required environment variables for safe_restore.sh are not set:"
+    for var in "${missing_vars_restore[@]}"; do
+        echo "   - $var"
+    done
+    echo ""
+    echo "Please check your .env file and ensure these variables are set:"
+    echo "   POSTGRES_USER=pguser"
+    echo "   POSTGRES_DB=qrdb"
+    exit 1
+fi
+
 BACKUP_FILE="$1"
 
 if [ -z "$BACKUP_FILE" ]; then
@@ -21,7 +53,7 @@ echo "Timestamp: $(date)"
 echo "Using enhanced manage_db.py with centralized API service management"
 echo
 
-# Load environment variables for database credentials
+# Load environment variables for database credentials (already loaded above, but keeping for compatibility)
 if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
 fi
