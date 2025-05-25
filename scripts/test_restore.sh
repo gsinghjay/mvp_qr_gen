@@ -11,15 +11,33 @@ if [ -f ".env" ]; then
     source .env
 fi
 
-echo "=== ENHANCED BACKUP AND RESTORE TEST ==="
-echo "Timestamp: $(date)"
-echo "Testing enhanced manage_db.py backup and restore functionality"
-echo
+# Check required environment variables (fail fast)
+required_vars=("POSTGRES_USER" "POSTGRES_DB" "API_URL" "AUTH_USER" "AUTH_PASS" "BASE_URL")
+missing_vars=()
 
-# Load environment variables for database credentials
-if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
+for var in "${required_vars[@]}"; do
+    if [ -z "${!var}" ]; then
+        missing_vars+=("$var")
+    fi
+done
+
+if [ ${#missing_vars[@]} -gt 0 ]; then
+    echo "❌ Error: Required environment variables are not set:"
+    for var in "${missing_vars[@]}"; do
+        echo "   - $var"
+    done
+    echo ""
+    echo "Please check your .env file or set these variables manually:"
+    echo "   export POSTGRES_USER=pguser"
+    echo "   export POSTGRES_DB=qrdb"
+    echo "   export API_URL=https://10.1.6.12"
+    echo "   export AUTH_USER=admin_user"
+    echo "   export AUTH_PASS=strongpassword"
+    echo "   export BASE_URL=https://web.hccc.edu"
+    exit 1
 fi
+
+
 
 # Function to ensure API service is running
 ensure_api_running() {
@@ -65,25 +83,26 @@ ensure_api_running() {
 
 # Function to get QR count
 get_qr_count() {
-    docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM qr_codes;" 2>/dev/null | tr -d ' \r\n' || echo "0"
+    # Note: POSTGRES_PASSWORD not needed here since docker-compose exec inherits container environment
+    docker-compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FROM qr_codes;" 2>/dev/null | tr -d ' \r\n' || echo "0"
 }
 
 # Function to get scan count
 get_scan_count() {
-    docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM scan_logs;" 2>/dev/null | tr -d ' \r\n' || echo "0"
+    docker-compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FROM scan_logs;" 2>/dev/null | tr -d ' \r\n' || echo "0"
 }
 
 # Function to check if QR exists by content
 qr_exists() {
     local content="$1"
-    local count=$(docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM qr_codes WHERE content = '$content';" 2>/dev/null | tr -d ' \r\n' || echo "0")
+    local count=$(docker-compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FROM qr_codes WHERE content = '$content';" 2>/dev/null | tr -d ' \r\n' || echo "0")
     [ "$count" -gt "0" ]
 }
 
 # Function to check if QR exists by ID
 qr_exists_by_id() {
     local qr_id="$1"
-    local count=$(docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM qr_codes WHERE id = '$qr_id';" 2>/dev/null | tr -d ' \r\n' || echo "0")
+    local count=$(docker-compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FROM qr_codes WHERE id = '$qr_id';" 2>/dev/null | tr -d ' \r\n' || echo "0")
     [ "$count" -gt "0" ]
 }
 
@@ -97,12 +116,8 @@ create_test_qr_api() {
     echo "   Creating QR via API (type: $qr_type, title: $title)" >&2
     
     # Load environment variables for API access (matching test_api_script.sh pattern)
-    local API_URL=${API_URL:-"https://10.1.6.12"}
-    local AUTH_USER=${AUTH_USER:-"admin_user"}
-    local AUTH_PASS=${AUTH_PASS:-"strongpassword"}
     local AUTH_HEADER="--user ${AUTH_USER}:${AUTH_PASS}"
     
-    echo "   Using API_URL: $API_URL" >&2
     echo "   Using AUTH_USER: $AUTH_USER" >&2
     
     if [ "$qr_type" = "static" ]; then
@@ -152,7 +167,7 @@ create_test_qr_direct() {
     if [ "$qr_type" = "dynamic" ]; then
         # Use Python to generate UUID-based short_id like the API does
         short_id=$(docker-compose exec api python -c "import uuid; print(str(uuid.uuid4())[:8])" | tr -d '\r\n')
-        content="https://web.hccc.edu/r/$short_id"
+        content="$BASE_URL/r/$short_id"
         echo "   Generated short_id (UUID-based): $short_id, updated content: $content" >&2
     fi
     
@@ -161,7 +176,7 @@ create_test_qr_direct() {
     
     echo "   Executing SQL: $sql_command" >&2
     
-    if docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -c "$sql_command" >&2; then
+    if docker-compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$sql_command" >&2; then
         echo "   ✅ QR code inserted successfully with ID: $qr_id" >&2
         echo "$qr_id"  # Only the ID goes to stdout
         return 0
@@ -177,7 +192,7 @@ delete_qr_by_content() {
     echo "   Attempting to delete QR with content: $content"
     
     # First check if it exists
-    local exists_count=$(docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM qr_codes WHERE content = '$content';" 2>/dev/null | tr -d ' \r\n' || echo "0")
+    local exists_count=$(docker-compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FROM qr_codes WHERE content = '$content';" 2>/dev/null | tr -d ' \r\n' || echo "0")
     
     if [ "$exists_count" -eq "0" ]; then
         echo "   ⚠️  QR with content '$content' does not exist"
@@ -185,7 +200,7 @@ delete_qr_by_content() {
     fi
     
     # Delete the QR code
-    if docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -c "DELETE FROM qr_codes WHERE content = '$content';" 2>&1; then
+    if docker-compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "DELETE FROM qr_codes WHERE content = '$content';" 2>&1; then
         echo "   ✅ Deleted QR with content: $content"
         return 0
     else
@@ -200,7 +215,7 @@ delete_qr_by_id() {
     echo "   Attempting to delete QR with ID: $qr_id"
     
     # First check if it exists
-    local exists_count=$(docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM qr_codes WHERE id = '$qr_id';" 2>/dev/null | tr -d ' \r\n' || echo "0")
+    local exists_count=$(docker-compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -t -c "SELECT COUNT(*) FROM qr_codes WHERE id = '$qr_id';" 2>/dev/null | tr -d ' \r\n' || echo "0")
     
     if [ "$exists_count" -eq "0" ]; then
         echo "   ⚠️  QR with ID '$qr_id' does not exist"
@@ -208,7 +223,7 @@ delete_qr_by_id() {
     fi
     
     # Delete the QR code
-    if docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -c "DELETE FROM qr_codes WHERE id = '$qr_id';" 2>&1; then
+    if docker-compose exec postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "DELETE FROM qr_codes WHERE id = '$qr_id';" 2>&1; then
         echo "   ✅ Deleted QR with ID: $qr_id"
         return 0
     else
@@ -231,9 +246,7 @@ echo "✅ Database validation passed"
 # Create a known test QR code that we'll delete (using API for real-world fidelity)
 TEST_QR_INITIAL="test-initial-qr-$(date +%s)"
 echo "Creating initial test QR via API: $TEST_QR_INITIAL"
-echo "DEBUG: About to call create_test_qr_api function"
 INITIAL_QR_ID=$(create_test_qr_api "static" "Initial Test QR" "$TEST_QR_INITIAL" "")
-echo "DEBUG: Function returned, INITIAL_QR_ID='$INITIAL_QR_ID'"
 
 if [ -z "$INITIAL_QR_ID" ]; then
     echo "❌ Failed to create initial test QR via API"
