@@ -51,6 +51,8 @@ echo "Setting up data directory..."
 mkdir -p "/app/data"
 chmod -R 777 "/app/data"
 
+# Note: Script permissions are set on host side for mounted volumes
+
 # Create external backups directory if it doesn't exist
 if [ -d "/app/backups" ]; then
     echo "External backups directory exists"
