@@ -63,12 +63,12 @@ COPY --from=builder /app/venv /app/venv
 COPY ./app /app/app
 COPY ./alembic /app/alembic
 COPY ./alembic.ini /app/alembic.ini
-COPY app/scripts/init.sh /app/scripts/
-COPY app/scripts/manage_db.py /app/scripts/
+
+# Create scripts directory (will be mounted in docker-compose)
+RUN mkdir -p /app/scripts
 
 # Set proper ownership for copied files
-RUN chown -R appuser:appuser /app \
-    && chmod +x /app/scripts/init.sh /app/scripts/manage_db.py
+RUN chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
