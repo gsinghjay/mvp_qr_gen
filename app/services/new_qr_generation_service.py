@@ -74,10 +74,16 @@ class NewQRGenerationService:
             image_bytes = await self.formatter.format_qr_image(qr_data, image_params, output_format)
             
             logger.info(f"Successfully created {output_format} QR code: {len(image_bytes)} bytes")
+            
+            # Log metrics for successful image generation
+            MetricsLogger.log_image_generated(output_format, True)
+            
             return image_bytes
             
         except Exception as e:
             logger.error(f"Failed to create and format QR code: {e}")
+            # Log metrics for failed image generation
+            MetricsLogger.log_image_generated(output_format, False)
             raise
 
     @MetricsLogger.time_service_call("NewQRGenerationService", "create_and_format_qr_sync")
@@ -124,11 +130,13 @@ class NewQRGenerationService:
                             output_format=output_format,
                             error_correction=error_correction
                         ))
-                        return future.result(timeout=10)
+                        result = future.result(timeout=10)
+                        # Note: Metrics for the image generation are already logged in create_and_format_qr
+                        return result
             except RuntimeError:
                 # No running event loop, create a new one
                 logger.debug("Creating new event loop")
-                return asyncio.run(
+                result = asyncio.run(
                     self.create_and_format_qr(
                         content=content,
                         image_params=image_params,
@@ -136,8 +144,12 @@ class NewQRGenerationService:
                         error_correction=error_correction
                     )
                 )
+                # Note: Metrics for the image generation are already logged in create_and_format_qr
+                return result
         except Exception as e:
             logger.error(f"Failed to create and format QR code (sync): {e}")
+            # Log metrics for failed image generation if the async method didn't already do it
+            MetricsLogger.log_image_generated(output_format, False)
             raise
 
     @MetricsLogger.time_service_call("NewQRGenerationService", "validate_generation_params")
