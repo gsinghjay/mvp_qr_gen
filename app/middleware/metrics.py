@@ -13,6 +13,8 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ..core.config import settings
+# Import custom metrics to ensure they're registered with prometheus_client
+from ..core import metrics_logger  # This ensures custom metrics are included in generate_latest()
 
 # Define application-level metrics (complementing Traefik's edge metrics)
 REQUEST_COUNT = Counter(
