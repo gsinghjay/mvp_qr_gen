@@ -60,6 +60,16 @@ class QRImageParameters(BaseModel):
         pattern=r"^#[0-9A-Fa-f]{6}$",
         description="QR code background color in hex format (#RRGGBB)",
     )
+    data_dark_color: str | None = Field(
+        default=None,
+        pattern=r"^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$",
+        description="Color for dark data modules in hex format (#RRGGBB or #RRGGBBAA). Overrides fill_color for data modules."
+    )
+    data_light_color: str | None = Field(
+        default=None,
+        pattern=r"^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$",
+        description="Color for light data modules in hex format (#RRGGBB or #RRGGBBAA). Overrides back_color for data modules."
+    )
     include_logo: bool = Field(
         default=False,
         description="Whether to include the default logo in the QR code"
