@@ -9,6 +9,10 @@ on:
       - 'BACKUP-RESTORE.md'
       - 'WIKI.md'
       - 'scripts/update_wiki.sh'
+    paths-ignore:
+      - 'CHANGELOG.md'
+      - 'pyproject.toml'
+      - '.github/workflows/semantic-release.yml'
   workflow_dispatch:  # Allow manual triggering
 
 # Ensure this workflow doesn't interfere with semantic-release
@@ -21,18 +25,43 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Check if semantic-release is running
+    - name: Wait for semantic-release completion
       if: github.event_name == 'push'
       run: |
-        echo "Checking for concurrent workflows..."
-        # Brief pause to avoid race conditions
-        sleep 10
+        echo "🔍 Checking for running semantic-release workflows..."
+        
+        # Wait up to 5 minutes for semantic-release to complete
+        max_attempts=30
+        attempt=1
+        
+        while [ $attempt -le $max_attempts ]; do
+          echo "⏳ Attempt $attempt/$max_attempts - Checking for running workflows..."
+          
+          # Check if semantic-release workflow is running
+          running_workflows=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs?status=in_progress&branch=main" \
+            | jq -r '.workflow_runs[] | select(.name == "Semantic Release") | .id' || echo "")
+          
+          if [ -z "$running_workflows" ]; then
+            echo "✅ No semantic-release workflow running, proceeding..."
+            break
+          else
+            echo "⏳ Semantic-release workflow still running, waiting 10 seconds..."
+            sleep 10
+            attempt=$((attempt + 1))
+          fi
+        done
+        
+        if [ $attempt -gt $max_attempts ]; then
+          echo "⚠️  Timeout waiting for semantic-release, proceeding anyway..."
+        fi
         
     - name: Checkout main repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
         ref: main  # Always use latest main after semantic-release
+        token: ${{ secrets.GITHUB_TOKEN }}  # Ensure we can see latest changes
         
     - name: Checkout wiki repository
       uses: actions/checkout@v4
