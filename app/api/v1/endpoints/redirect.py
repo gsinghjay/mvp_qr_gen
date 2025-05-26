@@ -17,6 +17,7 @@ from app.models.qr import QRCode
 from app.services.qr_service import QRCodeService
 from app.core.config import settings
 from app.core.exceptions import QRCodeNotFoundError, DatabaseError
+from app.core.metrics_logger import MetricsLogger
 
 # Configure logger
 import logging
@@ -129,17 +130,27 @@ async def redirect_qr(
             },
         )
 
+        # Log successful redirect processing
+        MetricsLogger.log_redirect_processed('success')
+        
         # Redirect to the target URL
         return RedirectResponse(url=redirect_url, status_code=302)
 
     except QRCodeNotFoundError as e:
         logger.info(f"QR code not found: {normalized_short_id if 'normalized_short_id' in locals() else short_id}")
+        MetricsLogger.log_redirect_processed('not_found')
         raise HTTPException(status_code=404, detail=str(e))
-    except HTTPException:
+    except HTTPException as http_e:
         # Re-raise HTTPExceptions (including our 400 errors above)
+        # Log based on status code
+        if http_e.status_code == 400:
+            MetricsLogger.log_redirect_processed('invalid')
+        else:
+            MetricsLogger.log_redirect_processed('error')
         raise
     except DatabaseError as e:
         logger.error(f"Database error processing QR code redirect: {str(e)}")
+        MetricsLogger.log_redirect_processed('error')
         raise HTTPException(
             status_code=503, 
             detail="Service temporarily unavailable",
@@ -147,4 +158,5 @@ async def redirect_qr(
         )
     except Exception as e:
         logger.exception(f"Unexpected error processing QR code redirect: {str(e)}")
+        MetricsLogger.log_redirect_processed('error')
         raise HTTPException(status_code=500, detail="Internal server error")
