@@ -19,6 +19,10 @@ from .services.interfaces.validation_interfaces import ValidationProvider
 from .services.new_qr_generation_service import NewQRGenerationService
 from .services.new_analytics_service import NewAnalyticsService
 from .services.new_validation_service import NewValidationService
+from .core.circuit_breaker import get_new_qr_generation_breaker
+
+# Import for type hints
+import pybreaker
 
 
 def get_db() -> Annotated[Session, Depends(get_db_with_logging)]:
@@ -99,7 +103,8 @@ def get_new_qr_generation_service(
 def get_qr_service(
     qr_code_repo: Annotated[QRCodeRepository, Depends(get_qr_code_repository)],
     scan_log_repo: Annotated[ScanLogRepository, Depends(get_scan_log_repository)],
-    new_qr_generation_service: Annotated[NewQRGenerationService, Depends(get_new_qr_generation_service)]
+    new_qr_generation_service: Annotated[NewQRGenerationService, Depends(get_new_qr_generation_service)],
+    new_qr_generation_breaker: Annotated[pybreaker.CircuitBreaker, Depends(get_new_qr_generation_breaker)]
 ) -> QRCodeService:
     """
     Dependency for getting a QRCodeService instance.
@@ -108,6 +113,7 @@ def get_qr_service(
         qr_code_repo: The QRCodeRepository
         scan_log_repo: The ScanLogRepository
         new_qr_generation_service: The NewQRGenerationService for feature flag integration
+        new_qr_generation_breaker: The circuit breaker for NewQRGenerationService
         
     Returns:
         An instance of QRCodeService with the repositories and new services
@@ -115,7 +121,8 @@ def get_qr_service(
     return QRCodeService(
         qr_code_repo=qr_code_repo, 
         scan_log_repo=scan_log_repo,
-        new_qr_generation_service=new_qr_generation_service
+        new_qr_generation_service=new_qr_generation_service,
+        new_qr_generation_breaker=new_qr_generation_breaker
     )
 
 
