@@ -57,23 +57,6 @@ def get_scan_log_repository(db: Annotated[Session, Depends(get_db_with_logging)]
     return ScanLogRepository(db)
 
 
-def get_qr_service(
-    qr_code_repo: Annotated[QRCodeRepository, Depends(get_qr_code_repository)],
-    scan_log_repo: Annotated[ScanLogRepository, Depends(get_scan_log_repository)]
-) -> QRCodeService:
-    """
-    Dependency for getting a QRCodeService instance.
-    
-    Args:
-        qr_code_repo: The QRCodeRepository
-        scan_log_repo: The ScanLogRepository
-        
-    Returns:
-        An instance of QRCodeService with the repositories
-    """
-    return QRCodeService(qr_code_repo=qr_code_repo, scan_log_repo=scan_log_repo)
-
-
 # New dependencies for Observatory-First refactoring
 
 def get_segno_qr_generator() -> SegnoQRCodeGenerator:
@@ -111,6 +94,29 @@ def get_new_qr_generation_service(
         An instance of NewQRGenerationService with injected adapters
     """
     return NewQRGenerationService(generator=generator, formatter=formatter)
+
+
+def get_qr_service(
+    qr_code_repo: Annotated[QRCodeRepository, Depends(get_qr_code_repository)],
+    scan_log_repo: Annotated[ScanLogRepository, Depends(get_scan_log_repository)],
+    new_qr_generation_service: Annotated[NewQRGenerationService, Depends(get_new_qr_generation_service)]
+) -> QRCodeService:
+    """
+    Dependency for getting a QRCodeService instance.
+    
+    Args:
+        qr_code_repo: The QRCodeRepository
+        scan_log_repo: The ScanLogRepository
+        new_qr_generation_service: The NewQRGenerationService for feature flag integration
+        
+    Returns:
+        An instance of QRCodeService with the repositories and new services
+    """
+    return QRCodeService(
+        qr_code_repo=qr_code_repo, 
+        scan_log_repo=scan_log_repo,
+        new_qr_generation_service=new_qr_generation_service
+    )
 
 
 def get_new_analytics_service(
