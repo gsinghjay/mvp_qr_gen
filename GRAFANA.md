@@ -540,7 +540,7 @@ docker pull mcp/grafana
 # Run with proper environment configuration
 docker run --rm -p 8000:8000 \
   -e GRAFANA_URL=http://host.docker.internal:3000 \
-  -e GRAFANA_API_KEY=glsa_SXcvbWsRuZrnmWQ6Wd8eBBjeFZ7FZ8Z0_4689886d \
+  -e GRAFANA_API_KEY=YOUR_GRAFANA_API_KEY \
   mcp/grafana
 ```
 
@@ -553,7 +553,7 @@ docker run --rm -p 8000:8000 \
       "args": ["run", "--rm", "-p", "8000:8000", "-e", "GRAFANA_URL", "-e", "GRAFANA_API_KEY", "mcp/grafana"],
       "env": {
         "GRAFANA_URL": "http://host.docker.internal:3000",
-        "GRAFANA_API_KEY": "glsa_SXcvbWsRuZrnmWQ6Wd8eBBjeFZ7FZ8Z0_4689886d"
+        "GRAFANA_API_KEY": "YOUR_GRAFANA_API_KEY"
       }
     }
   }
@@ -951,9 +951,11 @@ The monitoring system now includes **Model Context Protocol (MCP) integration** 
 
 **Docker Setup**:
 ```bash
+# Replace YOUR_GRAFANA_API_KEY with your actual Grafana API key
+# To create an API key: Grafana → Administration → Service Accounts → Add service account
 docker run --rm -p 8000:8000 \
   -e GRAFANA_URL=http://host.docker.internal:3000 \
-  -e GRAFANA_API_KEY=glsa_SXcvbWsRuZrnmWQ6Wd8eBBjeFZ7FZ8Z0_4689886d \
+  -e GRAFANA_API_KEY=YOUR_GRAFANA_API_KEY \
   mcp/grafana
 ```
 
