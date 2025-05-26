@@ -186,6 +186,22 @@ confirm_rollback_operation() {
     local operation_type="$1"
     local estimated_time="$2"
     
+    # Skip confirmation if NO_CONFIRM is set
+    if [ "${NO_CONFIRM:-false}" = "true" ]; then
+        echo -e "${CYAN}🔄 Proceeding with ${operation_type} (confirmation skipped)${NC}"
+        echo -e "${YELLOW}⏱️  Estimated time: ${estimated_time}${NC}"
+        echo -e "${YELLOW}🌐 Target environment: Production QR Generator System${NC}"
+        
+        # Set default reason if not provided
+        if [ -z "${ROLLBACK_REASON:-}" ]; then
+            ROLLBACK_REASON="Automated rollback via command line"
+        fi
+        
+        echo -e "${GREEN}✅ Proceeding with operation...${NC}"
+        echo ""
+        return 0
+    fi
+    
     echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════════════════════╗"
     echo -e "║                              ⚠️  CONFIRMATION REQUIRED ⚠️                    ║"
     echo -e "╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
@@ -278,7 +294,7 @@ create_safety_backup() {
     backup_start_time=$(date +%s)
     
     # Use existing production_backup.sh infrastructure
-    if timeout $BACKUP_TIMEOUT bash scripts/production_backup.sh; then
+    if bash scripts/production_backup.sh; then
         local backup_end_time duration
         backup_end_time=$(date +%s)
         duration=$((backup_end_time - backup_start_time))
@@ -451,6 +467,26 @@ update_docker_compose_image_tag() {
     local service_name="$1"
     local new_tag="$2"
     
+    echo -e "${CYAN}🔧 Checking $service_name service configuration...${NC}"
+    
+    # Check if service uses build or image
+    local build_line image_line
+    build_line=$(grep -A 10 "$service_name:" docker-compose.yml | grep "build:" | head -1)
+    image_line=$(grep -A 10 "$service_name:" docker-compose.yml | grep "image:" | head -1)
+    
+    if [ -n "$build_line" ]; then
+        echo -e "${YELLOW}📦 Service uses build configuration (build: .)${NC}"
+        echo -e "${CYAN}💡 Skipping image tag update for build-based service${NC}"
+        echo -e "   🔄 Application rollback will use container restart instead"
+        echo -e "   📝 Note: For true image rollback, consider using pre-built images"
+        return 0  # Success - no update needed for build-based services
+    fi
+    
+    if [ -z "$image_line" ]; then
+        echo -e "${RED}❌ Could not find image or build configuration for $service_name service${NC}"
+        return 1
+    fi
+    
     echo -e "${CYAN}🔧 Updating docker-compose.yml for $service_name service...${NC}"
     echo -e "   📝 Setting image tag to: $new_tag"
     
@@ -459,18 +495,9 @@ update_docker_compose_image_tag() {
     cp docker-compose.yml "$compose_backup"
     echo -e "   💾 Backup created: $compose_backup"
     
-    # Get current image name (without tag)
-    local current_image_line
-    current_image_line=$(grep -A 10 "$service_name:" docker-compose.yml | grep "image:" | head -1)
-    
-    if [ -z "$current_image_line" ]; then
-        echo -e "${RED}❌ Could not find image configuration for $service_name service${NC}"
-        return 1
-    fi
-    
     # Extract image name without tag
     local image_name
-    image_name=$(echo "$current_image_line" | sed 's/.*image: *//' | sed 's/:.*$//' | tr -d ' ')
+    image_name=$(echo "$image_line" | sed 's/.*image: *//' | sed 's/:.*$//' | tr -d ' ')
     
     if [ -z "$image_name" ]; then
         # If no explicit image name, assume it's the default pattern
@@ -506,6 +533,16 @@ update_docker_compose_image_tag() {
 pull_and_verify_image() {
     local service_name="$1"
     local image_tag="$2"
+    
+    # Check if service uses build configuration
+    local build_line
+    build_line=$(grep -A 10 "$service_name:" docker-compose.yml | grep "build:" | head -1)
+    
+    if [ -n "$build_line" ]; then
+        echo -e "${YELLOW}📦 Service uses build configuration - skipping image pull${NC}"
+        echo -e "${CYAN}💡 Build-based services don't need image pulling${NC}"
+        return 0  # Success - no pull needed for build-based services
+    fi
     
     echo -e "${CYAN}📥 Pulling Docker image for $service_name service...${NC}"
     echo -e "   🐳 Image tag: $image_tag"
@@ -667,58 +704,6 @@ print_rollback_summary() {
     echo -e "${GREEN}✅ System rollback completed successfully!${NC}"
     echo -e "${CYAN}🔍 System validated and ready for production traffic${NC}"
     echo ""
-}
-
-main() {
-    ROLLBACK_START_TIME=$(date +%s)
-    ROLLBACK_TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
-    
-    print_banner
-    load_environment
-    
-    # Create initial Grafana annotation
-    create_grafana_annotation "Rollback Operation Started" "Production rollback initiated by user" "rollback,start"
-    
-    while true; do
-        show_rollback_menu
-        
-        read -p "$(echo -e "${CYAN}Select rollback option (1-5): ${NC}")" choice
-        
-        case $choice in
-            1)
-                handle_database_rollback
-                break
-                ;;
-            2)
-                handle_application_rollback
-                break
-                ;;
-            3)
-                handle_complete_system_rollback
-                break
-                ;;
-            4)
-                handle_emergency_rollback
-                break
-                ;;
-            5)
-                echo -e "${YELLOW}❌ Rollback cancelled by user${NC}"
-                create_grafana_annotation "Rollback Cancelled" "User cancelled rollback operation" "rollback,cancelled"
-                exit 0
-                ;;
-            *)
-                echo -e "${RED}❌ Invalid option. Please select 1-5.${NC}"
-                echo ""
-                ;;
-        esac
-    done
-    
-    print_rollback_summary
-    
-    # Create final Grafana annotation
-    create_grafana_annotation "Rollback Operation Completed" "Production rollback completed successfully: ${ROLLBACK_TYPE}" "rollback,completed,success"
-    
-    exit 0
 }
 
 # Error handling with cleanup
@@ -919,9 +904,6 @@ main() {
     exit 0
 }
 
-# Execute main function with all arguments
-main "$@"
-
 # ============================================================================
 # Core Rollback Functions
 # ============================================================================
@@ -936,7 +918,7 @@ perform_database_rollback() {
     rollback_start_time=$(date +%s)
     
     # Use existing safe_restore.sh infrastructure
-    if timeout $RESTORE_TIMEOUT bash scripts/safe_restore.sh "$SELECTED_BACKUP"; then
+    if bash scripts/safe_restore.sh "$SELECTED_BACKUP"; then
         local rollback_end_time duration
         rollback_end_time=$(date +%s)
         duration=$((rollback_end_time - rollback_start_time))
@@ -998,20 +980,31 @@ perform_application_rollback_with_image() {
     # Step 5: Wait for service to be ready
     echo -e "${CYAN}⏳ Waiting for service to be ready...${NC}"
     local ready_check_attempts=0
-    local max_ready_attempts=30
+    local max_ready_attempts=60  # Increased from 30 to 60 (2 minutes)
     
     while [ $ready_check_attempts -lt $max_ready_attempts ]; do
         if docker-compose exec api curl -k -s --max-time 5 "${API_URL}/health" >/dev/null 2>&1; then
+            echo -e "${GREEN}✅ API service is responding${NC}"
             break
         fi
-        sleep 2
+        sleep 3  # Increased from 2 to 3 seconds
         ready_check_attempts=$((ready_check_attempts + 1))
+        
+        # Progress indicator
+        if [ $((ready_check_attempts % 10)) -eq 0 ]; then
+            echo -e "${YELLOW}   Still waiting... (${ready_check_attempts}/${max_ready_attempts})${NC}"
+        fi
     done
     
     if [ $ready_check_attempts -ge $max_ready_attempts ]; then
         echo -e "${RED}❌ API service did not become ready within timeout${NC}"
         return 1
     fi
+    
+    # Additional settling time for service to fully initialize
+    echo -e "${CYAN}⏳ Allowing service to fully initialize...${NC}"
+    sleep 15  # 15 second settling time
+    echo -e "${GREEN}✅ Service initialization complete${NC}"
     
     local rollback_end_time duration
     rollback_end_time=$(date +%s)
@@ -1055,20 +1048,31 @@ perform_application_restart() {
     # Wait for service to be ready
     echo -e "${CYAN}⏳ Waiting for service to be ready...${NC}"
     local ready_check_attempts=0
-    local max_ready_attempts=30
+    local max_ready_attempts=45  # Increased from 30 to 45 (90 seconds)
     
     while [ $ready_check_attempts -lt $max_ready_attempts ]; do
         if docker-compose exec api curl -k -s --max-time 5 "${API_URL}/health" >/dev/null 2>&1; then
+            echo -e "${GREEN}✅ API service is responding${NC}"
             break
         fi
         sleep 2
         ready_check_attempts=$((ready_check_attempts + 1))
+        
+        # Progress indicator every 15 attempts (30 seconds)
+        if [ $((ready_check_attempts % 15)) -eq 0 ]; then
+            echo -e "${YELLOW}   Still waiting for API service... (${ready_check_attempts}/${max_ready_attempts})${NC}"
+        fi
     done
     
     if [ $ready_check_attempts -ge $max_ready_attempts ]; then
         echo -e "${RED}❌ API service did not become ready within timeout${NC}"
         return 1
     fi
+    
+    # Additional settling time for service restart
+    echo -e "${CYAN}⏳ Allowing service to complete initialization...${NC}"
+    sleep 10  # 10 second settling time for restart
+    echo -e "${GREEN}✅ Service restart complete${NC}"
     
     local restart_end_time duration
     restart_end_time=$(date +%s)
@@ -1125,7 +1129,7 @@ perform_complete_system_rollback_with_image() {
     echo -e "${CYAN}⏳ Waiting for services to be ready...${NC}"
     local services_ready=false
     local ready_attempts=0
-    local max_ready_attempts=60
+    local max_ready_attempts=120  # Increased from 60 to 120 (10 minutes total)
     
     while [ $ready_attempts -lt $max_ready_attempts ] && [ "$services_ready" = false ]; do
         local api_ready=false
@@ -1147,8 +1151,14 @@ perform_complete_system_rollback_with_image() {
             grafana_ready=true
         fi
         
+        # Progress reporting
+        if [ $((ready_attempts % 12)) -eq 0 ]; then  # Every minute
+            echo -e "${YELLOW}   Progress: API:$([[ $api_ready == true ]] && echo "✅" || echo "⏳") Prometheus:$([[ $prometheus_ready == true ]] && echo "✅" || echo "⏳") Grafana:$([[ $grafana_ready == true ]] && echo "✅" || echo "⏳") (${ready_attempts}/${max_ready_attempts})${NC}"
+        fi
+        
         if [ "$api_ready" = true ] && [ "$prometheus_ready" = true ] && [ "$grafana_ready" = true ]; then
             services_ready=true
+            echo -e "${GREEN}✅ All services are responding${NC}"
         else
             sleep 5
             ready_attempts=$((ready_attempts + 1))
@@ -1160,6 +1170,11 @@ perform_complete_system_rollback_with_image() {
         echo -e "${YELLOW}💡 Some services may still be starting up${NC}"
         return 1
     fi
+    
+    # Additional settling time for all services to fully initialize
+    echo -e "${CYAN}⏳ Allowing all services to fully initialize and stabilize...${NC}"
+    sleep 30  # 30 second settling time for complete system
+    echo -e "${GREEN}✅ System initialization complete${NC}"
     
     local system_rollback_end_time duration
     system_rollback_end_time=$(date +%s)
@@ -1254,7 +1269,14 @@ perform_complete_system_restart() {
 run_post_rollback_validation() {
     echo -e "${CYAN}🔍 Running post-rollback validation...${NC}"
     echo -e "   🧪 Using enhanced smoke test for comprehensive validation"
-    echo -e "   ⏱️  Estimated time: 30-90 seconds"
+    echo -e "   ⏱️  Estimated time: 60-120 seconds (including initialization)"
+    echo ""
+    
+    # Critical: Allow additional time for services to fully stabilize
+    echo -e "${CYAN}⏳ Allowing services to fully stabilize before validation...${NC}"
+    echo -e "   🔄 This ensures database connections and internal services are ready"
+    sleep 30  # 30 second stabilization period
+    echo -e "${GREEN}✅ Stabilization period complete${NC}"
     echo ""
     
     local validation_start_time
@@ -1284,3 +1306,9 @@ run_post_rollback_validation() {
         return 1
     fi
 }
+
+# ============================================================================
+# Execute main function with all arguments
+# ============================================================================
+
+main "$@"
