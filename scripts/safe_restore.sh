@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Production-safe database restore script
-# Thin wrapper around the enhanced manage_db.py with centralized API service management
+# Enhanced to handle API service management at host level to prevent Docker-in-Docker deadlocks
 
 set -e
 
@@ -50,13 +50,8 @@ fi
 echo "=== PRODUCTION-SAFE DATABASE RESTORE ==="
 echo "Backup file: $BACKUP_FILE"
 echo "Timestamp: $(date)"
-echo "Using enhanced manage_db.py with centralized API service management"
+echo "Using enhanced manage_db.py with HOST-LEVEL API service management"
 echo
-
-# Load environment variables for database credentials (already loaded above, but keeping for compatibility)
-if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
-fi
 
 # Get current database state for verification
 echo "1️⃣ Recording current database state..."
@@ -64,31 +59,100 @@ QR_COUNT_BEFORE=$(docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}
 SCAN_COUNT_BEFORE=$(docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM scan_logs;" 2>/dev/null | tr -d ' \r\n' || echo "unknown")
 echo "   📊 Current state: $QR_COUNT_BEFORE QR codes, $SCAN_COUNT_BEFORE scan logs"
 
-# Execute restore using manage_db.py with API service management
+# HOST-LEVEL API Service Management
 echo
-echo "2️⃣ Starting production-safe restore via manage_db.py..."
+echo "2️⃣ Managing API service at HOST level (preventing Docker-in-Docker deadlock)..."
+echo "   🛑 Stopping API service from host..."
+
+API_WAS_RUNNING=false
+if docker-compose ps api | grep -q "Up"; then
+    API_WAS_RUNNING=true
+    echo "   📍 API service is currently running"
+    echo "   ✅ Keeping container running for database operations"
+    echo "   💡 API service management will be handled by manage_db.py internally"
+else
+    echo "   ❌ API container is not running - starting it for database operations"
+    if timeout 60 docker-compose up -d api; then
+        echo "   ✅ API container started"
+        API_WAS_RUNNING=true
+    else
+        echo "   ❌ Failed to start API container"
+        exit 1
+    fi
+fi
+
+# Execute restore using manage_db.py WITHOUT API service management
+echo
+echo "3️⃣ Starting database restore via manage_db.py (without API management)..."
 echo "   🚨 WARNING: This will replace all current database content"
 echo "   📁 Restoring from: $BACKUP_FILE"
 echo "   🛡️ Safety backup will be created automatically (with 3-minute timeout)"
-echo "   🔄 API service will be managed automatically"
+echo "   🔄 API service managed at HOST level (no Docker-in-Docker)"
 echo "   ⏱️  Note: Safety backup creation may take 1-3 minutes depending on database size"
 echo
 
-if docker-compose exec api python /app/scripts/manage_db.py --restore "$BACKUP_FILE" --with-api-stop; then
-    echo "✅ Production-safe restore completed successfully!"
-    echo "   All operations managed by enhanced manage_db.py"
-    echo "   API service lifecycle controlled centrally"
+# Call manage_db.py WITHOUT --with-api-stop flag to prevent Docker-in-Docker deadlock
+# The API container remains running, but API service management is handled externally
+if docker-compose exec api python /app/scripts/manage_db.py --restore "$BACKUP_FILE"; then
+    echo "✅ Database restore completed successfully!"
+    echo "   Database operations managed by enhanced manage_db.py"
+    echo "   API service lifecycle controlled at HOST level"
 else
-    echo "❌ Production-safe restore failed"
+    echo "❌ Database restore failed"
     echo "   Check the manage_db.py logs for detailed error information"
     echo "   Logs available in container at /logs/database/"
     echo "   Safety backup was created before restore attempt"
+    
+    # Restart API service if it was running before
+    if [ "$API_WAS_RUNNING" = true ]; then
+        echo "   🔄 Attempting to restart API service after failed restore..."
+        if timeout 180 docker-compose up -d api; then
+            echo "   ✅ API service restarted"
+        else
+            echo "   ❌ Failed to restart API service - manual intervention required"
+        fi
+    fi
+    
     exit 1
+fi
+
+# Restart API service if it was running before
+if [ "$API_WAS_RUNNING" = true ]; then
+    echo
+    echo "4️⃣ Restarting API service..."
+    echo "   🚀 Starting API service..."
+    
+    if timeout 180 docker-compose up -d api; then
+        echo "   ✅ API service started"
+        
+        # Wait for service to become healthy
+        echo "   ⏳ Waiting for API service to become healthy..."
+        max_attempts=30
+        attempt=0
+        
+        while [ $attempt -lt $max_attempts ]; do
+            if curl -k -s --max-time 5 -u "${AUTH_USER:-admin_user}:${AUTH_PASS:-strongpassword}" "${API_URL:-https://10.1.6.12}/health" >/dev/null 2>&1; then
+                echo "   ✅ API service is healthy and ready"
+                break
+            fi
+            sleep 2
+            attempt=$((attempt + 1))
+        done
+        
+        if [ $attempt -ge $max_attempts ]; then
+            echo "   ⚠️  API service started but health check timed out"
+            echo "   💡 Service may still be starting up - check manually"
+        fi
+    else
+        echo "   ❌ Failed to start API service within timeout"
+        echo "   💡 Manual intervention required: docker-compose up -d api"
+        exit 1
+    fi
 fi
 
 # Verify restore results
 echo
-echo "3️⃣ Verifying restore results..."
+echo "5️⃣ Verifying restore results..."
 QR_COUNT_AFTER=$(docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM qr_codes;" 2>/dev/null | tr -d ' \r\n' || echo "unknown")
 SCAN_COUNT_AFTER=$(docker-compose exec postgres psql -U "${POSTGRES_USER:-pguser}" -d "${POSTGRES_DB:-qrdb}" -t -c "SELECT COUNT(*) FROM scan_logs;" 2>/dev/null | tr -d ' \r\n' || echo "unknown")
 
@@ -100,7 +164,7 @@ echo "      Scan logs after:  $SCAN_COUNT_AFTER"
 
 # Validate database structure using manage_db.py
 echo
-echo "4️⃣ Validating database structure..."
+echo "6️⃣ Validating database structure..."
 if docker-compose exec api python /app/scripts/manage_db.py --validate; then
     echo "✅ Database validation passed"
 else
@@ -113,7 +177,7 @@ fi
 echo
 echo "🎉 PRODUCTION-SAFE RESTORE COMPLETED SUCCESSFULLY!"
 echo "   ✅ Database restored from $BACKUP_FILE"
-echo "   ✅ API service lifecycle managed automatically"
+echo "   ✅ API service lifecycle managed at HOST level (no Docker-in-Docker deadlock)"
 echo "   ✅ Database structure validated"
 echo "   ✅ Safety backup created before restore"
 echo "   ✅ All operations logged for audit trail" 

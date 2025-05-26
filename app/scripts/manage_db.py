@@ -958,6 +958,7 @@ class DatabaseManager:
         Args:
             backup_filename: Name of the backup file (e.g., 'qrdb_20250525_043343.sql')
             stop_api_service: Whether to stop/start API service during restore (default: True)
+                             Set to False when API service management is handled externally (recommended)
         
         Returns:
             bool: True if successful, False otherwise
@@ -967,7 +968,13 @@ class DatabaseManager:
         try:
             print("🚨 CRITICAL SAFETY WARNING:")
             print("   Database restore will drop all tables and restore from backup")
-            print(f"   API service management: {'Enabled' if stop_api_service else 'Disabled'}")
+            if stop_api_service:
+                print("   API service management: Enabled (Docker-in-Docker - may cause deadlock)")
+                print("   ⚠️  WARNING: Running API service management from inside container")
+                print("   💡 RECOMMENDATION: Use host-level API management instead")
+            else:
+                print("   API service management: Disabled (managed externally)")
+                print("   ✅ SAFE: API service should be managed at host level")
             print()
             
             # Safety warning
@@ -975,13 +982,19 @@ class DatabaseManager:
                 _(
                     "CRITICAL: Database restore will drop all tables and restore from backup",
                     warning="This operation will drop all tables and restore from backup",
-                    stop_api_service=stop_api_service
+                    stop_api_service=stop_api_service,
+                    docker_in_docker_warning=stop_api_service
                 )
             )
             
-            # Stop API service if requested
+            # Stop API service if requested (with Docker-in-Docker warning)
             if stop_api_service:
+                print("⚠️  Attempting Docker-in-Docker API service management...")
+                print("   This may cause deadlock - consider using host-level management")
                 api_was_stopped = self._stop_api_service()
+            else:
+                print("✅ Skipping API service management (handled externally)")
+                print("   Assuming API service is already stopped by host-level script")
             
             # Look for backup file in both internal and external backup directories
             print(f"🔍 Searching for backup file: {backup_filename}")
@@ -1147,16 +1160,20 @@ class DatabaseManager:
                 "--no-privileges",  # don't restore privileges
                 "--single-transaction",  # restore in a single transaction
                 "--exit-on-error",  # exit on first error
+                "--verbose",  # show verbose output for real-time feedback
                 str(backup_path)
             ]
+            
+            print("🚀 Restoring database from backup...")
+            print(f"   Command: {' '.join(restore_cmd[:7])} [credentials hidden]")
+            print("   Note: Real-time output will be shown below...")
             
             process = subprocess.run(
                 restore_cmd,
                 env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
                 check=True,
                 timeout=300,  # 5 minute timeout
+                # Remove stdout/stderr capture to show real-time output
             )
             
             print("✅ Database restore completed successfully!")
@@ -1164,8 +1181,7 @@ class DatabaseManager:
                 _(
                     "Database restore completed successfully",
                     backup_file=str(backup_path),
-                    stdout=process.stdout.decode(),
-                    stderr=process.stderr.decode()
+                    note="Real-time output was displayed to user"
                 )
             )
             
@@ -1199,8 +1215,7 @@ class DatabaseManager:
                 _(
                     "Database restore failed",
                     error=str(e),
-                    stdout=e.stdout.decode() if e.stdout else "",
-                    stderr=e.stderr.decode() if e.stderr else "",
+                    note="Real-time output was displayed during execution",
                     traceback=traceback.format_exc(),
                 )
             )
@@ -1215,16 +1230,22 @@ class DatabaseManager:
             )
             return False
         finally:
-            # Restart API service if it was stopped
+            # Restart API service if it was stopped by this script
             if stop_api_service and api_was_stopped:
                 try:
+                    print("🔄 Attempting to restart API service via Docker-in-Docker...")
+                    print("   ⚠️  This may cause issues - host-level management is preferred")
                     self._start_api_service_and_wait_healthy()
                 except Exception as e:
                     print(f"❌ Failed to restart API service: {e}")
+                    print("   💡 Manual restart required: docker-compose up -d api")
                     loggers["errors"].error(
                         _("Failed to restart API service after restore", error=str(e))
                     )
                     # Don't re-raise here as the restore might have succeeded
+            elif not stop_api_service:
+                print("ℹ️  API service restart skipped (managed externally)")
+                print("   Host-level script should handle API service restart")
 
 
 def run_cli():
@@ -1264,11 +1285,9 @@ def run_cli():
     # Check for restore request
     if args.restore:
         try:
-            # For restore, default to stopping API service (True) unless explicitly disabled
-            # The --with-api-stop flag can be used to explicitly enable API stopping
-            stop_api = True  # Default to True for restore operations
-            if hasattr(args, 'with_api_stop'):
-                stop_api = args.with_api_stop
+            # For restore, use --with-api-stop flag to enable internal API service management
+            # Default is False (no internal API management) for external script control
+            stop_api = args.with_api_stop  # Use flag directly: False by default, True if specified
             
             success = db_manager.restore_database(args.restore, stop_api_service=stop_api)
             if success:
