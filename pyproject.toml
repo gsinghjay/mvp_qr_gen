@@ -120,12 +120,4 @@ ignore_missing_imports = true
 # Current version
 version = "1.2.1"
 # Version location
-version_toml = ["pyproject.toml:tool.semantic_release.version"]
-# Commit parser
-commit_parser = "conventional"
-# Branch configuration
-branch = "main"
-
-[tool.semantic_release.commit_parser_options]
-minor_tags = ["feat"]
-patch_tags = ["fix", "perf"] 
+version_toml = ["pyproject.toml:tool.semantic_release.version"] 
