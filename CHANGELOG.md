@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v1.3.0 (2025-05-26)
+
+### Documentation
+
+* docs: update GRAFANA.md to reflect actual dashboard implementations
+
+- fix refresh rates and replace non-existent Service Monitoring with Circuit Breaker dashboard ([`8754cfb`](https://github.com/gsinghjay/mvp_qr_gen/commit/8754cfb1c529e9c550a946432ad0d3758148f72b))
+
+### Features
+
+* feat: improve wiki workflow with proper semantic-release coordination ([`9cb9c7c`](https://github.com/gsinghjay/mvp_qr_gen/commit/9cb9c7cf54de794eca811daa04284ad1384ba4a9))
+
+
 ## v1.2.2 (2025-05-26)
 
 ### Fixes
