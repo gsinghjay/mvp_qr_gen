@@ -1,0 +1,18 @@
+apiVersion: 1
+
+datasources:
+  - name: PostgreSQL Test
+    type: postgres
+    uid: postgres-test
+    access: proxy
+    url: postgres_test:5432
+    database: qrdb_test
+    user: pguser_test
+    secureJsonData:
+      password: pgpassword_test
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1500
+      timescaledb: false
+    isDefault: false
+    editable: true 

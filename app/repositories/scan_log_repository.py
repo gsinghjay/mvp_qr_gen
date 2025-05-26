@@ -9,6 +9,7 @@ from sqlalchemy import func, desc, extract, cast, Date
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.exceptions import DatabaseError
+from app.core.metrics_logger import MetricsLogger
 from app.models.scan_log import ScanLog
 from .base_repository import BaseRepository
 
@@ -27,6 +28,7 @@ class ScanLogRepository(BaseRepository[ScanLog]):
         """
         super().__init__(db, ScanLog)
 
+    @MetricsLogger.time_service_call("ScanLogRepository", "create_scan_log")
     def create_scan_log(
         self, 
         qr_id: str, 
@@ -79,6 +81,7 @@ class ScanLogRepository(BaseRepository[ScanLog]):
             logger.error(f"Database error creating scan log for QR {qr_id}: {str(e)}")
             raise DatabaseError(f"Database error creating scan log: {str(e)}")
 
+    @MetricsLogger.time_service_call("ScanLogRepository", "get_scan_logs_for_qr")
     def get_scan_logs_for_qr(
         self,
         qr_id: str,
@@ -121,6 +124,7 @@ class ScanLogRepository(BaseRepository[ScanLog]):
             logger.error(f"Database error retrieving scan logs for QR code {qr_id}: {str(e)}")
             raise DatabaseError(f"Database error retrieving scan logs: {str(e)}")
             
+    @MetricsLogger.time_service_call("ScanLogRepository", "get_device_statistics")
     def get_device_statistics(self, qr_id: str) -> Dict[str, Dict[str, int]]:
         """
         Get device statistics for a QR code.
@@ -195,6 +199,7 @@ class ScanLogRepository(BaseRepository[ScanLog]):
             logger.error(f"Database error retrieving device statistics for QR code {qr_id}: {str(e)}")
             raise DatabaseError(f"Database error retrieving device statistics: {str(e)}")
 
+    @MetricsLogger.time_service_call("ScanLogRepository", "get_browser_statistics")
     def get_browser_statistics(self, qr_id: str) -> Dict[str, Dict[str, int]]:
         """
         Get browser statistics for a QR code.
@@ -234,6 +239,7 @@ class ScanLogRepository(BaseRepository[ScanLog]):
             logger.error(f"Database error retrieving browser statistics for QR code {qr_id}: {str(e)}")
             raise DatabaseError(f"Database error retrieving browser statistics: {str(e)}")
             
+    @MetricsLogger.time_service_call("ScanLogRepository", "get_os_statistics")
     def get_os_statistics(self, qr_id: str) -> Dict[str, Dict[str, int]]:
         """
         Get operating system statistics for a QR code.
@@ -273,6 +279,7 @@ class ScanLogRepository(BaseRepository[ScanLog]):
             logger.error(f"Database error retrieving OS statistics for QR code {qr_id}: {str(e)}")
             raise DatabaseError(f"Database error retrieving OS statistics: {str(e)}")
 
+    @MetricsLogger.time_service_call("ScanLogRepository", "get_scan_timeseries")
     def get_scan_timeseries(
         self,
         qr_id: str,

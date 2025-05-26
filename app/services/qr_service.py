@@ -71,6 +71,7 @@ class QRCodeService:
         self.qr_code_repo = qr_code_repo
         self.scan_log_repo = scan_log_repo
 
+    @MetricsLogger.time_service_call("QRCodeService", "_is_safe_redirect_url")
     def _is_safe_redirect_url(self, url: str) -> bool:
         """
         Validate if a redirect URL is safe based on scheme and domain allowlist.
@@ -112,6 +113,7 @@ class QRCodeService:
             logger.error(f"Error parsing URL {url}: {str(e)}")
             return False
 
+    @MetricsLogger.time_service_call("QRCodeService", "get_qr_by_id")
     def get_qr_by_id(self, qr_id: str) -> QRCode:
         """
         Get a QR code by its ID.
@@ -132,6 +134,7 @@ class QRCodeService:
             raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
         return qr
 
+    @MetricsLogger.time_service_call("QRCodeService", "get_qr_by_short_id")
     def get_qr_by_short_id(self, short_id: str) -> QRCode:
         """
         Get a QR code by its short ID (used for redirects).
@@ -161,6 +164,7 @@ class QRCodeService:
 
         return qr
 
+    @MetricsLogger.time_service_call("QRCodeService", "list_qr_codes")
     def list_qr_codes(
         self,
         skip: int = 0,
@@ -204,6 +208,7 @@ class QRCodeService:
             sort_desc=sort_desc,
         )
 
+    @MetricsLogger.time_service_call("QRCodeService", "create_static_qr")
     def create_static_qr(self, data: StaticQRCreateParameters) -> QRCode:
         """
         Create a static QR code with the provided content.
@@ -257,6 +262,7 @@ class QRCodeService:
             MetricsLogger.log_qr_created('static', False)
             raise QRCodeValidationError(str(e))
 
+    @MetricsLogger.time_service_call("QRCodeService", "create_dynamic_qr")
     def create_dynamic_qr(self, data: DynamicQRCreateParameters) -> QRCode:
         """
         Create a dynamic QR code with the provided data.
@@ -334,6 +340,7 @@ class QRCodeService:
             MetricsLogger.log_qr_created('dynamic', False)
             raise QRCodeValidationError(str(e))
 
+    @MetricsLogger.time_service_call("QRCodeService", "_parse_user_agent_data")
     def _parse_user_agent_data(self, ua_string: str | None) -> Dict[str, any]:
         """
         Parse a user agent string into structured data for scan log entries.
@@ -394,6 +401,7 @@ class QRCodeService:
                 "is_bot": False
             }
 
+    @MetricsLogger.time_service_call("QRCodeService", "update_qr")
     def update_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
         """
         Update a QR code with the provided data.
@@ -507,6 +515,7 @@ class QRCodeService:
         # Delegate to repository
         self.qr_code_repo.update_scan_count(qr_id, timestamp, is_genuine_scan_signal=False)
 
+    @MetricsLogger.time_service_call("QRCodeService", "update_scan_statistics")
     def update_scan_statistics(
         self,
         qr_id: str,
@@ -565,6 +574,7 @@ class QRCodeService:
             logger.exception(f"Background task: Error updating scan statistics for QR ID {qr_id}: {str(e)}")
             # Do not re-raise - allow background task to terminate gracefully
 
+    @MetricsLogger.time_service_call("QRCodeService", "validate_qr_code")
     def validate_qr_code(self, qr_data: QRCodeCreate) -> None:
         """
         Validate QR code data.
@@ -586,6 +596,7 @@ class QRCodeService:
 
         # Color format validation is handled by Pydantic schemas
 
+    @MetricsLogger.time_service_call("QRCodeService", "generate_qr_image_service")
     def generate_qr_image(
         self,
         content: str,
@@ -648,6 +659,7 @@ class QRCodeService:
             logger.error(f"IO error generating QR code image: {e}")
             raise QRCodeValidationError(f"Error processing QR code image: {str(e)}")
 
+    @MetricsLogger.time_service_call("QRCodeService", "generate_qr_streaming")
     def generate_qr(
         self,
         data: str,
@@ -734,6 +746,7 @@ class QRCodeService:
             MetricsLogger.log_image_generated(image_format, False)
             raise
 
+    @MetricsLogger.time_service_call("QRCodeService", "delete_qr")
     def delete_qr(self, qr_id: str) -> None:
         """
         Delete a QR code by ID.
@@ -751,6 +764,7 @@ class QRCodeService:
             raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
         logger.info(f"Deleted QR code with ID {qr_id}")
 
+    @MetricsLogger.time_service_call("QRCodeService", "get_dashboard_data")
     def get_dashboard_data(self) -> Dict[str, Union[int, List[QRCode]]]:
         """
         Get data for the dashboard, including total QR code count and recent QR codes.
@@ -777,6 +791,7 @@ class QRCodeService:
             "recent_qr_codes": recent_qr_codes
         }
 
+    @MetricsLogger.time_service_call("QRCodeService", "get_scan_analytics_data")
     def get_scan_analytics_data(self, qr_id: str) -> Dict[str, Any]:
         """
         Get detailed scan analytics data for a QR code.
@@ -851,6 +866,7 @@ class QRCodeService:
             "time_series_data": time_series_data
         }
         
+    @MetricsLogger.time_service_call("QRCodeService", "_get_time_series_data")
     def _get_time_series_data(self, qr_id: str) -> Dict[str, List]:
         """
         Get time series scan data for charts (last 7 days).

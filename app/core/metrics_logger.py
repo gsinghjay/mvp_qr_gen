@@ -163,18 +163,27 @@ class MetricsLogger:
 
 def initialize_feature_flags() -> None:
     """
-    Initialize default feature flags.
+    Initialize feature flags based on current settings.
     
-    This function should be called during application startup to set
-    initial feature flag states.
+    This function reads from app.core.config.settings and reports
+    the actual status to Prometheus. Should be called during application startup.
     """
-    # Initialize with default feature flags (disabled by default)
-    default_flags = [
-        'new_qr_service_enabled',
-        'enhanced_validation_enabled', 
-        'performance_optimization_enabled',
-        'debug_mode_enabled'
-    ]
+    from .config import settings as app_settings
     
-    for flag in default_flags:
-        MetricsLogger.set_feature_flag(flag, False) 
+    # Read feature flags from settings and report to Prometheus
+    MetricsLogger.set_feature_flag(
+        'new_qr_service_enabled', 
+        app_settings.FEATURE_NEW_QR_SERVICE_ENABLED
+    )
+    MetricsLogger.set_feature_flag(
+        'enhanced_validation_enabled',
+        app_settings.FEATURE_ENHANCED_VALIDATION_ENABLED
+    )
+    MetricsLogger.set_feature_flag(
+        'performance_optimization_enabled',
+        app_settings.FEATURE_PERFORMANCE_OPTIMIZATION_ENABLED
+    )
+    MetricsLogger.set_feature_flag(
+        'debug_mode_enabled',
+        app_settings.FEATURE_DEBUG_MODE_ENABLED or app_settings.DEBUG
+    ) 

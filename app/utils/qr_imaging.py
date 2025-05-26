@@ -11,7 +11,9 @@ from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 
 from app.core.config import settings
+from app.core.metrics_logger import MetricsLogger
 
+@MetricsLogger.time_service_call("QRImagingUtil", "generate_qr_image")
 def generate_qr_image(
     content: str,
     image_format: Literal["png", "svg", "jpeg", "webp"] = "png",
