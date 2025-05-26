@@ -88,6 +88,12 @@ class Settings(BaseSettings):
     # Cookie settings - used only for non-auth related functionality like CSRF
     COOKIE_DOMAIN: str = "10.1.6.12"
 
+    # Feature Flags
+    FEATURE_NEW_QR_SERVICE_ENABLED: bool = False
+    FEATURE_ENHANCED_VALIDATION_ENABLED: bool = False
+    FEATURE_PERFORMANCE_OPTIMIZATION_ENABLED: bool = False
+    FEATURE_DEBUG_MODE_ENABLED: bool = False
+
     # Path settings
     APP_ROOT: Path = APP_ROOT
     STATIC_DIR: Path = STATIC_DIR
