@@ -102,6 +102,10 @@ class Settings(BaseSettings):
     # Canary Testing Configuration
     CANARY_TESTING_ENABLED: bool = Field(default=False, env="CANARY_TESTING_ENABLED")
     CANARY_PERCENTAGE: int = Field(default=0, ge=0, le=100, env="CANARY_PERCENTAGE")
+    
+    # Circuit Breaker Configuration
+    QR_GENERATION_CB_FAIL_MAX: int = Field(default=5, env="QR_GENERATION_CB_FAIL_MAX")
+    QR_GENERATION_CB_RESET_TIMEOUT: int = Field(default=60, env="QR_GENERATION_CB_RESET_TIMEOUT")
 
     # Path settings
     APP_ROOT: Path = APP_ROOT
