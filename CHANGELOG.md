@@ -1,6 +1,37 @@
 # CHANGELOG
 
 
+## v1.4.0 (2025-05-26)
+
+### Documentation
+
+* docs: add QR Application Custom Metrics dashboard to Grafana documentation ([`0d43792`](https://github.com/gsinghjay/mvp_qr_gen/commit/0d4379270e166beb93632dff92875704daedf05c))
+
+* docs: add comment about Grafana restart requirement for changes ([`e227722`](https://github.com/gsinghjay/mvp_qr_gen/commit/e227722614dc2372cbe48c56bbf64df16ad2424f))
+
+### Features
+
+* feat: initialize feature flags during application startup ([`647d1dc`](https://github.com/gsinghjay/mvp_qr_gen/commit/647d1dc1a0db40d5ea1924d002db81893fdf9b84))
+
+* feat: add redirect processing metrics with success/error tracking ([`cd5dcfa`](https://github.com/gsinghjay/mvp_qr_gen/commit/cd5dcfae8e2b32e05cd7a2ea886f0877288b1b4a))
+
+* feat: integrate MetricsLogger in QR creation and image generation ([`0c2b841`](https://github.com/gsinghjay/mvp_qr_gen/commit/0c2b84172570d6dcacdf4df74be1cacb405ba407))
+
+* feat: add QR Application Custom Metrics Grafana dashboard ([`4a9cb0b`](https://github.com/gsinghjay/mvp_qr_gen/commit/4a9cb0b4d49470a01129a7019cf7367e2787be30))
+
+* feat: add MetricsLogger with 5 custom Prometheus metrics ([`eb98af0`](https://github.com/gsinghjay/mvp_qr_gen/commit/eb98af050e734793fa87da85327dabec1f29bcc3))
+
+### Fixes
+
+* fix: import metrics_logger module to register custom metrics ([`e517c5e`](https://github.com/gsinghjay/mvp_qr_gen/commit/e517c5ec7fd2f9050bdd2d1f9d0056948ab2aabb))
+
+### Unknown
+
+* Merge pull request #48 from gsinghjay/feat/metrics-logger
+
+MetricsLogger Implementation ([`850b288`](https://github.com/gsinghjay/mvp_qr_gen/commit/850b288abea5889966394dae1f2c596dc62d4680))
+
+
 ## v1.3.1 (2025-05-26)
 
 ### Fixes
