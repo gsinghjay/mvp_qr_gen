@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v1.8.0 (2025-05-26)
+
+### Chores
+
+* chore: remove obsolete test and cleanup scripts ([`dc61033`](https://github.com/gsinghjay/mvp_qr_gen/commit/dc61033cdfee1c58e0e89412287c91025b7375ff))
+
+### Features
+
+* feat: add service-level input validation for QR generation ([`5471850`](https://github.com/gsinghjay/mvp_qr_gen/commit/54718504ac474f782e1b49c82a07dc9790bbf623))
+
+* feat: enhance QRImageParameters with format validation and alias handling ([`a664bdd`](https://github.com/gsinghjay/mvp_qr_gen/commit/a664bdd02e509ab0305b093dbcb80ca1fda6205f))
+
+* feat: add comprehensive format validation to Segno QR adapter ([`49372db`](https://github.com/gsinghjay/mvp_qr_gen/commit/49372db26b9cb0b3c9d248b5c18b6aa6d4150de2))
+
+### Unknown
+
+* Merge pull request #53 from gsinghjay/chore/house-cleaning
+
+Enhanced Format Validation for QR Generation Pipeline ([`3fae1e5`](https://github.com/gsinghjay/mvp_qr_gen/commit/3fae1e53b8647ac63f7beacb2d06d21541804a5d))
+
+
 ## v1.7.0 (2025-05-26)
 
 ### Chores
