@@ -1,6 +1,21 @@
 # CHANGELOG
 
 
+## v1.6.0 (2025-05-26)
+
+### Features
+
+* feat(db): add nullable fields for refactoring preparation ([`5d72f61`](https://github.com/gsinghjay/mvp_qr_gen/commit/5d72f612d93553043d9da6824745791e8d219ede))
+
+### Unknown
+
+* Merge pull request #50 from gsinghjay/feat/nullable-db-columns
+
+Complete Safety Phase Task S.5 - Database Schema Preparation ([`f05231e`](https://github.com/gsinghjay/mvp_qr_gen/commit/f05231e3272dfcfc38fa61040f04c57467a28c33))
+
+* config(traefik): update dynamic configuration ([`6e7dc6e`](https://github.com/gsinghjay/mvp_qr_gen/commit/6e7dc6e805960790a9637e7d7e1ec185ab24bc41))
+
+
 ## v1.5.0 (2025-05-26)
 
 ### Documentation
