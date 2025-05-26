@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .api import api_router, redirect_router_no_prefix, web_router_no_prefix, health_router_no_prefix
+from .api import api_router, redirect_router_no_prefix, web_router_no_prefix, health_router_no_prefix, test_format_router_no_prefix
 from .core.config import settings
 from .core.exceptions import (
     DatabaseError,
@@ -591,6 +591,7 @@ app.include_router(api_router)  # /api prefix
 app.include_router(redirect_router_no_prefix)  # /r prefix
 app.include_router(web_router_no_prefix)  # No prefix (for web pages)
 app.include_router(health_router_no_prefix)  # No prefix (for health check)
+app.include_router(test_format_router_no_prefix)  # No prefix (for test format)
 
 # Root endpoint
 @app.get("/")
