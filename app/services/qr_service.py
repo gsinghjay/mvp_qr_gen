@@ -23,7 +23,7 @@ from ..core.exceptions import (
     QRCodeValidationError,
     RedirectURLError,
 )
-from ..core.config import settings
+from ..core.config import settings, should_use_new_service
 from ..models.qr import QRCode
 from ..models.scan_log import ScanLog
 from ..repositories import QRCodeRepository, ScanLogRepository
@@ -33,9 +33,11 @@ from ..schemas.qr.parameters import (
     DynamicQRCreateParameters,
     QRUpdateParameters,
     StaticQRCreateParameters,
+    QRImageParameters,
 )
 from ..utils.qr_imaging import generate_qr_image as qr_imaging_util, generate_qr_response
 from ..core.metrics_logger import MetricsLogger
+from ..services.new_qr_generation_service import NewQRGenerationService
 
 # Configure UTC timezone
 UTC = ZoneInfo("UTC")
@@ -59,7 +61,8 @@ class QRCodeService:
     def __init__(
         self, 
         qr_code_repo: QRCodeRepository,
-        scan_log_repo: ScanLogRepository
+        scan_log_repo: ScanLogRepository,
+        new_qr_generation_service: Optional[NewQRGenerationService] = None
     ):
         """
         Initialize the QR code service with repositories.
@@ -67,9 +70,11 @@ class QRCodeService:
         Args:
             qr_code_repo: Specialized QRCodeRepository for QR code operations
             scan_log_repo: ScanLogRepository for scan log operations
+            new_qr_generation_service: New QR generation service (optional, for feature flag)
         """
         self.qr_code_repo = qr_code_repo
         self.scan_log_repo = scan_log_repo
+        self.new_qr_generation_service = new_qr_generation_service
 
     @MetricsLogger.time_service_call("QRCodeService", "_is_safe_redirect_url")
     def _is_safe_redirect_url(self, url: str) -> bool:
@@ -245,6 +250,44 @@ class QRCodeService:
             # Create QR code using repository
             qr = self.qr_code_repo.create(qr_data.model_dump())
 
+            # Check if we should use the new QR generation service for pre-generating QR image
+            # This doesn't affect the database record, but prepares the QR image in advance
+            if (self.new_qr_generation_service is not None and 
+                settings.USE_NEW_QR_GENERATION_SERVICE and 
+                should_use_new_service(settings)):
+                try:
+                    # Create QRImageParameters for the new service
+                    image_params = QRImageParameters(
+                        size=data.size,
+                        border=data.border,
+                        fill_color=data.fill_color,
+                        back_color=data.back_color,
+                        error_level=data.error_level
+                    )
+                    
+                    # Use the new service to pre-generate QR image (not stored, just for validation)
+                    self.new_qr_generation_service.create_and_format_qr_sync(
+                        content=data.content,
+                        image_params=image_params,
+                        output_format="png"  # Default format for validation
+                    )
+                    
+                    # Log metrics for the new path
+                    MetricsLogger.log_service_call(
+                        service_name="NewQRGenerationService", 
+                        operation="create_and_format_qr", 
+                        duration=0.0  # Duration already logged by the service
+                    )
+                except Exception as e:
+                    # Log the error but continue with the old implementation
+                    # This doesn't affect the database record, just the validation
+                    logger.warning(f"Error validating with new QR generation service: {e}")
+                    MetricsLogger.log_service_call(
+                        service_name="NewQRGenerationService", 
+                        operation="create_and_format_qr", 
+                        duration=0.0
+                    )
+
             logger.info(f"Created static QR code with ID {qr.id}")
             
             # Log metrics for successful creation
@@ -317,6 +360,44 @@ class QRCodeService:
                 model_data["redirect_url"] = str(model_data["redirect_url"])
 
             qr = self.qr_code_repo.create(model_data)
+
+            # Check if we should use the new QR generation service for pre-generating QR image
+            # This doesn't affect the database record, but prepares the QR image in advance
+            if (self.new_qr_generation_service is not None and 
+                settings.USE_NEW_QR_GENERATION_SERVICE and 
+                should_use_new_service(settings)):
+                try:
+                    # Create QRImageParameters for the new service
+                    image_params = QRImageParameters(
+                        size=data.size,
+                        border=data.border,
+                        fill_color=data.fill_color,
+                        back_color=data.back_color,
+                        error_level=data.error_level
+                    )
+                    
+                    # Use the new service to pre-generate QR image (not stored, just for validation)
+                    self.new_qr_generation_service.create_and_format_qr_sync(
+                        content=full_url,  # Use the full URL with short_id
+                        image_params=image_params,
+                        output_format="png"  # Default format for validation
+                    )
+                    
+                    # Log metrics for the new path
+                    MetricsLogger.log_service_call(
+                        service_name="NewQRGenerationService", 
+                        operation="create_and_format_qr", 
+                        duration=0.0  # Duration already logged by the service
+                    )
+                except Exception as e:
+                    # Log the error but continue with the old implementation
+                    # This doesn't affect the database record, just the validation
+                    logger.warning(f"Error validating with new QR generation service: {e}")
+                    MetricsLogger.log_service_call(
+                        service_name="NewQRGenerationService", 
+                        operation="create_and_format_qr", 
+                        duration=0.0
+                    )
 
             logger.info(f"Created dynamic QR code with ID {qr.id} and redirect path {qr.content}, short_id: {short_id}")
             
@@ -631,6 +712,52 @@ class QRCodeService:
             IOError: If there are problems with file operations
         """
         try:
+            # Check if we should use the new QR generation service
+            if (self.new_qr_generation_service is not None and 
+                settings.USE_NEW_QR_GENERATION_SERVICE and 
+                should_use_new_service(settings)):
+                
+                try:
+                    # Create QRImageParameters for the new service
+                    image_params = QRImageParameters(
+                        size=box_size,
+                        border=border,
+                        fill_color=fill_color,
+                        back_color=back_color,
+                        image_format=image_format.lower(),
+                        include_logo=bool(logo_path)
+                    )
+                    
+                    # Use the new service to generate QR image
+                    image_bytes = self.new_qr_generation_service.create_and_format_qr_sync(
+                        content=content,
+                        image_params=image_params,
+                        output_format=image_format.lower()
+                    )
+                    
+                    # Log metrics for the new path
+                    MetricsLogger.log_service_call(
+                        service_name="NewQRGenerationService", 
+                        operation="create_and_format_qr", 
+                        duration=0.0  # Duration already logged by the service
+                    )
+                    
+                    # Create a BytesIO object from the bytes
+                    img_buffer = BytesIO(image_bytes)
+                    img_buffer.seek(0)
+                    
+                    return img_buffer
+                except Exception as e:
+                    # Log the error and fall back to the old implementation
+                    logger.error(f"Error using new QR generation service: {e}")
+                    MetricsLogger.log_service_call(
+                        service_name="NewQRGenerationService", 
+                        operation="create_and_format_qr", 
+                        duration=0.0
+                    )
+                    # Fall through to old implementation
+            
+            # Original implementation (fallback or when feature flag is off)
             # Calculate the approximate size based on box_size
             size = box_size * 25  # Rough estimate based on typical QR code size
             
@@ -643,6 +770,14 @@ class QRCodeService:
                 back_color=back_color,
                 border=border,
                 logo_path=logo_path
+            )
+            
+            # Log metrics for the old path
+            logger.info("Using OLD QR generation service path")
+            MetricsLogger.log_service_call(
+                service_name="QRImagingUtil", 
+                operation="generate_qr_response", 
+                duration=0.0  # Duration already logged by the utility
             )
             
             # Create a BytesIO object from the bytes
@@ -702,24 +837,97 @@ class QRCodeService:
         Raises:
             HTTPException: If the image format is not supported or conversion fails
         """
-        # If physical dimensions are specified, use them directly
-        if physical_size is not None and physical_unit is not None and dpi is not None:
-            # Calculate pixel size from physical dimensions and DPI to set final output size
-            if physical_unit == "in":
-                pixel_size = int(physical_size * dpi)
-            elif physical_unit == "cm":
-                pixel_size = int(physical_size * dpi / 2.54)  # 1 inch = 2.54 cm
-            elif physical_unit == "mm":
-                pixel_size = int(physical_size * dpi / 25.4)  # 1 inch = 25.4 mm
-            else:
-                # Default to size parameter if physical unit is not recognized
-                pixel_size = size * 25  # Rough estimate based on typical QR code size
-        else:
-            # Calculate the approximate size based on size parameter
-            # For segno, we use the total image size rather than box_size
-            pixel_size = size * 25  # Rough estimate based on typical QR code size
-        
         try:
+            # Check if we should use the new QR generation service
+            if (self.new_qr_generation_service is not None and 
+                settings.USE_NEW_QR_GENERATION_SERVICE and 
+                should_use_new_service(settings)):
+                
+                try:
+                    logger.info("Using NEW QR generation service path")
+                    logger.info(f"Requested image format: {image_format}")
+                    # Parse error level to ErrorCorrectionLevel enum
+                    error_correction = None
+                    if error_level:
+                        try:
+                            error_correction = ErrorCorrectionLevel(error_level)
+                        except ValueError:
+                            error_correction = ErrorCorrectionLevel.M
+                    else:
+                        error_correction = ErrorCorrectionLevel.M
+                    
+                    # Create QRImageParameters for the new service
+                    image_params = QRImageParameters(
+                        size=size,
+                        border=border,
+                        fill_color=fill_color,
+                        back_color=back_color,
+                        image_format=image_format.lower(),
+                        image_quality=image_quality,
+                        include_logo=include_logo,
+                        error_level=error_correction,
+                        svg_title=svg_title,
+                        svg_description=svg_description,
+                        physical_size=physical_size,
+                        physical_unit=physical_unit,
+                        dpi=dpi
+                    )
+                    
+                    logger.info(f"Using format: {image_format.lower()} for both QRImageParameters and output_format")
+                    logger.info(f"QRImageParameters.image_format = {image_params.image_format.value}")
+                    
+                    # Use the new service to generate QR image
+                    image_bytes = self.new_qr_generation_service.create_and_format_qr_sync(
+                        content=data,
+                        image_params=image_params,
+                        output_format=image_format.lower()
+                    )
+                    
+                    # Log metrics for the new path
+                    MetricsLogger.log_service_call(
+                        service_name="NewQRGenerationService", 
+                        operation="create_and_format_qr", 
+                        duration=0.0  # Duration already logged by the service
+                    )
+                    
+                    # Log metrics for successful image generation
+                    MetricsLogger.log_image_generated(image_format, True)
+                    
+                    # Create and return the streaming response
+                    return StreamingResponse(
+                        BytesIO(image_bytes),
+                        media_type=IMAGE_FORMATS.get(image_format.lower(), "application/octet-stream")
+                    )
+                except Exception as e:
+                    # Log the error and fall back to the old implementation
+                    logger.error(f"Error using new QR generation service: {e}")
+                    MetricsLogger.log_service_call(
+                        service_name="NewQRGenerationService", 
+                        operation="create_and_format_qr", 
+                        duration=0.0
+                    )
+                    # Fall through to old implementation
+            
+            # If physical dimensions are specified, use them directly
+            if physical_size is not None and physical_unit is not None and dpi is not None:
+                # Calculate pixel size from physical dimensions and DPI to set final output size
+                if physical_unit == "in":
+                    pixel_size = int(physical_size * dpi)
+                elif physical_unit == "cm":
+                    pixel_size = int(physical_size * dpi / 2.54)  # 1 inch = 2.54 cm
+                elif physical_unit == "mm":
+                    pixel_size = int(physical_size * dpi / 25.4)  # 1 inch = 25.4 mm
+                else:
+                    # Default to size parameter if physical unit is not recognized
+                    pixel_size = size * 25  # Rough estimate based on typical QR code size
+            else:
+                # Calculate the approximate size based on size parameter
+                # For segno, we use the total image size rather than box_size
+                pixel_size = size * 25  # Rough estimate based on typical QR code size
+            
+            # Log metrics for the old path
+            logger.info("Using OLD QR generation service path")
+            
             response = generate_qr_response(
                 content=data,
                 image_format=image_format,
