@@ -35,6 +35,7 @@ from ..schemas.qr.parameters import (
     StaticQRCreateParameters,
 )
 from ..utils.qr_imaging import generate_qr_image as qr_imaging_util, generate_qr_response
+from ..core.metrics_logger import MetricsLogger
 
 # Configure UTC timezone
 UTC = ZoneInfo("UTC")
@@ -240,14 +241,20 @@ class QRCodeService:
             qr = self.qr_code_repo.create(qr_data.model_dump())
 
             logger.info(f"Created static QR code with ID {qr.id}")
+            
+            # Log metrics for successful creation
+            MetricsLogger.log_qr_created('static', True)
+            
             return qr
         except ValidationError as e:
             # Handle validation errors
             logger.error(f"Validation error creating static QR code: {str(e)}")
+            MetricsLogger.log_qr_created('static', False)
             raise QRCodeValidationError(detail=e.errors())
         except ValueError as e:
             # Handle value errors like color validation
             logger.error(f"Validation error creating static QR code: {str(e)}")
+            MetricsLogger.log_qr_created('static', False)
             raise QRCodeValidationError(str(e))
 
     def create_dynamic_qr(self, data: DynamicQRCreateParameters) -> QRCode:
@@ -306,18 +313,25 @@ class QRCodeService:
             qr = self.qr_code_repo.create(model_data)
 
             logger.info(f"Created dynamic QR code with ID {qr.id} and redirect path {qr.content}, short_id: {short_id}")
+            
+            # Log metrics for successful creation
+            MetricsLogger.log_qr_created('dynamic', True)
+            
             return qr
         except ValidationError as e:
             # Only catch and translate validation errors
             logger.error(f"Validation error creating dynamic QR code: {str(e)}")
+            MetricsLogger.log_qr_created('dynamic', False)
             raise QRCodeValidationError(detail=e.errors())
         except ValueError as e:
             # Handle URL validation errors
             if "URL" in str(e):
                 logger.error(f"Invalid redirect URL: {str(e)}")
+                MetricsLogger.log_qr_created('dynamic', False)
                 raise RedirectURLError(f"Invalid redirect URL: {str(e)}")
             # Other value errors are validation errors
             logger.error(f"Validation error creating dynamic QR code: {str(e)}")
+            MetricsLogger.log_qr_created('dynamic', False)
             raise QRCodeValidationError(str(e))
 
     def _parse_user_agent_data(self, ua_string: str | None) -> Dict[str, any]:
@@ -693,22 +707,32 @@ class QRCodeService:
             # For segno, we use the total image size rather than box_size
             pixel_size = size * 25  # Rough estimate based on typical QR code size
         
-        return generate_qr_response(
-            content=data,
-            image_format=image_format,
-            size=pixel_size,
-            fill_color=fill_color,
-            back_color=back_color,
-            border=border,
-            image_quality=image_quality,
-            logo_path=True if include_logo else None,  # Pass logo_path based on include_logo
-            error_level=error_level,
-            svg_title=svg_title,
-            svg_description=svg_description,
-            physical_size=physical_size,
-            physical_unit=physical_unit,
-            dpi=dpi
-        )
+        try:
+            response = generate_qr_response(
+                content=data,
+                image_format=image_format,
+                size=pixel_size,
+                fill_color=fill_color,
+                back_color=back_color,
+                border=border,
+                image_quality=image_quality,
+                logo_path=True if include_logo else None,  # Pass logo_path based on include_logo
+                error_level=error_level,
+                svg_title=svg_title,
+                svg_description=svg_description,
+                physical_size=physical_size,
+                physical_unit=physical_unit,
+                dpi=dpi
+            )
+            
+            # Log metrics for successful image generation
+            MetricsLogger.log_image_generated(image_format, True)
+            
+            return response
+        except Exception as e:
+            # Log metrics for failed image generation
+            MetricsLogger.log_image_generated(image_format, False)
+            raise
 
     def delete_qr(self, qr_id: str) -> None:
         """

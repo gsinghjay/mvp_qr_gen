@@ -35,6 +35,7 @@ from .database import get_db_with_logging
 from .repositories.qr_code_repository import QRCodeRepository
 from .repositories.scan_log_repository import ScanLogRepository
 from .services.qr_service import QRCodeService
+from .core.metrics_logger import initialize_feature_flags
 
 # Configure logging
 logging.basicConfig(
@@ -60,11 +61,15 @@ async def lifespan(app: FastAPI):
     start_time = datetime.now(UTC)
     logger.info("Application starting up...")
 
-    # Step 1: Ensure required directories exist
+    # Step 1: Initialize feature flags for metrics
+    logger.info("Initializing feature flags...")
+    initialize_feature_flags()
+
+    # Step 2: Ensure required directories exist
     logger.info("Ensuring required directories exist...")
     settings.QR_CODES_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Step 2: Pre-initialize key dependencies and routes
+    # Step 3: Pre-initialize key dependencies and routes
     logger.info("Pre-initializing key dependencies and routes...")
     db = None
     try:
