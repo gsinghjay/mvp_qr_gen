@@ -5,7 +5,7 @@ Core configuration module for the FastAPI application.
 import os
 from pathlib import Path
 from typing import List
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -88,11 +88,20 @@ class Settings(BaseSettings):
     # Cookie settings - used only for non-auth related functionality like CSRF
     COOKIE_DOMAIN: str = "10.1.6.12"
 
-    # Feature Flags
+    # Feature Flags - Observatory-First Refactoring
     FEATURE_NEW_QR_SERVICE_ENABLED: bool = False
     FEATURE_ENHANCED_VALIDATION_ENABLED: bool = False
     FEATURE_PERFORMANCE_OPTIMIZATION_ENABLED: bool = False
     FEATURE_DEBUG_MODE_ENABLED: bool = False
+    
+    # Phase 0 Feature Flags
+    USE_NEW_QR_GENERATION_SERVICE: bool = Field(default=False, env="USE_NEW_QR_GENERATION_SERVICE")
+    USE_NEW_ANALYTICS_SERVICE: bool = Field(default=False, env="USE_NEW_ANALYTICS_SERVICE")
+    USE_NEW_VALIDATION_SERVICE: bool = Field(default=False, env="USE_NEW_VALIDATION_SERVICE")
+    
+    # Canary Testing Configuration
+    CANARY_TESTING_ENABLED: bool = Field(default=False, env="CANARY_TESTING_ENABLED")
+    CANARY_PERCENTAGE: int = Field(default=0, ge=0, le=100, env="CANARY_PERCENTAGE")
 
     # Path settings
     APP_ROOT: Path = APP_ROOT
@@ -118,3 +127,32 @@ def get_settings():
     This allows overriding settings in tests by patching this function.
     """
     return settings
+
+
+def should_use_new_service(settings: Settings, user_identifier: str | None = None) -> bool:
+    """
+    Determine if new service implementation should be used based on flags and canary settings.
+    
+    Args:
+        settings: Application settings instance
+        user_identifier: Optional user identifier for canary testing (IP, session ID, etc.)
+        
+    Returns:
+        bool: True if new service should be used, False for legacy service
+    """
+    # If canary testing is enabled, use deterministic percentage-based routing
+    if settings.CANARY_TESTING_ENABLED:
+        if user_identifier:
+            # Use hash of user identifier for deterministic routing
+            import hashlib
+            hash_value = int(hashlib.md5(user_identifier.encode()).hexdigest()[:8], 16)
+            return (hash_value % 100) < settings.CANARY_PERCENTAGE
+        else:
+            # Fallback to random routing if no user identifier
+            import random
+            return random.randint(0, 99) < settings.CANARY_PERCENTAGE
+    
+    # If canary is disabled, check specific feature flags
+    # For now, return general QR generation service flag
+    # This can be made more specific per service type in future iterations
+    return settings.USE_NEW_QR_GENERATION_SERVICE
