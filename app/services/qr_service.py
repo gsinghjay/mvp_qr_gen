@@ -39,6 +39,9 @@ from ..utils.qr_imaging import generate_qr_image as qr_imaging_util, generate_qr
 from ..core.metrics_logger import MetricsLogger
 from ..services.new_qr_generation_service import NewQRGenerationService
 
+# Circuit breaker imports
+import pybreaker
+
 # Configure UTC timezone
 UTC = ZoneInfo("UTC")
 
@@ -62,7 +65,8 @@ class QRCodeService:
         self, 
         qr_code_repo: QRCodeRepository,
         scan_log_repo: ScanLogRepository,
-        new_qr_generation_service: Optional[NewQRGenerationService] = None
+        new_qr_generation_service: Optional[NewQRGenerationService] = None,
+        new_qr_generation_breaker: Optional[pybreaker.CircuitBreaker] = None
     ):
         """
         Initialize the QR code service with repositories.
@@ -71,10 +75,12 @@ class QRCodeService:
             qr_code_repo: Specialized QRCodeRepository for QR code operations
             scan_log_repo: ScanLogRepository for scan log operations
             new_qr_generation_service: New QR generation service (optional, for feature flag)
+            new_qr_generation_breaker: Circuit breaker for new QR generation service (optional)
         """
         self.qr_code_repo = qr_code_repo
         self.scan_log_repo = scan_log_repo
         self.new_qr_generation_service = new_qr_generation_service
+        self.new_qr_generation_breaker = new_qr_generation_breaker
 
     @MetricsLogger.time_service_call("QRCodeService", "_is_safe_redirect_url")
     def _is_safe_redirect_url(self, url: str) -> bool:
@@ -253,6 +259,7 @@ class QRCodeService:
             # Check if we should use the new QR generation service for pre-generating QR image
             # This doesn't affect the database record, but prepares the QR image in advance
             if (self.new_qr_generation_service is not None and 
+                self.new_qr_generation_breaker is not None and
                 settings.USE_NEW_QR_GENERATION_SERVICE and 
                 should_use_new_service(settings)):
                 try:
@@ -265,12 +272,17 @@ class QRCodeService:
                         error_level=data.error_level
                     )
                     
-                    # Use the new service to pre-generate QR image (not stored, just for validation)
-                    self.new_qr_generation_service.create_and_format_qr_sync(
-                        content=data.content,
-                        image_params=image_params,
-                        output_format="png"  # Default format for validation
-                    )
+                    # Use circuit breaker to wrap the new service call
+                    @self.new_qr_generation_breaker
+                    def _attempt_new_service_validation():
+                        return self.new_qr_generation_service.create_and_format_qr_sync(
+                            content=data.content,
+                            image_params=image_params,
+                            output_format="png"  # Default format for validation
+                        )
+                    
+                    # Attempt to use the new service with circuit breaker protection
+                    _attempt_new_service_validation()
                     
                     # Log metrics for the new path
                     MetricsLogger.log_service_call(
@@ -278,6 +290,10 @@ class QRCodeService:
                         operation="create_and_format_qr", 
                         duration=0.0  # Duration already logged by the service
                     )
+                except pybreaker.CircuitBreakerError as e:
+                    # Circuit breaker is open - continue without validation
+                    logger.warning(f"Circuit breaker for NewQRGenerationService is OPEN during static QR creation. Skipping validation. Error: {e}")
+                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_static_qr")
                 except Exception as e:
                     # Log the error but continue with the old implementation
                     # This doesn't affect the database record, just the validation
@@ -364,6 +380,7 @@ class QRCodeService:
             # Check if we should use the new QR generation service for pre-generating QR image
             # This doesn't affect the database record, but prepares the QR image in advance
             if (self.new_qr_generation_service is not None and 
+                self.new_qr_generation_breaker is not None and
                 settings.USE_NEW_QR_GENERATION_SERVICE and 
                 should_use_new_service(settings)):
                 try:
@@ -376,12 +393,17 @@ class QRCodeService:
                         error_level=data.error_level
                     )
                     
-                    # Use the new service to pre-generate QR image (not stored, just for validation)
-                    self.new_qr_generation_service.create_and_format_qr_sync(
-                        content=full_url,  # Use the full URL with short_id
-                        image_params=image_params,
-                        output_format="png"  # Default format for validation
-                    )
+                    # Use circuit breaker to wrap the new service call
+                    @self.new_qr_generation_breaker
+                    def _attempt_new_service_validation():
+                        return self.new_qr_generation_service.create_and_format_qr_sync(
+                            content=full_url,  # Use the full URL with short_id
+                            image_params=image_params,
+                            output_format="png"  # Default format for validation
+                        )
+                    
+                    # Attempt to use the new service with circuit breaker protection
+                    _attempt_new_service_validation()
                     
                     # Log metrics for the new path
                     MetricsLogger.log_service_call(
@@ -714,6 +736,7 @@ class QRCodeService:
         try:
             # Check if we should use the new QR generation service
             if (self.new_qr_generation_service is not None and 
+                self.new_qr_generation_breaker is not None and
                 settings.USE_NEW_QR_GENERATION_SERVICE and 
                 should_use_new_service(settings)):
                 
@@ -728,12 +751,17 @@ class QRCodeService:
                         include_logo=bool(logo_path)
                     )
                     
-                    # Use the new service to generate QR image
-                    image_bytes = self.new_qr_generation_service.create_and_format_qr_sync(
-                        content=content,
-                        image_params=image_params,
-                        output_format=image_format.lower()
-                    )
+                    # Use circuit breaker to wrap the new service call
+                    @self.new_qr_generation_breaker
+                    def _attempt_new_service_image_generation():
+                        return self.new_qr_generation_service.create_and_format_qr_sync(
+                            content=content,
+                            image_params=image_params,
+                            output_format=image_format.lower()
+                        )
+                    
+                    # Attempt to use the new service with circuit breaker protection
+                    image_bytes = _attempt_new_service_image_generation()
                     
                     # Log metrics for the new path
                     MetricsLogger.log_service_call(
@@ -840,12 +868,14 @@ class QRCodeService:
         try:
             # Check if we should use the new QR generation service
             if (self.new_qr_generation_service is not None and 
+                self.new_qr_generation_breaker is not None and
                 settings.USE_NEW_QR_GENERATION_SERVICE and 
                 should_use_new_service(settings)):
                 
                 try:
                     logger.info("Using NEW QR generation service path")
                     logger.info(f"Requested image format: {image_format}")
+                    
                     # Parse error level to ErrorCorrectionLevel enum
                     error_correction = None
                     if error_level:
@@ -876,12 +906,17 @@ class QRCodeService:
                     logger.info(f"Using format: {image_format.lower()} for both QRImageParameters and output_format")
                     logger.info(f"QRImageParameters.image_format = {image_params.image_format.value}")
                     
-                    # Use the new service to generate QR image
-                    image_bytes = self.new_qr_generation_service.create_and_format_qr_sync(
-                        content=data,
-                        image_params=image_params,
-                        output_format=image_format.lower()
-                    )
+                    # Use circuit breaker to wrap the new service call
+                    @self.new_qr_generation_breaker
+                    def _attempt_new_service_image_generation():
+                        return self.new_qr_generation_service.create_and_format_qr_sync(
+                            content=data,
+                            image_params=image_params,
+                            output_format=image_format.lower()
+                        )
+                    
+                    # Attempt to use the new service with circuit breaker protection
+                    image_bytes = _attempt_new_service_image_generation()
                     
                     # Log metrics for the new path
                     MetricsLogger.log_service_call(
@@ -898,9 +933,16 @@ class QRCodeService:
                         BytesIO(image_bytes),
                         media_type=IMAGE_FORMATS.get(image_format.lower(), "application/octet-stream")
                     )
+                    
+                except pybreaker.CircuitBreakerError as e:
+                    # Circuit breaker is open - fallback to old implementation
+                    logger.warning(f"Circuit breaker for NewQRGenerationService is OPEN. Falling back. Error: {e}")
+                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "generate_qr")
+                    # Fall through to old implementation
+                    
                 except Exception as e:
-                    # Log the error and fall back to the old implementation
-                    logger.error(f"Error using new QR generation service: {e}")
+                    # Unexpected error in new service - log and fallback
+                    logger.error(f"Unexpected error in NewQRGenerationService path, not due to circuit breaker: {e}. Falling back.")
                     MetricsLogger.log_service_call(
                         service_name="NewQRGenerationService", 
                         operation="create_and_format_qr", 
