@@ -162,6 +162,31 @@ http:
         - access-restricted-redirect@file
       priority: 90 # Lowest priority for this host
 
+    # --- Admin Endpoints (Internal Only) ---
+    admin-api-router:
+      rule: "PathPrefix(`/api/v1/admin/`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file      # Internal IPs only
+        - dashboard-auth@file    # Basic Auth  
+        - security-headers@file
+      priority: 450 # Higher than health to catch admin paths first
+
+    admin-api-secure-router:
+      rule: "PathPrefix(`/api/v1/admin/`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - ip-whitelist@file      # Internal IPs only
+        - dashboard-auth@file    # Basic Auth
+        - security-headers@file
+      priority: 450
+
     # --- Health Check (Public) ---
     health-router:
       rule: "PathPrefix(`/health`)" # Could be Host-specific if needed, but generally public
