@@ -35,7 +35,9 @@ class QRImageParameters(BaseModel):
     """Parameters for QR code image generation."""
 
     image_format: ImageFormat = Field(
-        default=ImageFormat.PNG, description="The format of the image (png, jpeg, jpg, svg, webp)"
+        default=ImageFormat.PNG, 
+        description="The format of the image (png, jpeg, jpg, svg, webp)",
+        alias="format"
     )
     image_quality: int | None = Field(
         default=None,
