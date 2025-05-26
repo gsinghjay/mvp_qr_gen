@@ -3,6 +3,7 @@ QR code service layer for the QR code generator application.
 """
 
 import logging
+import time
 import uuid
 from datetime import UTC, datetime
 from io import BytesIO
@@ -262,6 +263,9 @@ class QRCodeService:
                 self.new_qr_generation_breaker is not None and
                 settings.USE_NEW_QR_GENERATION_SERVICE and 
                 should_use_new_service(settings)):
+                
+                # NEW PATH: Use NewQRGenerationService
+                start_time = time.perf_counter()
                 try:
                     # Create QRImageParameters for the new service
                     image_params = QRImageParameters(
@@ -284,25 +288,29 @@ class QRCodeService:
                     # Attempt to use the new service with circuit breaker protection
                     _attempt_new_service_validation()
                     
-                    # Log metrics for the new path
-                    MetricsLogger.log_service_call(
-                        service_name="NewQRGenerationService", 
-                        operation="create_and_format_qr", 
-                        duration=0.0  # Duration already logged by the service
-                    )
+                    # Log metrics for successful new path
+                    duration = time.perf_counter() - start_time
+                    MetricsLogger.log_qr_generation_path("new", "create_static", duration, True)
+                    
                 except pybreaker.CircuitBreakerError as e:
                     # Circuit breaker is open - continue without validation
+                    duration = time.perf_counter() - start_time
                     logger.warning(f"Circuit breaker for NewQRGenerationService is OPEN during static QR creation. Skipping validation. Error: {e}")
                     MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_static_qr")
+                    MetricsLogger.log_qr_generation_path("new", "create_static", duration, False)
                 except Exception as e:
                     # Log the error but continue with the old implementation
                     # This doesn't affect the database record, just the validation
+                    duration = time.perf_counter() - start_time
                     logger.warning(f"Error validating with new QR generation service: {e}")
-                    MetricsLogger.log_service_call(
-                        service_name="NewQRGenerationService", 
-                        operation="create_and_format_qr", 
-                        duration=0.0
-                    )
+                    MetricsLogger.log_qr_generation_path("new", "create_static", duration, False)
+            else:
+                # OLD PATH: No pre-validation (traditional behavior)
+                start_time = time.perf_counter()
+                # This represents the "old path" which doesn't do pre-validation
+                # We just log that we took the old path with minimal duration
+                duration = time.perf_counter() - start_time
+                MetricsLogger.log_qr_generation_path("old", "create_static", duration, True)
 
             logger.info(f"Created static QR code with ID {qr.id}")
             
@@ -383,6 +391,9 @@ class QRCodeService:
                 self.new_qr_generation_breaker is not None and
                 settings.USE_NEW_QR_GENERATION_SERVICE and 
                 should_use_new_service(settings)):
+                
+                # NEW PATH: Use NewQRGenerationService
+                start_time = time.perf_counter()
                 try:
                     # Create QRImageParameters for the new service
                     image_params = QRImageParameters(
@@ -405,21 +416,29 @@ class QRCodeService:
                     # Attempt to use the new service with circuit breaker protection
                     _attempt_new_service_validation()
                     
-                    # Log metrics for the new path
-                    MetricsLogger.log_service_call(
-                        service_name="NewQRGenerationService", 
-                        operation="create_and_format_qr", 
-                        duration=0.0  # Duration already logged by the service
-                    )
+                    # Log metrics for successful new path
+                    duration = time.perf_counter() - start_time
+                    MetricsLogger.log_qr_generation_path("new", "create_dynamic", duration, True)
+                    
+                except pybreaker.CircuitBreakerError as e:
+                    # Circuit breaker is open - continue without validation
+                    duration = time.perf_counter() - start_time
+                    logger.warning(f"Circuit breaker for NewQRGenerationService is OPEN during dynamic QR creation. Skipping validation. Error: {e}")
+                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_dynamic_qr")
+                    MetricsLogger.log_qr_generation_path("new", "create_dynamic", duration, False)
                 except Exception as e:
                     # Log the error but continue with the old implementation
                     # This doesn't affect the database record, just the validation
+                    duration = time.perf_counter() - start_time
                     logger.warning(f"Error validating with new QR generation service: {e}")
-                    MetricsLogger.log_service_call(
-                        service_name="NewQRGenerationService", 
-                        operation="create_and_format_qr", 
-                        duration=0.0
-                    )
+                    MetricsLogger.log_qr_generation_path("new", "create_dynamic", duration, False)
+            else:
+                # OLD PATH: No pre-validation (traditional behavior)
+                start_time = time.perf_counter()
+                # This represents the "old path" which doesn't do pre-validation
+                # We just log that we took the old path with minimal duration
+                duration = time.perf_counter() - start_time
+                MetricsLogger.log_qr_generation_path("old", "create_dynamic", duration, True)
 
             logger.info(f"Created dynamic QR code with ID {qr.id} and redirect path {qr.content}, short_id: {short_id}")
             
@@ -872,6 +891,8 @@ class QRCodeService:
                 settings.USE_NEW_QR_GENERATION_SERVICE and 
                 should_use_new_service(settings)):
                 
+                # NEW PATH: Use NewQRGenerationService
+                start_time = time.perf_counter()
                 try:
                     logger.info("Using NEW QR generation service path")
                     logger.info(f"Requested image format: {image_format}")
@@ -918,12 +939,9 @@ class QRCodeService:
                     # Attempt to use the new service with circuit breaker protection
                     image_bytes = _attempt_new_service_image_generation()
                     
-                    # Log metrics for the new path
-                    MetricsLogger.log_service_call(
-                        service_name="NewQRGenerationService", 
-                        operation="create_and_format_qr", 
-                        duration=0.0  # Duration already logged by the service
-                    )
+                    # Log metrics for successful new path
+                    duration = time.perf_counter() - start_time
+                    MetricsLogger.log_qr_generation_path("new", "generate_image", duration, True)
                     
                     # Log metrics for successful image generation
                     MetricsLogger.log_image_generated(image_format, True)
@@ -936,61 +954,73 @@ class QRCodeService:
                     
                 except pybreaker.CircuitBreakerError as e:
                     # Circuit breaker is open - fallback to old implementation
+                    duration = time.perf_counter() - start_time
                     logger.warning(f"Circuit breaker for NewQRGenerationService is OPEN. Falling back. Error: {e}")
                     MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "generate_qr")
+                    MetricsLogger.log_qr_generation_path("new", "generate_image", duration, False)
                     # Fall through to old implementation
                     
                 except Exception as e:
                     # Unexpected error in new service - log and fallback
+                    duration = time.perf_counter() - start_time
                     logger.error(f"Unexpected error in NewQRGenerationService path, not due to circuit breaker: {e}. Falling back.")
-                    MetricsLogger.log_service_call(
-                        service_name="NewQRGenerationService", 
-                        operation="create_and_format_qr", 
-                        duration=0.0
-                    )
+                    MetricsLogger.log_qr_generation_path("new", "generate_image", duration, False)
                     # Fall through to old implementation
             
-            # If physical dimensions are specified, use them directly
-            if physical_size is not None and physical_unit is not None and dpi is not None:
-                # Calculate pixel size from physical dimensions and DPI to set final output size
-                if physical_unit == "in":
-                    pixel_size = int(physical_size * dpi)
-                elif physical_unit == "cm":
-                    pixel_size = int(physical_size * dpi / 2.54)  # 1 inch = 2.54 cm
-                elif physical_unit == "mm":
-                    pixel_size = int(physical_size * dpi / 25.4)  # 1 inch = 25.4 mm
+            # OLD PATH: Use legacy QR generation
+            start_time = time.perf_counter()
+            try:
+                # If physical dimensions are specified, use them directly
+                if physical_size is not None and physical_unit is not None and dpi is not None:
+                    # Calculate pixel size from physical dimensions and DPI to set final output size
+                    if physical_unit == "in":
+                        pixel_size = int(physical_size * dpi)
+                    elif physical_unit == "cm":
+                        pixel_size = int(physical_size * dpi / 2.54)  # 1 inch = 2.54 cm
+                    elif physical_unit == "mm":
+                        pixel_size = int(physical_size * dpi / 25.4)  # 1 inch = 25.4 mm
+                    else:
+                        # Default to size parameter if physical unit is not recognized
+                        pixel_size = size * 25  # Rough estimate based on typical QR code size
                 else:
-                    # Default to size parameter if physical unit is not recognized
+                    # Calculate the approximate size based on size parameter
+                    # For segno, we use the total image size rather than box_size
                     pixel_size = size * 25  # Rough estimate based on typical QR code size
-            else:
-                # Calculate the approximate size based on size parameter
-                # For segno, we use the total image size rather than box_size
-                pixel_size = size * 25  # Rough estimate based on typical QR code size
-            
-            # Log metrics for the old path
-            logger.info("Using OLD QR generation service path")
-            
-            response = generate_qr_response(
-                content=data,
-                image_format=image_format,
-                size=pixel_size,
-                fill_color=fill_color,
-                back_color=back_color,
-                border=border,
-                image_quality=image_quality,
-                logo_path=True if include_logo else None,  # Pass logo_path based on include_logo
-                error_level=error_level,
-                svg_title=svg_title,
-                svg_description=svg_description,
-                physical_size=physical_size,
-                physical_unit=physical_unit,
-                dpi=dpi
-            )
-            
-            # Log metrics for successful image generation
-            MetricsLogger.log_image_generated(image_format, True)
-            
-            return response
+                
+                # Log metrics for the old path
+                logger.info("Using OLD QR generation service path")
+                
+                response = generate_qr_response(
+                    content=data,
+                    image_format=image_format,
+                    size=pixel_size,
+                    fill_color=fill_color,
+                    back_color=back_color,
+                    border=border,
+                    image_quality=image_quality,
+                    logo_path=True if include_logo else None,  # Pass logo_path based on include_logo
+                    error_level=error_level,
+                    svg_title=svg_title,
+                    svg_description=svg_description,
+                    physical_size=physical_size,
+                    physical_unit=physical_unit,
+                    dpi=dpi
+                )
+                
+                # Log metrics for successful old path
+                duration = time.perf_counter() - start_time
+                MetricsLogger.log_qr_generation_path("old", "generate_image", duration, True)
+                
+                # Log metrics for successful image generation
+                MetricsLogger.log_image_generated(image_format, True)
+                
+                return response
+            except Exception as e:
+                # Log metrics for failed old path
+                duration = time.perf_counter() - start_time
+                MetricsLogger.log_qr_generation_path("old", "generate_image", duration, False)
+                # Re-raise the exception
+                raise
         except Exception as e:
             # Log metrics for failed image generation
             MetricsLogger.log_image_generated(image_format, False)
