@@ -37,6 +37,20 @@ qr_image_generations_total = Counter(
     ['format', 'status']  
 )
 
+# QR Generation Path Comparison Metrics (Task 1.3)
+qr_generation_path_total = Counter(
+    'qr_generation_path_total',
+    'Total QR generation operations by path',
+    ['path', 'operation', 'status']
+)
+
+qr_generation_path_duration_seconds = Histogram(
+    'qr_generation_path_duration_seconds',
+    'Duration of QR generation operations by path',
+    ['path', 'operation'],
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0)
+)
+
 # Service Call Duration Metrics
 service_call_duration_seconds = Histogram(
     'service_call_duration_seconds',
@@ -183,6 +197,21 @@ class MetricsLogger:
             service_name: Name of the service that failed
         """
         app_circuit_breaker_failures_recorded_total.labels(service_name=service_name).inc()
+    
+    @staticmethod
+    def log_qr_generation_path(path: str, operation: str, duration: float, success: bool) -> None:
+        """
+        Log QR generation path metrics for comparing old vs new implementations.
+        
+        Args:
+            path: Path taken ("old" or "new")
+            operation: Operation performed ("create_static", "create_dynamic", "generate_image")
+            duration: Duration in seconds
+            success: Whether the operation was successful
+        """
+        status = 'success' if success else 'failure'
+        qr_generation_path_total.labels(path=path, operation=operation, status=status).inc()
+        qr_generation_path_duration_seconds.labels(path=path, operation=operation).observe(duration)
     
     @staticmethod
     def time_service_call(service_name: str, operation: str) -> Callable:
