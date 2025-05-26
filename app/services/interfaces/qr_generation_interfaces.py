@@ -68,4 +68,55 @@ class QRImageFormatter(ABC):
             QRCodeValidationError: If image parameters are invalid
             ValueError: If output format is not supported
         """
+        pass
+    
+    @abstractmethod
+    async def get_png_data_uri(self, qr_data: Any, image_params: QRImageParameters) -> str:
+        """
+        Generate a PNG data URI for direct HTML embedding.
+        
+        Args:
+            qr_data: QR code data from QRCodeGenerator (implementation-specific type)
+            image_params: Parameters for image formatting (size, colors, etc.)
+            
+        Returns:
+            PNG data URI string (e.g., "data:image/png;base64,...")
+            
+        Raises:
+            QRCodeValidationError: If image parameters are invalid
+        """
+        pass
+    
+    @abstractmethod
+    async def get_svg_data_uri(self, qr_data: Any, image_params: QRImageParameters) -> str:
+        """
+        Generate an SVG data URI for direct HTML embedding.
+        
+        Args:
+            qr_data: QR code data from QRCodeGenerator (implementation-specific type)
+            image_params: Parameters for image formatting (size, colors, etc.)
+            
+        Returns:
+            SVG data URI string (e.g., "data:image/svg+xml;charset=utf-8,...")
+            
+        Raises:
+            QRCodeValidationError: If image parameters are invalid
+        """
+        pass
+    
+    @abstractmethod
+    async def get_svg_inline(self, qr_data: Any, image_params: QRImageParameters) -> str:
+        """
+        Generate inline SVG markup for responsive HTML integration.
+        
+        Args:
+            qr_data: QR code data from QRCodeGenerator (implementation-specific type)
+            image_params: Parameters for image formatting (size, colors, etc.)
+            
+        Returns:
+            Inline SVG markup string with accessibility attributes
+            
+        Raises:
+            QRCodeValidationError: If image parameters are invalid
+        """
         pass 
