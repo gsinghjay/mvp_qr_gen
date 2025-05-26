@@ -6,6 +6,7 @@ interfaces and adapters in the Observatory-First refactoring architecture.
 """
 
 import logging
+import asyncio
 from typing import Any, Dict
 
 from app.core.metrics_logger import MetricsLogger
@@ -73,10 +74,82 @@ class NewQRGenerationService:
             image_bytes = await self.formatter.format_qr_image(qr_data, image_params, output_format)
             
             logger.info(f"Successfully created {output_format} QR code: {len(image_bytes)} bytes")
+            
+            # Log metrics for successful image generation
+            MetricsLogger.log_image_generated(output_format, True)
+            
             return image_bytes
             
         except Exception as e:
             logger.error(f"Failed to create and format QR code: {e}")
+            # Log metrics for failed image generation
+            MetricsLogger.log_image_generated(output_format, False)
+            raise
+
+    @MetricsLogger.time_service_call("NewQRGenerationService", "create_and_format_qr_sync")
+    def create_and_format_qr_sync(
+        self, 
+        content: str, 
+        image_params: Any, 
+        output_format: str = "png",
+        error_correction: Any = None
+    ) -> bytes:
+        """
+        Synchronous version of create_and_format_qr that wraps the async method.
+        
+        This method is provided for compatibility with synchronous code.
+        It safely handles both cases: when called from synchronous code and
+        when called from within an existing event loop.
+        
+        Args:
+            content: Content to encode in the QR code
+            image_params: Image formatting parameters
+            output_format: Target image format
+            error_correction: Error correction level
+            
+        Returns:
+            Formatted QR code image as bytes
+            
+        Raises:
+            QRCodeValidationError: If parameters are invalid
+            ValueError: If operation fails
+        """
+        try:
+            # Check if we're already in an event loop
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an event loop, use run_coroutine_threadsafe with a Future
+                if loop.is_running():
+                    logger.debug("Using existing event loop")
+                    # For FastAPI, we need to run in a thread to avoid blocking the event loop
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                        future = pool.submit(asyncio.run, self.create_and_format_qr(
+                            content=content,
+                            image_params=image_params,
+                            output_format=output_format,
+                            error_correction=error_correction
+                        ))
+                        result = future.result(timeout=10)
+                        # Note: Metrics for the image generation are already logged in create_and_format_qr
+                        return result
+            except RuntimeError:
+                # No running event loop, create a new one
+                logger.debug("Creating new event loop")
+                result = asyncio.run(
+                    self.create_and_format_qr(
+                        content=content,
+                        image_params=image_params,
+                        output_format=output_format,
+                        error_correction=error_correction
+                    )
+                )
+                # Note: Metrics for the image generation are already logged in create_and_format_qr
+                return result
+        except Exception as e:
+            logger.error(f"Failed to create and format QR code (sync): {e}")
+            # Log metrics for failed image generation if the async method didn't already do it
+            MetricsLogger.log_image_generated(output_format, False)
             raise
 
     @MetricsLogger.time_service_call("NewQRGenerationService", "validate_generation_params")

@@ -8,6 +8,7 @@ prometheus-client>=0.19.0  # Latest metrics client
 segno[pil]>=1.6.0  # QR code generation
 Pillow>=10.2.0  # Latest Pillow for image processing
 psutil>=5.9.8  # System metrics for health checks
+pybreaker>=1.0.0  # Circuit breaker pattern for resilient service calls
 psycopg2-binary>=2.9.9  # PostgreSQL driver
 asyncpg>=0.30.0  # Async PostgreSQL driver for testing
 PyYAML>=6.0.1  # Required for user-agents

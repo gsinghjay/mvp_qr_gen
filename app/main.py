@@ -588,8 +588,8 @@ async def general_exception_handler(
 
 # Include routers
 app.include_router(api_router)  # /api prefix
-app.include_router(redirect_router_no_prefix)  # /r prefix
-app.include_router(web_router_no_prefix)  # No prefix (for web pages)
+app.include_router(redirect_router_no_prefix)  # No prefix (for redirects)
+app.include_router(web_router_no_prefix)  # No prefix (for web UI)
 app.include_router(health_router_no_prefix)  # No prefix (for health check)
 
 # Root endpoint

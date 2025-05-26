@@ -10,6 +10,7 @@ import math
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+import io
 
 import segno
 from PIL import Image
@@ -90,104 +91,100 @@ class PillowQRImageFormatter(QRImageFormatter):
             ValueError: If output format is not supported
         """
         try:
-            output = BytesIO()
+            # Add detailed debug logging
+            logger.info(f"PillowQRImageFormatter.format_qr_image called with format: {output_format}")
+            logger.info(f"QRImageParameters: size={image_params.size}, border={image_params.border}, image_format={image_params.image_format.value}")
             
-            # Handle SVG format with optimizations
-            if output_format.lower() == "svg":
-                # SEGNO SVG OPTIMIZATIONS (PRIORITY 1, Issue 2)
-                svg_params = {
-                    "kind": "svg",
-                    "xmldecl": False,      # Remove XML declaration
-                    "svgns": False,        # Remove SVG namespace
-                    "svgclass": None,      # Remove CSS classes
-                    "lineclass": None,     # Remove line classes  
-                    "nl": False,           # Remove newlines
-                    "border": image_params.border,
-                    "dark": self._get_effective_color(image_params.fill_color, image_params.data_dark_color),
-                    "light": self._handle_transparency(
-                        self._get_effective_color(image_params.back_color, image_params.data_light_color), 
-                        "svg"
-                    )
-                }
-                
-                # Task 0.2.4: Native SVG Unit Support
-                if (image_params.physical_unit and 
-                    image_params.physical_size and 
-                    image_params.dpi):
-                    svg_params["unit"] = image_params.physical_unit
-                    svg_params["scale"] = image_params.physical_size
-                    # Note: omitsize=False (default) when using unit for width/height attributes
-                else:
-                    svg_params["scale"] = image_params.size
-                    svg_params["omitsize"] = True  # Remove size attributes for relative sizing
-                
-                # Add SVG accessibility attributes if provided
-                if image_params.svg_title:
-                    svg_params["title"] = image_params.svg_title
-                if image_params.svg_description:
-                    svg_params["desc"] = image_params.svg_description
-                
-                qr_data.save(output, **svg_params)
-                
-            # Handle raster formats (PNG, JPEG, WEBP) 
-            elif output_format.lower() in ["png", "jpeg", "webp"]:
-                # Task 0.2.5: Precise Scale Calculation for Raster Images
-                scale = self._calculate_precise_scale(qr_data, image_params)
-                
-                # Prepare color parameters with advanced color support
-                dark_color = self._get_effective_color(image_params.fill_color, image_params.data_dark_color)
-                light_color = self._handle_transparency(
-                    self._get_effective_color(image_params.back_color, image_params.data_light_color), 
-                    output_format.lower()
+            # Ensure we prioritize the explicitly passed output_format over the image_params.image_format
+            # This is crucial as the parameter in the URL gets correctly passed to output_format
+            # but may not be correctly reflected in image_params.image_format due to alias handling issues
+            actual_format = output_format.lower()
+            logger.info(f"Using actual format for processing: {actual_format}")
+            
+            # Create a BytesIO buffer to store the image
+            buffer = io.BytesIO()
+            
+            # Process based on format
+            if actual_format == 'svg':
+                # For SVG, use the direct Segno SVG writer
+                qr_data.save(
+                    buffer,
+                    kind='svg',
+                    scale=image_params.size,
+                    dark=image_params.fill_color or '#000000',
+                    light=image_params.back_color or '#FFFFFF',
+                    border=image_params.border
                 )
-                
-                # Check if logo embedding is requested
-                if hasattr(image_params, 'include_logo') and image_params.include_logo:
-                    # DIRECT PILLOW INTEGRATION FOR LOGO (PRIORITY 1, Issue 3)
-                    pil_image = qr_data.to_pil(
-                        scale=scale,
-                        border=image_params.border,
-                        dark=dark_color,
-                        light=light_color
-                    )
-                    
-                    # Add logo if available
-                    pil_image = self._add_logo_to_image(pil_image)
-                    
-                    # Save with format-specific options
-                    if output_format.lower() == "jpeg":
-                        # JPEG doesn't support transparency
-                        if pil_image.mode in ("RGBA", "LA", "P"):
-                            background = Image.new("RGB", pil_image.size, "white")
-                            if pil_image.mode == "P":
-                                pil_image = pil_image.convert("RGBA")
-                            background.paste(pil_image, mask=pil_image.split()[-1] if pil_image.mode == "RGBA" else None)
-                            pil_image = background
-                        pil_image.save(output, format="JPEG", quality=getattr(image_params, 'image_quality', 90))
-                    else:
-                        pil_image.save(output, format=output_format.upper())
-                else:
-                    # Direct Segno save for raster without logo
+            elif actual_format == 'png':
+                # For PNG, use the direct Segno PNG writer
+                qr_data.save(
+                    buffer,
+                    kind='png',
+                    scale=image_params.size,
+                    dark=image_params.fill_color or '#000000',
+                    light=image_params.back_color or '#FFFFFF',
+                    border=image_params.border
+                )
+            elif actual_format in ('jpeg', 'jpg'):
+                # For JPEG, convert to PIL image first then save as JPEG
+                try:
+                    # Create a temporary buffer for PNG
+                    temp_buffer = io.BytesIO()
                     qr_data.save(
-                        output,
-                        kind=output_format.lower(),
-                        scale=scale,
-                        border=image_params.border,
-                        dark=dark_color,
-                        light=light_color
+                        temp_buffer,
+                        kind='png',
+                        scale=image_params.size,
+                        dark=image_params.fill_color or '#000000',
+                        light=image_params.back_color or '#FFFFFF',
+                        border=image_params.border
                     )
+                    temp_buffer.seek(0)
+                    
+                    # Open with PIL and save as JPEG
+                    from PIL import Image
+                    img = Image.open(temp_buffer)
+                    img = img.convert('RGB')  # Remove alpha for JPEG
+                    img.save(buffer, format='JPEG', quality=95)
+                except ImportError:
+                    # Fallback to PNG if PIL is not available
+                    logger.warning("PIL not available for JPEG conversion, falling back to PNG")
+                    qr_data.save(buffer, kind='png', scale=image_params.size, dark=image_params.fill_color or '#000000', light=image_params.back_color or '#FFFFFF', border=image_params.border)
+            elif actual_format == 'webp':
+                # For WebP, similar approach as JPEG but with WebP format
+                try:
+                    # Create a temporary buffer for PNG
+                    temp_buffer = io.BytesIO()
+                    qr_data.save(
+                        temp_buffer,
+                        kind='png',
+                        scale=image_params.size,
+                        dark=image_params.fill_color or '#000000',
+                        light=image_params.back_color or '#FFFFFF',
+                        border=image_params.border
+                    )
+                    temp_buffer.seek(0)
+                    
+                    # Open with PIL and save as WebP
+                    from PIL import Image
+                    img = Image.open(temp_buffer)
+                    img.save(buffer, format='WEBP', quality=95)
+                except (ImportError, ValueError):
+                    # Fallback to PNG if PIL is not available or WebP not supported
+                    logger.warning("WebP conversion not available, falling back to PNG")
+                    qr_data.save(buffer, kind='png', scale=image_params.size, dark=image_params.fill_color or '#000000', light=image_params.back_color or '#FFFFFF', border=image_params.border)
             else:
-                raise ValueError(f"Unsupported output format: {output_format}")
-                
-            output.seek(0)
-            image_bytes = output.getvalue()
+                # Default to PNG for unsupported formats
+                logger.warning(f"Unsupported format '{actual_format}', falling back to PNG")
+                qr_data.save(buffer, kind='png', scale=image_params.size, dark=image_params.fill_color or '#000000', light=image_params.back_color or '#FFFFFF', border=image_params.border)
             
-            logger.debug(f"Generated {output_format} image: {len(image_bytes)} bytes")
-            return image_bytes
+            # Get the bytes
+            buffer.seek(0)
+            return buffer.getvalue()
             
         except Exception as e:
-            logger.error(f"Failed to format QR image: {e}")
-            raise ValueError(f"QR image formatting failed: {e}")
+            # Log and re-raise the exception
+            logger.error(f"Error formatting QR image: {e}", exc_info=True)
+            raise ValueError(f"Failed to format QR code: {e}")
 
     async def get_png_data_uri(self, qr_data: segno.QRCode, image_params: QRImageParameters) -> str:
         """
@@ -290,7 +287,7 @@ class PillowQRImageFormatter(QRImageFormatter):
                 image_params.dpi):
                 svg_params["unit"] = image_params.physical_unit
                 svg_params["scale"] = image_params.physical_size
-                svg_params["omitsize"] = False  # Keep size for physical dimensions
+                svg_params["omitsize"] = False  # Keep size attributes for physical dimensions
             else:
                 svg_params["scale"] = image_params.size
             

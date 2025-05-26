@@ -83,4 +83,6 @@ def get_qr_service(
     Returns:
         An instance of QRCodeService with the repositories
     """
+    # For tests, we don't inject the NewQRGenerationService by default
+    # This can be overridden in specific tests by patching this function
     return QRCodeService(qr_repo, scan_log_repo) 

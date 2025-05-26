@@ -13,7 +13,7 @@ This module consolidates all QR code-related operations including:
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, status, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, status, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -148,6 +148,7 @@ async def get_qr_image(
     qr_id: str,
     qr_service: QRServiceDep,
     params: QRImageParameters = Depends(),
+    format: str = Query(None, description="Output format override"),
 ):
     """
     Get QR code image by ID.
@@ -156,6 +157,7 @@ async def get_qr_image(
         qr_id: The ID of the QR code to retrieve
         params: Parameters for generating the QR code image
         qr_service: The QR code service (injected)
+        format: Optional format override (png, svg, jpeg, webp)
 
     Returns:
         The QR code image in the requested format
@@ -167,6 +169,14 @@ async def get_qr_image(
     """
     # Get the QR code
     qr = qr_service.get_qr_by_id(qr_id)
+    
+    # Determine the format to use - prioritize direct format query param over the enum
+    image_format = params.image_format.value
+    if format:
+        image_format = format.lower()
+        logger.info(f"QR image request - format override from direct query param: {image_format}")
+    else:
+        logger.info(f"QR image request - format from URL via QRImageParameters: {image_format}")
 
     # Generate the QR code image
     return qr_service.generate_qr(
@@ -175,7 +185,7 @@ async def get_qr_image(
         border=params.border,
         fill_color=params.fill_color or qr.fill_color,
         back_color=params.back_color or qr.back_color,
-        image_format=params.image_format.value,
+        image_format=image_format,
         image_quality=params.image_quality,
         include_logo=params.include_logo,
         error_level=params.error_level.value,
@@ -185,8 +195,6 @@ async def get_qr_image(
         physical_unit=params.physical_unit,
         dpi=params.dpi
     )
-
-
 
 # Create Static QR Code
 @router.post(
