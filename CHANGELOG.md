@@ -1,6 +1,15 @@
 # CHANGELOG
 
 
+## v1.3.1 (2025-05-26)
+
+### Fixes
+
+* fix: remove conflicting paths-ignore from update-wiki.yml workflow
+
+- GitHub Actions only allows paths OR paths-ignore, not both ([`27ab4f9`](https://github.com/gsinghjay/mvp_qr_gen/commit/27ab4f9267737e18ae1a9709317ac4b55a232960))
+
+
 ## v1.3.0 (2025-05-26)
 
 ### Documentation
