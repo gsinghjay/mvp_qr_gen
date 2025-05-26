@@ -9,10 +9,6 @@ on:
       - 'BACKUP-RESTORE.md'
       - 'WIKI.md'
       - 'scripts/update_wiki.sh'
-    paths-ignore:
-      - 'CHANGELOG.md'
-      - 'pyproject.toml'
-      - '.github/workflows/semantic-release.yml'
   workflow_dispatch:  # Allow manual triggering
 
 # Ensure this workflow doesn't interfere with semantic-release
