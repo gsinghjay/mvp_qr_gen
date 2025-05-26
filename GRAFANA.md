@@ -16,7 +16,7 @@ Imagine you're running a campus-wide QR code system that students, faculty, and 
 graph TD
     A[👥 College Community] --> B[📱 QR Code Usage]
     B --> C[🔍 Real-time Monitoring]
-    C --> D[📊 8 Specialized Dashboards]
+    C --> D[📊 9 Specialized Dashboards]
     D --> E[💡 Data-Driven Decisions]
     E --> F[🎯 Better User Experience]
     
@@ -81,7 +81,7 @@ graph TB
     subgraph "🔍 Observatory (Your Mission Control)"
         G[📊 Prometheus<br/>Metrics Collector]
         G2[📝 Loki<br/>Log Aggregator]
-        H[📈 Grafana<br/>8 Dashboard Suite<br/>+ Log Analysis]
+        H[📈 Grafana<br/>9 Dashboard Suite<br/>+ Database Monitoring<br/>+ Log Analysis]
         I[🚨 Alert System]
     end
     
@@ -118,7 +118,7 @@ graph TB
 
 ---
 
-## 🎭 Meet Your 8 Dashboard Characters
+## 🎭 Meet Your 10 Dashboard Characters
 
 Each dashboard has a specific role in telling your system's story:
 
@@ -136,6 +136,7 @@ graph TD
     A --> G[QR User Experience Monitoring]
     A --> H[QR Alerting & SLA Overview]
     A --> I[QR Application Custom Metrics]
+    A --> J[QR Database Monitoring]
     
     style A fill:#e1f5fe
     style B fill:#f3e5f5
@@ -285,6 +286,24 @@ graph LR
 - **Dashboard Integration**: Real-time data display with proper time ranges
 - **Observatory Integration**: Full integration with existing Prometheus/Grafana stack
 
+### 10. 💾 **The Database Guardian** - QR Database Monitoring Dashboard ⭐
+*"I keep watch over your PostgreSQL data layer and QR code storage"*
+
+**Role**: Comprehensive PostgreSQL database monitoring and QR-specific analytics
+**Audience**: Database administrators, backend developers, data analysts
+**Refresh**: 30s
+
+**Key Features**:
+- **QR Code Metrics**: Production (345 codes) and test environment tracking
+- **Database Performance**: Connection monitoring, query performance, table statistics
+- **Data Analytics**: QR type distribution, creation trends, recent activity tracking
+- **Growth Analysis**: Daily QR code creation patterns and database size monitoring
+- **Cross-Environment**: Production and test database health comparison
+
+**Dashboard URL**: `http://localhost:3000/d/e1fb136b-bb26-4a6f-a944-3b41bc93df47/qr-database-monitoring`
+
+**MCP Integration**: This dashboard is specifically designed to work with the MCP Grafana tools for advanced analysis workflows and automated reporting.
+
 ### Dashboard Performance Baselines
 
 Our system maintains excellent performance metrics:
@@ -307,6 +326,7 @@ Each dashboard is optimized for its specific monitoring purpose:
 - **🏗️ Infrastructure**: 30s (resource monitoring)
 - **📊 Refactoring Progress**: 30s (milestone tracking)
 - **📊 QR Application Custom Metrics**: 30s (business intelligence)
+- **💾 Database Monitoring**: 30s (PostgreSQL analytics)
 - **🔍 Analytics Deep Dive**: 1m (usage analysis)
 - **🚨 SLA Overview**: 15s (compliance monitoring)
 
@@ -483,6 +503,91 @@ Based on your role, bookmark these dashboards:
 **🔧 IT Staff**: Health → Infrastructure → Detailed Analysis
 **📊 Analysts**: Analytics → User Experience → Refactoring Progress
 **👨‍💻 Developers**: Detailed Analysis → Circuit Breaker Monitoring → Health
+
+---
+
+## 🤖 MCP Grafana Integration: Advanced Analytics Workflows
+
+Our monitoring system now includes **Model Context Protocol (MCP) integration** that enables advanced analytics workflows through AI-powered tools.
+
+### What is MCP Integration?
+
+```mermaid
+graph LR
+    A[🤖 Claude/Cursor] --> B[🔗 MCP Server]
+    B --> C[📊 Grafana API]
+    C --> D[💾 Dashboard Data]
+    D --> E[📈 Analytics Results]
+    
+    style A fill:#e3f2fd
+    style C fill:#e8f5e8
+    style E fill:#fff3e0
+```
+
+**MCP Integration enables**:
+- **🔍 Automated Data Analysis**: AI-powered insights from dashboard metrics
+- **📊 Dynamic Reporting**: Generate reports directly from live dashboard data  
+- **🎯 Pattern Recognition**: Identify trends and anomalies automatically
+- **📝 Observatory Prime Analysis**: Verify system performance using `@observatory-prime-analysis.md`
+
+### Setup Configuration
+
+**Docker MCP Server (Recommended)**:
+```bash
+# Pull the official MCP Grafana image
+docker pull mcp/grafana
+
+# Run with proper environment configuration
+docker run --rm -p 8000:8000 \
+  -e GRAFANA_URL=http://host.docker.internal:3000 \
+  -e GRAFANA_API_KEY=glsa_SXcvbWsRuZrnmWQ6Wd8eBBjeFZ7FZ8Z0_4689886d \
+  mcp/grafana
+```
+
+**Claude Desktop Configuration**:
+```json
+{
+  "mcpServers": {
+    "grafana": {
+      "command": "docker",
+      "args": ["run", "--rm", "-p", "8000:8000", "-e", "GRAFANA_URL", "-e", "GRAFANA_API_KEY", "mcp/grafana"],
+      "env": {
+        "GRAFANA_URL": "http://host.docker.internal:3000",
+        "GRAFANA_API_KEY": "glsa_SXcvbWsRuZrnmWQ6Wd8eBBjeFZ7FZ8Z0_4689886d"
+      }
+    }
+  }
+}
+```
+
+**VSCode/Cursor Configuration**:
+```json
+{
+  "mcp": {
+    "servers": {
+      "grafana": {
+        "type": "sse",
+        "url": "http://localhost:8000/sse"
+      }
+    }
+  }
+}
+```
+
+### Key Benefits
+
+- **🔗 Seamless Integration**: Direct access to all dashboard data and datasources
+- **⚡ Real-time Analysis**: Live data analysis without manual exports
+- **🎯 Targeted Insights**: Focus on specific metrics and time ranges
+- **📋 Automated Reporting**: Generate comprehensive system reports
+
+### Database Monitoring Enhanced
+
+The **QR Database Monitoring Dashboard** is specifically optimized for MCP workflows:
+- **📊 Real-time PostgreSQL metrics** accessible via MCP tools
+- **🔍 Comprehensive QR analytics** for performance verification
+- **📈 Historical trend analysis** for growth pattern identification
+- **🎯 Observatory Prime Analysis ready** for automated system verification
 
 ---
 
@@ -754,6 +859,7 @@ graph TD
 | 📋 Reporting | SLA Overview | Compliance Metrics |
 | 📊 **Business Metrics** | **QR Application Custom Metrics** | **QR Operations** |
 | 🚦 **Rollout Safety** | **Circuit Breaker Monitoring** | **Fallback Rates** |
+| 💾 **Database Analytics** | **QR Database Monitoring** | **PostgreSQL Metrics** |
 | 🔍 **Error Investigation** | **Loki Logs** | **Log Analysis** |
 | 🎯 **Root Cause Analysis** | **Loki + Metrics** | **Correlation** |
 
@@ -820,5 +926,40 @@ graph LR
 
 ---
 
-*This page is automatically maintained from the main repository. Last updated: 2025-05-24 22:53:35 UTC*
+## 💾 NEW: QR Database Monitoring Dashboard
+
+We've added a comprehensive **PostgreSQL database monitoring dashboard** that provides deep insights into your QR system's data layer:
+
+### 🎯 Database Dashboard Features
+
+- **📊 QR Code Metrics**: Production (345 codes) and test environment tracking
+- **🔍 Performance Analytics**: Connection monitoring, query performance, table statistics  
+- **📈 Growth Trends**: Daily QR code creation patterns and database size monitoring
+- **🔄 Cross-Environment**: Production and test database health comparison
+- **📋 Recent Activity**: Last 7 days of QR code creation with full details
+
+**Dashboard URL**: `http://localhost:3000/d/e1fb136b-bb26-4a6f-a944-3b41bc93df47/qr-database-monitoring`
+
+### 🤖 MCP Grafana Integration
+
+The monitoring system now includes **Model Context Protocol (MCP) integration** for advanced analytics workflows:
+
+**Key Capabilities**:
+- **🔗 AI-Powered Analysis**: Direct access to dashboard data via Claude/Cursor
+- **📊 Automated Reporting**: Generate insights from live metrics  
+- **🎯 Observatory Prime Analysis**: Verify system performance using `@observatory-prime-analysis.md`
+
+**Docker Setup**:
+```bash
+docker run --rm -p 8000:8000 \
+  -e GRAFANA_URL=http://host.docker.internal:3000 \
+  -e GRAFANA_API_KEY=glsa_SXcvbWsRuZrnmWQ6Wd8eBBjeFZ7FZ8Z0_4689886d \
+  mcp/grafana
+```
+
+This enhancement makes our Observatory system even more powerful for data-driven decision making! 
+
+---
+
+*This page is automatically maintained from the main repository. Last updated: 2025-05-26 00:18:06 UTC*
 *For the latest updates, see the [project repository](https://github.com/gsinghjay/mvp_qr_gen)* 
