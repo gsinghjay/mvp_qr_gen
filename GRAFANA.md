@@ -130,7 +130,7 @@ graph TD
     A --> C[QR Analytics Deep Dive]
     
     B --> D[QR System Detailed Analysis]
-    B --> E[QR Service Monitoring]
+    B --> E[QR Circuit Breaker Monitoring]
     
     A --> F[QR Infrastructure Deep Dive]
     A --> G[QR User Experience Monitoring]
@@ -147,7 +147,7 @@ graph TD
 
 **Role**: Your primary operational dashboard - the first place you check each morning
 **Audience**: IT staff, administrators
-**Refresh**: 15s (real-time operational monitoring)
+**Refresh**: 10s (real-time operational monitoring)
 **What it shows**: 
 - Overall system health at a glance
 - QR redirect performance (most critical metric)
@@ -207,19 +207,19 @@ graph LR
 - **Critical Path Performance**: Focus on QR redirect latency (most critical)
 - **Error Analysis by Operation**: Granular error tracking
 
-### 5. 🚦 **The Safety Controller** - Service Monitoring Dashboard ⭐
-*"I monitor service health and performance patterns"*
+### 5. 🚦 **The Safety Controller** - Circuit Breaker & Feature Flag Monitoring Dashboard ⭐
+*"I monitor rollout safety and fallback patterns during Observatory-First refactoring"*
 
-**Role**: Monitor service health and performance patterns
-**Audience**: DevOps team, service reliability engineers
+**Role**: Monitor new service rollouts, circuit breaker activations, and feature flag usage
+**Audience**: DevOps team, service reliability engineers, refactoring teams
 **Refresh**: 10s
 
 **Key Features**:
-- **Service Health Status**: Real-time service availability
-- **Service Performance Metrics**: Response times and throughput
-- **Error Rate Monitoring**: Service-specific error tracking
-- **Resource Utilization**: CPU, memory, and connection usage
-- **Traffic Distribution**: Request patterns and load distribution
+- **Circuit Breaker Status**: Real-time fallback monitoring
+- **Feature Flag Adoption**: Service rollout progress tracking
+- **Service Performance Comparison**: Old vs New service metrics
+- **Canary Deployment Progress**: Traffic distribution monitoring
+- **Rollout Safety Metrics**: Error rates and performance during changes
 
 ### 6. 🏗️ **The Infrastructure Specialist** - Infrastructure Deep Dive Dashboard ⭐
 *"I monitor the foundation that everything runs on"*
@@ -278,8 +278,8 @@ Our system maintains excellent performance metrics:
 
 Each dashboard is optimized for its specific monitoring purpose:
 
-- **🏥 System Health**: 15s (real-time operations)
-- **🚦 Service Monitoring**: 10s (critical rollout monitoring)  
+- **🏥 System Health**: 10s (real-time operations)
+- **🚦 Circuit Breaker Monitoring**: 10s (rollout safety monitoring)  
 - **🔬 Detailed Analysis**: 15s (active development)
 - **👥 User Experience**: 30s (user journey tracking)
 - **🏗️ Infrastructure**: 30s (resource monitoring)
@@ -329,7 +329,7 @@ flowchart TD
     C --> D[📊 Analyze Performance]
     D --> E[🎯 Optimize Based on Data]
     
-    B -.-> B1[Service Monitoring Dashboard<br/>Monitor gradual rollout]
+    B -.-> B1[Circuit Breaker Dashboard<br/>Monitor gradual rollout]
     C -.-> C1[User Experience Dashboard<br/>Track conversion rates]
     D -.-> D1[Analytics Dashboard<br/>Understand usage patterns]
     E -.-> E1[Health Dashboard<br/>Ensure system stability]
@@ -448,7 +448,7 @@ graph TD
     E --> G[📈 Business Focus]
     E --> H[🏗️ Infrastructure Focus]
     
-    F --> F1[🔬 Detailed Analysis<br/>🚦 Service Monitoring]
+    F --> F1[🔬 Detailed Analysis<br/>🚦 Circuit Breaker Monitoring]
     G --> G1[📊 Analytics<br/>👥 User Experience]
     H --> H1[🏗️ Infrastructure<br/>🚨 SLA Overview]
 ```
@@ -459,7 +459,7 @@ Based on your role, bookmark these dashboards:
 **👩‍💼 Administrators**: Health → User Experience → SLA Overview
 **🔧 IT Staff**: Health → Infrastructure → Detailed Analysis
 **📊 Analysts**: Analytics → User Experience → Refactoring Progress
-**👨‍💻 Developers**: Detailed Analysis → Service Monitoring → Health
+**👨‍💻 Developers**: Detailed Analysis → Circuit Breaker Monitoring → Health
 
 ---
 
@@ -472,9 +472,9 @@ Each dashboard is optimized for different time perspectives:
 timeline
     title Dashboard Time Perspectives
     
-    section Real-time (15s-1m)
+    section Real-time (10s-15s)
         Health Dashboard     : Immediate issues
-        Service Monitoring   : Rollout monitoring
+        Circuit Breaker      : Rollout monitoring
         
     section Short-term (1h-6h)
         User Experience      : Session analysis
@@ -616,7 +616,7 @@ sequenceDiagram
 
 ### Week 3: Advanced Analysis
 - [ ] Use Detailed Analysis for performance tuning
-- [ ] Monitor system changes with Service Monitoring dashboard
+- [ ] Monitor system changes with Circuit Breaker Monitoring dashboard
 - [ ] Create custom dashboard views
 
 ### Week 4: Mastery
@@ -729,6 +729,7 @@ graph TD
 | 🔧 Performance | Detailed Analysis | Response Times |
 | 🏗️ Capacity | Infrastructure | Resource Usage |
 | 📋 Reporting | SLA Overview | Compliance Metrics |
+| 🚦 **Rollout Safety** | **Circuit Breaker Monitoring** | **Fallback Rates** |
 | 🔍 **Error Investigation** | **Loki Logs** | **Log Analysis** |
 | 🎯 **Root Cause Analysis** | **Loki + Metrics** | **Correlation** |
 
