@@ -1,6 +1,55 @@
 # CHANGELOG
 
 
+## v1.7.0 (2025-05-26)
+
+### Chores
+
+* chore(debug): add SVG debugging utility script ([`e159a01`](https://github.com/gsinghjay/mvp_qr_gen/commit/e159a01d9149af145738404ba997fdb86fc0d6a8))
+
+### Features
+
+* feat(schemas): enhance QRImageParameters for advanced color support ([`c705a5f`](https://github.com/gsinghjay/mvp_qr_gen/commit/c705a5f770a15b01c4a188044a7391a6b392bb45))
+
+* feat(adapters): implement data URI methods in PillowQRImageFormatter ([`c20bbcf`](https://github.com/gsinghjay/mvp_qr_gen/commit/c20bbcf02abbcc37df3b37eb99ba85b1f6f27207))
+
+* feat(interfaces): add data URI methods to QRImageFormatter interface ([`9860ec6`](https://github.com/gsinghjay/mvp_qr_gen/commit/9860ec6d4a9543b5c54ff47850a81685ff5a6e1b))
+
+* feat(services): add new validation service with provider interface ([`120c3ef`](https://github.com/gsinghjay/mvp_qr_gen/commit/120c3ef804c4c97adb1f23987e7114b4fddc54dd))
+
+* feat(services): add new QR generation service with interface-based architecture ([`0a754a2`](https://github.com/gsinghjay/mvp_qr_gen/commit/0a754a2c241aab6fa412df74410a8c5f3bdc00c3))
+
+* feat(services): add new analytics service with MetricsLogger instrumentation ([`1d62f6d`](https://github.com/gsinghjay/mvp_qr_gen/commit/1d62f6d01fd1f2746d77c5153d3775033909ec5d))
+
+* feat(interfaces): add core domain abstraction interfaces for Observatory-First architecture ([`1cea892`](https://github.com/gsinghjay/mvp_qr_gen/commit/1cea892fe7a53aa39656965d9fc1be74cc495030))
+
+* feat(admin): add secured endpoints for service status and feature flags ([`1cc4c69`](https://github.com/gsinghjay/mvp_qr_gen/commit/1cc4c69eceb78cc0b0a6be3c216a4fbc492fba6d))
+
+* feat(adapters): implement Segno QR generator with all optimizations ([`4420e82`](https://github.com/gsinghjay/mvp_qr_gen/commit/4420e8251c3105ec129bf5f904c5b71a63942cb9))
+
+* feat(traefik): add secured admin endpoints with IP whitelist and basic auth ([`3b591f0`](https://github.com/gsinghjay/mvp_qr_gen/commit/3b591f0a29325ea4f38c102b27faaf1ec84ee84b))
+
+* feat(health): implement dynamic health checks for new services ([`affa166`](https://github.com/gsinghjay/mvp_qr_gen/commit/affa166e48955b08fc87368ddedd013f5859c45e))
+
+* feat(deps): add new service providers with interface-based injection ([`f7c7729`](https://github.com/gsinghjay/mvp_qr_gen/commit/f7c77297f8a6871af302521e9a8da50fdff0342c))
+
+* feat(config): add Phase 0 feature flags and canary testing configuration ([`27b7c02`](https://github.com/gsinghjay/mvp_qr_gen/commit/27b7c0209c682253ba5d733ba8d1733648a4ee7f))
+
+* feat(health): add dynamic service checks based on feature flags ([`cd23ecb`](https://github.com/gsinghjay/mvp_qr_gen/commit/cd23ecbc52ce8cb15ab0eab8bb9b1c4243f133aa))
+
+* feat(api): export admin metrics endpoint for secured monitoring ([`c701455`](https://github.com/gsinghjay/mvp_qr_gen/commit/c70145575ee314f53d80dcfff007c289f53588fb))
+
+### Testing
+
+* test: add test script for Phase 0.2 features ([`8c9cb55`](https://github.com/gsinghjay/mvp_qr_gen/commit/8c9cb5578096e387ed26ca8e94bfdfa7c29455ca))
+
+### Unknown
+
+* Merge pull request #51 from gsinghjay/feat/phase-0
+
+Phase 0: Pure Additions - Observatory-First Interface Architecture ([`b60dfa0`](https://github.com/gsinghjay/mvp_qr_gen/commit/b60dfa0977fb5630635c39cdc72c3fca6cd39730))
+
+
 ## v1.6.0 (2025-05-26)
 
 ### Features
