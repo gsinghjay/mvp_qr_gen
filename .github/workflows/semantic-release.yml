@@ -8,15 +8,21 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    concurrency: release
+    concurrency: 
+      group: semantic-release-${{ github.ref }}
+      cancel-in-progress: false
     permissions:
       id-token: write
       contents: write
+      issues: write
+      pull-requests: write
+      actions: read
 
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Python Semantic Release
       uses: python-semantic-release/python-semantic-release@master

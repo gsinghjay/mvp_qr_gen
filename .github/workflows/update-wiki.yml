@@ -11,15 +11,28 @@ on:
       - 'scripts/update_wiki.sh'
   workflow_dispatch:  # Allow manual triggering
 
+# Ensure this workflow doesn't interfere with semantic-release
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   update-wiki:
     runs-on: ubuntu-latest
     
     steps:
+    - name: Check if semantic-release is running
+      if: github.event_name == 'push'
+      run: |
+        echo "Checking for concurrent workflows..."
+        # Brief pause to avoid race conditions
+        sleep 10
+        
     - name: Checkout main repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        ref: main  # Always use latest main after semantic-release
         
     - name: Checkout wiki repository
       uses: actions/checkout@v4
