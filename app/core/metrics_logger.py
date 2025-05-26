@@ -52,6 +52,25 @@ feature_flag_active = Gauge(
     ['flag_name']
 )
 
+# Circuit Breaker Metrics
+app_circuit_breaker_state_enum = Gauge(
+    'app_circuit_breaker_state_enum',
+    'Circuit breaker state (0=CLOSED, 1=OPEN, 2=HALF_OPEN)',
+    ['service_name']
+)
+
+app_circuit_breaker_fallbacks_total = Counter(
+    'app_circuit_breaker_fallbacks_total',
+    'Total number of times the circuit breaker caused a fallback',
+    ['service_name', 'operation_name']
+)
+
+app_circuit_breaker_failures_recorded_total = Counter(
+    'app_circuit_breaker_failures_recorded_total',
+    'Total number of failures recorded by the circuit breaker before opening or during half-open state',
+    ['service_name']
+)
+
 
 class MetricsLogger:
     """
@@ -123,6 +142,49 @@ class MetricsLogger:
         feature_flag_active.labels(flag_name=flag_name).set(value)
     
     @staticmethod
+    def set_circuit_breaker_state(service_name: str, state_name: str) -> None:
+        """
+        Set circuit breaker state.
+        
+        Args:
+            service_name: Name of the service
+            state_name: State name ("closed", "open", "half_open")
+        """
+        # Map state names to enum values
+        state_mapping = {
+            "closed": 0,
+            "open": 1,
+            "half_open": 2
+        }
+        
+        state_value = state_mapping.get(state_name.lower(), 0)
+        app_circuit_breaker_state_enum.labels(service_name=service_name).set(state_value)
+    
+    @staticmethod
+    def log_circuit_breaker_fallback(service_name: str, operation_name: str) -> None:
+        """
+        Log circuit breaker fallback event.
+        
+        Args:
+            service_name: Name of the service
+            operation_name: Name of the operation that triggered fallback
+        """
+        app_circuit_breaker_fallbacks_total.labels(
+            service_name=service_name,
+            operation_name=operation_name
+        ).inc()
+    
+    @staticmethod
+    def log_circuit_breaker_failure(service_name: str) -> None:
+        """
+        Log circuit breaker failure event.
+        
+        Args:
+            service_name: Name of the service that failed
+        """
+        app_circuit_breaker_failures_recorded_total.labels(service_name=service_name).inc()
+    
+    @staticmethod
     def time_service_call(service_name: str, operation: str) -> Callable:
         """
         Decorator to automatically time and log service calls.
@@ -170,11 +232,21 @@ def initialize_feature_flags() -> None:
     """
     from .config import settings as app_settings
     
-    # Read feature flags from settings and report to Prometheus
+    # Observatory-First feature flags (Phase 0)
     MetricsLogger.set_feature_flag(
         'new_qr_service_enabled', 
-        app_settings.FEATURE_NEW_QR_SERVICE_ENABLED
+        app_settings.USE_NEW_QR_GENERATION_SERVICE
     )
+    MetricsLogger.set_feature_flag(
+        'new_analytics_service_enabled',
+        app_settings.USE_NEW_ANALYTICS_SERVICE
+    )
+    MetricsLogger.set_feature_flag(
+        'new_validation_service_enabled',
+        app_settings.USE_NEW_VALIDATION_SERVICE
+    )
+    
+    # Legacy feature flags (for backward compatibility)
     MetricsLogger.set_feature_flag(
         'enhanced_validation_enabled',
         app_settings.FEATURE_ENHANCED_VALIDATION_ENABLED
