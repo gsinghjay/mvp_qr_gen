@@ -6,6 +6,7 @@ interfaces using the Segno library with performance optimizations.
 """
 
 import logging
+import math
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -94,31 +95,60 @@ class PillowQRImageFormatter(QRImageFormatter):
             # Handle SVG format with optimizations
             if output_format.lower() == "svg":
                 # SEGNO SVG OPTIMIZATIONS (PRIORITY 1, Issue 2)
-                qr_data.save(
-                    output, 
-                    kind="svg",
-                    xmldecl=False,      # Remove XML declaration
-                    svgns=False,        # Remove SVG namespace
-                    svgclass=None,      # Remove CSS classes
-                    lineclass=None,     # Remove line classes  
-                    omitsize=True,      # Remove size attributes
-                    nl=False,           # Remove newlines
-                    scale=image_params.size,
-                    border=image_params.border,
-                    dark=image_params.fill_color,
-                    light=self._handle_transparency(image_params.back_color, "svg")
+                svg_params = {
+                    "kind": "svg",
+                    "xmldecl": False,      # Remove XML declaration
+                    "svgns": False,        # Remove SVG namespace
+                    "svgclass": None,      # Remove CSS classes
+                    "lineclass": None,     # Remove line classes  
+                    "nl": False,           # Remove newlines
+                    "border": image_params.border,
+                    "dark": self._get_effective_color(image_params.fill_color, image_params.data_dark_color),
+                    "light": self._handle_transparency(
+                        self._get_effective_color(image_params.back_color, image_params.data_light_color), 
+                        "svg"
+                    )
+                }
+                
+                # Task 0.2.4: Native SVG Unit Support
+                if (image_params.physical_unit and 
+                    image_params.physical_size and 
+                    image_params.dpi):
+                    svg_params["unit"] = image_params.physical_unit
+                    svg_params["scale"] = image_params.physical_size
+                    # Note: omitsize=False (default) when using unit for width/height attributes
+                else:
+                    svg_params["scale"] = image_params.size
+                    svg_params["omitsize"] = True  # Remove size attributes for relative sizing
+                
+                # Add SVG accessibility attributes if provided
+                if image_params.svg_title:
+                    svg_params["title"] = image_params.svg_title
+                if image_params.svg_description:
+                    svg_params["desc"] = image_params.svg_description
+                
+                qr_data.save(output, **svg_params)
+                
+            # Handle raster formats (PNG, JPEG, WEBP) 
+            elif output_format.lower() in ["png", "jpeg", "webp"]:
+                # Task 0.2.5: Precise Scale Calculation for Raster Images
+                scale = self._calculate_precise_scale(qr_data, image_params)
+                
+                # Prepare color parameters with advanced color support
+                dark_color = self._get_effective_color(image_params.fill_color, image_params.data_dark_color)
+                light_color = self._handle_transparency(
+                    self._get_effective_color(image_params.back_color, image_params.data_light_color), 
+                    output_format.lower()
                 )
                 
-            # Handle raster formats (PNG, JPEG, WEBP)
-            elif output_format.lower() in ["png", "jpeg", "webp"]:
                 # Check if logo embedding is requested
                 if hasattr(image_params, 'include_logo') and image_params.include_logo:
                     # DIRECT PILLOW INTEGRATION FOR LOGO (PRIORITY 1, Issue 3)
                     pil_image = qr_data.to_pil(
-                        scale=image_params.size,
+                        scale=scale,
                         border=image_params.border,
-                        dark=image_params.fill_color,
-                        light=self._handle_transparency(image_params.back_color, output_format.lower())
+                        dark=dark_color,
+                        light=light_color
                     )
                     
                     # Add logo if available
@@ -141,10 +171,10 @@ class PillowQRImageFormatter(QRImageFormatter):
                     qr_data.save(
                         output,
                         kind=output_format.lower(),
-                        scale=image_params.size,
+                        scale=scale,
                         border=image_params.border,
-                        dark=image_params.fill_color,
-                        light=self._handle_transparency(image_params.back_color, output_format.lower())
+                        dark=dark_color,
+                        light=light_color
                     )
             else:
                 raise ValueError(f"Unsupported output format: {output_format}")
@@ -158,6 +188,185 @@ class PillowQRImageFormatter(QRImageFormatter):
         except Exception as e:
             logger.error(f"Failed to format QR image: {e}")
             raise ValueError(f"QR image formatting failed: {e}")
+
+    async def get_png_data_uri(self, qr_data: segno.QRCode, image_params: QRImageParameters) -> str:
+        """
+        Generate QR code as PNG data URI for direct embedding in HTML.
+        
+        Args:
+            qr_data: Segno QRCode object
+            image_params: Parameters for image formatting
+            
+        Returns:
+            PNG data URI string
+        """
+        try:
+            # Use Segno's built-in data URI generation with precise scale
+            scale = self._calculate_precise_scale(qr_data, image_params)
+            dark_color = self._get_effective_color(image_params.fill_color, image_params.data_dark_color)
+            light_color = self._get_effective_color(image_params.back_color, image_params.data_light_color)
+            
+            return qr_data.png_data_uri(
+                scale=scale,
+                border=image_params.border,
+                dark=dark_color,
+                light=light_color
+            )
+        except Exception as e:
+            logger.error(f"Failed to generate PNG data URI: {e}")
+            raise ValueError(f"PNG data URI generation failed: {e}")
+
+    async def get_svg_data_uri(self, qr_data: segno.QRCode, image_params: QRImageParameters) -> str:
+        """
+        Generate QR code as SVG data URI for direct embedding in HTML.
+        
+        Args:
+            qr_data: Segno QRCode object
+            image_params: Parameters for image formatting
+            
+        Returns:
+            SVG data URI string
+        """
+        try:
+            # Prepare SVG parameters similar to format_qr_image
+            svg_params = {
+                "xmldecl": False,
+                "svgns": False,
+                "svgclass": None,
+                "lineclass": None,
+                "omitsize": True,
+                "nl": False,
+                "border": image_params.border,
+                "dark": self._get_effective_color(image_params.fill_color, image_params.data_dark_color),
+                "light": self._get_effective_color(image_params.back_color, image_params.data_light_color)
+            }
+            
+            # Handle physical dimensions for SVG
+            if (image_params.physical_unit and 
+                image_params.physical_size and 
+                image_params.dpi):
+                svg_params["unit"] = image_params.physical_unit
+                svg_params["scale"] = image_params.physical_size
+                svg_params["omitsize"] = False  # Keep size attributes for physical dimensions
+            else:
+                svg_params["scale"] = image_params.size
+            
+            # Add accessibility attributes if provided
+            if image_params.svg_title:
+                svg_params["title"] = image_params.svg_title
+            if image_params.svg_description:
+                svg_params["desc"] = image_params.svg_description
+            
+            return qr_data.svg_data_uri(**svg_params)
+        except Exception as e:
+            logger.error(f"Failed to generate SVG data URI: {e}")
+            raise ValueError(f"SVG data URI generation failed: {e}")
+
+    async def get_svg_inline(self, qr_data: segno.QRCode, image_params: QRImageParameters) -> str:
+        """
+        Generate QR code as inline SVG string for direct embedding in HTML.
+        
+        Args:
+            qr_data: Segno QRCode object
+            image_params: Parameters for image formatting
+            
+        Returns:
+            Inline SVG string
+        """
+        try:
+            # Prepare parameters for minimal inline SVG
+            svg_params = {
+                "xmldecl": False,      # No XML declaration for inline
+                "svgns": False,        # No SVG namespace for inline
+                "omitsize": True,      # No size attributes for responsive inline SVG
+                "border": image_params.border,
+                "dark": self._get_effective_color(image_params.fill_color, image_params.data_dark_color),
+                "light": self._get_effective_color(image_params.back_color, image_params.data_light_color)
+            }
+            
+            # Handle physical dimensions
+            if (image_params.physical_unit and 
+                image_params.physical_size and 
+                image_params.dpi):
+                svg_params["unit"] = image_params.physical_unit
+                svg_params["scale"] = image_params.physical_size
+                svg_params["omitsize"] = False  # Keep size for physical dimensions
+            else:
+                svg_params["scale"] = image_params.size
+            
+            # Add accessibility attributes if provided
+            if image_params.svg_title:
+                svg_params["title"] = image_params.svg_title
+            if image_params.svg_description:
+                svg_params["desc"] = image_params.svg_description
+            
+            # Generate inline SVG using BytesIO
+            output = BytesIO()
+            qr_data.save(output, kind="svg", **svg_params)
+            output.seek(0)
+            return output.getvalue().decode('utf-8')
+        except Exception as e:
+            logger.error(f"Failed to generate inline SVG: {e}")
+            raise ValueError(f"Inline SVG generation failed: {e}")
+
+    def _get_effective_color(self, base_color: str | None, data_color: str | None) -> str | None:
+        """
+        Get the effective color, preferring data_color over base_color.
+        
+        Args:
+            base_color: Base color (fill_color or back_color)
+            data_color: Data-specific color (data_dark_color or data_light_color)
+            
+        Returns:
+            Effective color to use, or None if both are None
+        """
+        return data_color if data_color is not None else base_color
+
+    def _calculate_precise_scale(self, qr_data: segno.QRCode, image_params: QRImageParameters) -> float:
+        """
+        Calculate precise scale for raster images based on target pixel dimensions.
+        
+        Args:
+            qr_data: Segno QRCode object
+            image_params: Parameters containing target size and border
+            
+        Returns:
+            Scale value representing pixels per module
+        """
+        # Task 0.2.5: Precise Scale Calculation for Raster Images
+        
+        # Calculate target pixel size
+        if (image_params.physical_size and 
+            image_params.physical_unit and 
+            image_params.dpi):
+            # Convert physical dimensions to pixels
+            if image_params.physical_unit == "in":
+                target_pixels = image_params.physical_size * image_params.dpi
+            elif image_params.physical_unit == "cm":
+                target_pixels = (image_params.physical_size / 2.54) * image_params.dpi
+            elif image_params.physical_unit == "mm":
+                target_pixels = (image_params.physical_size / 25.4) * image_params.dpi
+            else:
+                target_pixels = image_params.size * 25  # Fallback to relative sizing
+        else:
+            # Use relative sizing (size * 25 for pixel dimension)
+            target_pixels = image_params.size * 25
+        
+        # Get QR code module count without border
+        module_count_no_border = qr_data.symbol_size(border=0)[0]
+        
+        # Calculate total module count including border
+        # Segno adds border modules on each side
+        module_count_with_border = module_count_no_border + (2 * image_params.border)
+        
+        # Calculate scale as pixels per module
+        scale = target_pixels / module_count_with_border
+        
+        # Ensure scale is at least 1 pixel per module
+        scale = max(1.0, scale)
+        
+        logger.debug(f"Calculated scale: {scale} pixels/module for {target_pixels}px target, {module_count_with_border} modules")
+        return scale
 
     def _handle_transparency(self, color: str, format_type: str) -> str | None:
         """
