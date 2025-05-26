@@ -230,7 +230,6 @@ http:
       middlewares:
         - redirect-to-https@file
         - ip-whitelist@file
-        - dashboard-auth@file
         - security-headers@file
       priority: 740
 
@@ -242,7 +241,6 @@ http:
       tls: {}
       middlewares:
         - ip-whitelist@file
-        - dashboard-auth@file
         - security-headers@file
       priority: 740
 
@@ -255,7 +253,6 @@ http:
       middlewares:
         - redirect-to-https@file
         - ip-whitelist@file      # Same security as internal access
-        - dashboard-auth@file    # Same basic auth
         - grafana-cors-headers@file  # CORS-enabled headers
       priority: 745
 
@@ -267,7 +264,6 @@ http:
       tls: {}
       middlewares:
         - ip-whitelist@file      # Same security as internal access
-        - dashboard-auth@file    # Same basic auth
         - grafana-cors-headers@file  # CORS-enabled headers
       priority: 745
 
