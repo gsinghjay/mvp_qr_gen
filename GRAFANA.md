@@ -135,11 +135,13 @@ graph TD
     A --> F[QR Infrastructure Deep Dive]
     A --> G[QR User Experience Monitoring]
     A --> H[QR Alerting & SLA Overview]
+    A --> I[QR Application Custom Metrics]
     
     style A fill:#e1f5fe
     style B fill:#f3e5f5
     style D fill:#fff3e0
     style E fill:#e8f5e8
+    style I fill:#e8f5e8
 ```
 
 ### 1. 🏥 **The Health Guardian** - System Health Dashboard
@@ -263,6 +265,26 @@ graph LR
 - **Alert Threshold Monitoring**: Early warning indicators
 - **SLA Breach Summary**: Compliance reporting
 
+### 9. 📊 **The Business Intelligence Specialist** - QR Application Custom Metrics Dashboard ⭐
+*"I track business-specific QR operations and feature usage"*
+
+**Role**: Application-level business metrics and feature flag monitoring
+**Audience**: Product team, business stakeholders, feature rollout teams
+**Refresh**: 30s
+
+**Key Features**:
+- **QR Code Operations**: Creation counts by type (static/dynamic), success/failure tracking
+- **Redirect Performance**: Success rates, error distribution, not found tracking
+- **Image Generation Metrics**: Format usage (PNG/SVG), generation success rates
+- **Feature Flag Status**: Active/inactive flags for controlled rollouts
+- **Business Intelligence**: Real-time operational insights for product decisions
+
+**Production Metrics Status**:
+- **All 5 Custom Metrics**: Successfully operational and collecting data
+- **Feature Flags**: 4 flags initialized (new_qr_service_enabled, enhanced_validation_enabled, performance_optimization_enabled, debug_mode_enabled)
+- **Dashboard Integration**: Real-time data display with proper time ranges
+- **Observatory Integration**: Full integration with existing Prometheus/Grafana stack
+
 ### Dashboard Performance Baselines
 
 Our system maintains excellent performance metrics:
@@ -284,6 +306,7 @@ Each dashboard is optimized for its specific monitoring purpose:
 - **👥 User Experience**: 30s (user journey tracking)
 - **🏗️ Infrastructure**: 30s (resource monitoring)
 - **📊 Refactoring Progress**: 30s (milestone tracking)
+- **📊 QR Application Custom Metrics**: 30s (business intelligence)
 - **🔍 Analytics Deep Dive**: 1m (usage analysis)
 - **🚨 SLA Overview**: 15s (compliance monitoring)
 
@@ -729,6 +752,7 @@ graph TD
 | 🔧 Performance | Detailed Analysis | Response Times |
 | 🏗️ Capacity | Infrastructure | Resource Usage |
 | 📋 Reporting | SLA Overview | Compliance Metrics |
+| 📊 **Business Metrics** | **QR Application Custom Metrics** | **QR Operations** |
 | 🚦 **Rollout Safety** | **Circuit Breaker Monitoring** | **Fallback Rates** |
 | 🔍 **Error Investigation** | **Loki Logs** | **Log Analysis** |
 | 🎯 **Root Cause Analysis** | **Loki + Metrics** | **Correlation** |
