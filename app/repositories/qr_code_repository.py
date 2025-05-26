@@ -15,6 +15,7 @@ from ..core.exceptions import (
     QRCodeNotFoundError,
     InvalidQRTypeError
 )
+from ..core.metrics_logger import MetricsLogger
 from ..database import with_retry
 from ..models.qr import QRCode
 from .base_repository import BaseRepository
@@ -38,6 +39,43 @@ class QRCodeRepository(BaseRepository[QRCode]):
         """
         super().__init__(db, QRCode)
 
+    @MetricsLogger.time_service_call("QRCodeRepository", "get_by_id")
+    def get_by_id(self, id: Any) -> Optional[QRCode]:
+        """
+        Get a QR code by its ID.
+        
+        Overrides BaseRepository.get_by_id to add timing metrics.
+        
+        Args:
+            id: The ID of the QR code to retrieve
+            
+        Returns:
+            The QR code if found, None otherwise
+            
+        Raises:
+            DatabaseError: If a database error occurs
+        """
+        return super().get_by_id(id)
+
+    @MetricsLogger.time_service_call("QRCodeRepository", "create")
+    def create(self, model_data: Dict[str, Any]) -> QRCode:
+        """
+        Create a new QR code.
+        
+        Overrides BaseRepository.create to add timing metrics.
+        
+        Args:
+            model_data: Dictionary of QR code attributes to create the instance
+            
+        Returns:
+            The created QR code instance
+            
+        Raises:
+            DatabaseError: If a database error occurs
+        """
+        return super().create(model_data)
+
+    @MetricsLogger.time_service_call("QRCodeRepository", "get_by_content")
     def get_by_content(self, content: str) -> Optional[QRCode]:
         """
         Get a QR code by its content.
@@ -57,6 +95,7 @@ class QRCodeRepository(BaseRepository[QRCode]):
             logger.error(f"Database error retrieving QR code by content: {str(e)}")
             raise DatabaseError(f"Database error retrieving QR code by content: {str(e)}")
 
+    @MetricsLogger.time_service_call("QRCodeRepository", "get_by_short_id")
     def get_by_short_id(self, short_id: str) -> Optional[QRCode]:
         """
         Get a QR code by its short_id.
@@ -76,6 +115,7 @@ class QRCodeRepository(BaseRepository[QRCode]):
             logger.error(f"Database error retrieving QR code by short_id: {str(e)}")
             raise DatabaseError(f"Database error retrieving QR code by short_id: {str(e)}")
 
+    @MetricsLogger.time_service_call("QRCodeRepository", "update_qr")
     @with_retry(max_retries=3, retry_delay=0.2)
     def update_qr(self, qr_id: str, update_data: Dict[str, Any]) -> Optional[QRCode]:
         """
@@ -111,6 +151,7 @@ class QRCodeRepository(BaseRepository[QRCode]):
             logger.error(f"Database error updating QR code {qr_id}: {str(e)}")
             raise DatabaseError(f"Database error updating QR code: {str(e)}")
 
+    @MetricsLogger.time_service_call("QRCodeRepository", "update_scan_count")
     @with_retry(max_retries=5, retry_delay=0.1)
     def update_scan_count(self, qr_id: str, timestamp: datetime, is_genuine_scan_signal: bool = False) -> Optional[QRCode]:
         """
@@ -152,6 +193,7 @@ class QRCodeRepository(BaseRepository[QRCode]):
             logger.error(f"Database error updating scan count for QR {qr_id}: {str(e)}")
             raise DatabaseError(f"Database error updating scan count: {str(e)}")
 
+    @MetricsLogger.time_service_call("QRCodeRepository", "list_qr_codes")
     def list_qr_codes(
         self,
         skip: int = 0,
@@ -226,6 +268,7 @@ class QRCodeRepository(BaseRepository[QRCode]):
             logger.error(f"Database error listing QR codes: {str(e)}")
             raise DatabaseError(f"Database error while listing QR codes: {str(e)}")
 
+    @MetricsLogger.time_service_call("QRCodeRepository", "count")
     def count(self) -> int:
         """
         Get the total count of QR codes in the database.
