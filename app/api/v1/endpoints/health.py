@@ -13,6 +13,7 @@ from app.schemas.common import HTTPError
 from app.schemas.health import HealthResponse
 from app.services.health import HealthService
 from app.types import DbSessionDep
+from app.core.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +36,16 @@ router = APIRouter(
         503: {"model": HTTPError, "description": "Service unavailable"},
     },
 )
-def health_check(db: DbSessionDep) -> HealthResponse:
+def health_check(
+    db: DbSessionDep,
+    settings: Annotated[Settings, Depends(get_settings)]
+) -> HealthResponse:
     """
     Perform a comprehensive health check of the API service.
 
     Args:
         db: Database session dependency
+        settings: Application settings dependency
 
     Returns:
         HealthResponse: The current health status of the service with detailed metrics
@@ -48,7 +53,7 @@ def health_check(db: DbSessionDep) -> HealthResponse:
     Raises:
         HTTPException: If the service is unhealthy or degraded
     """
-    health_status = HealthService.get_health_status(db)
+    health_status = HealthService.get_health_status(db, settings)
 
     if health_status.status == "unhealthy":
         raise HTTPException(
