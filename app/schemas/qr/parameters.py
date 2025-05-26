@@ -107,6 +107,79 @@ class QRImageParameters(BaseModel):
         description="DPI (dots per inch) for physical output (72-1200)"
     )
 
+    @field_validator("image_format", mode="before")
+    @classmethod
+    def validate_image_format(cls, v) -> ImageFormat:
+        """
+        Validate and normalize image format with enhanced error messages.
+        
+        Args:
+            v: The image format value to validate
+            
+        Returns:
+            Validated ImageFormat enum value
+            
+        Raises:
+            ValueError: If format is invalid with detailed message
+        """
+        if v is None:
+            return ImageFormat.PNG  # Default
+            
+        if isinstance(v, ImageFormat):
+            return v
+            
+        if isinstance(v, str):
+            # Normalize: strip whitespace and convert to lowercase
+            normalized = v.strip().lower()
+            
+            # Handle empty string
+            if not normalized:
+                raise ValueError("Image format cannot be empty")
+            
+            # Handle common aliases and typos
+            format_aliases = {
+                "jpg": "jpeg",
+                "jpeg": "jpeg", 
+                "png": "png",
+                "svg": "svg",
+                "webp": "webp",
+                # Common typos/variations
+                "jpg": "jpeg",
+                "jpge": "jpeg",  
+                "pnj": "png",
+                "svgx": "svg",
+                "webm": "webp"  # Common confusion
+            }
+            
+            if normalized in format_aliases:
+                try:
+                    return ImageFormat(format_aliases[normalized])
+                except ValueError:
+                    pass
+            
+            # If we get here, format is not supported
+            valid_formats = [f.value for f in ImageFormat]
+            raise ValueError(
+                f"Unsupported image format: '{v}'. "
+                f"Supported formats: {', '.join(valid_formats)}. "
+                f"Note: 'jpg' is an alias for 'jpeg'"
+            )
+        
+        # Handle unexpected types
+        raise ValueError(f"Image format must be a string or ImageFormat enum, got {type(v).__name__}")
+
+    @model_validator(mode='after')
+    def validate_format_quality_compatibility(self) -> 'QRImageParameters':
+        """Validate image quality parameter compatibility with format."""
+        if self.image_quality is not None:
+            # Only JPEG/JPG supports quality parameter meaningfully
+            if self.image_format not in [ImageFormat.JPEG, ImageFormat.JPG]:
+                # This is a warning-level issue, not an error
+                # We'll allow it but could log a warning if needed
+                pass
+                
+        return self
+
     @model_validator(mode='after')
     def validate_physical_dimensions(self) -> 'QRImageParameters':
         """Validate that physical dimensions are properly specified."""

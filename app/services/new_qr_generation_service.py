@@ -59,6 +59,9 @@ class NewQRGenerationService:
             ValueError: If operation fails
         """
         try:
+            # Validate format early at service level
+            self._validate_service_inputs(content, output_format)
+            
             logger.debug(f"Creating QR code for content length: {len(content)}")
             
             # Use default error correction if not provided
@@ -78,6 +81,40 @@ class NewQRGenerationService:
         except Exception as e:
             logger.error(f"Failed to create and format QR code: {e}")
             raise
+
+    def _validate_service_inputs(self, content: str, output_format: str) -> None:
+        """
+        Validate service-level inputs before processing.
+        
+        Args:
+            content: QR code content to validate
+            output_format: Output format to validate
+            
+        Raises:
+            ValueError: If inputs are invalid
+        """
+        # Content validation
+        if not content or not content.strip():
+            raise ValueError("QR code content cannot be empty")
+            
+        if len(content) > 2048:  # Reasonable limit for QR codes
+            raise ValueError(f"Content too long: {len(content)} characters (max: 2048)")
+        
+        # Format validation (basic check - detailed validation in formatter)
+        if not output_format or not output_format.strip():
+            raise ValueError("Output format must be specified")
+            
+        # Import here to avoid circular imports
+        from app.schemas.common import ImageFormat
+        try:
+            # This will raise ValueError if format is not in enum
+            ImageFormat(output_format.lower())
+        except ValueError:
+            valid_formats = [f.value for f in ImageFormat]
+            raise ValueError(
+                f"Invalid output format: '{output_format}'. "
+                f"Valid formats: {', '.join(valid_formats)}"
+            )
 
     @MetricsLogger.time_service_call("NewQRGenerationService", "validate_generation_params")
     async def validate_generation_params(self, params: Dict[str, Any]) -> bool:

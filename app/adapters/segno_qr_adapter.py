@@ -68,6 +68,42 @@ class PillowQRImageFormatter(QRImageFormatter):
     like logo embedding and optimized output formats.
     """
 
+    # Define supported formats at class level for consistency
+    SUPPORTED_FORMATS = {
+        "png": {"supports_transparency": True, "is_raster": True},
+        "jpeg": {"supports_transparency": False, "is_raster": True},  
+        "jpg": {"supports_transparency": False, "is_raster": True},   # Alias for jpeg
+        "svg": {"supports_transparency": True, "is_raster": False},
+        "webp": {"supports_transparency": True, "is_raster": True}
+    }
+
+    def _validate_output_format(self, output_format: str) -> str:
+        """
+        Validate and normalize output format.
+        
+        Args:
+            output_format: The requested output format
+            
+        Returns:
+            Normalized format string (lowercase)
+            
+        Raises:
+            ValueError: If format is not supported
+        """
+        if not output_format:
+            raise ValueError("Output format cannot be empty")
+            
+        normalized_format = output_format.lower().strip()
+        
+        if normalized_format not in self.SUPPORTED_FORMATS:
+            supported_list = ", ".join(sorted(self.SUPPORTED_FORMATS.keys()))
+            raise ValueError(
+                f"Unsupported output format: '{output_format}'. "
+                f"Supported formats: {supported_list}"
+            )
+        
+        return normalized_format
+
     async def format_qr_image(
         self, 
         qr_data: segno.QRCode, 
@@ -90,10 +126,14 @@ class PillowQRImageFormatter(QRImageFormatter):
             ValueError: If output format is not supported
         """
         try:
+            # Validate and normalize format first
+            validated_format = self._validate_output_format(output_format)
+            format_info = self.SUPPORTED_FORMATS[validated_format]
+            
             output = BytesIO()
             
             # Handle SVG format with optimizations
-            if output_format.lower() == "svg":
+            if validated_format == "svg":
                 # SEGNO SVG OPTIMIZATIONS (PRIORITY 1, Issue 2)
                 svg_params = {
                     "kind": "svg",
@@ -130,7 +170,7 @@ class PillowQRImageFormatter(QRImageFormatter):
                 qr_data.save(output, **svg_params)
                 
             # Handle raster formats (PNG, JPEG, WEBP) 
-            elif output_format.lower() in ["png", "jpeg", "webp"]:
+            elif validated_format in ["png", "jpeg", "webp"]:
                 # Task 0.2.5: Precise Scale Calculation for Raster Images
                 scale = self._calculate_precise_scale(qr_data, image_params)
                 
@@ -138,7 +178,7 @@ class PillowQRImageFormatter(QRImageFormatter):
                 dark_color = self._get_effective_color(image_params.fill_color, image_params.data_dark_color)
                 light_color = self._handle_transparency(
                     self._get_effective_color(image_params.back_color, image_params.data_light_color), 
-                    output_format.lower()
+                    validated_format
                 )
                 
                 # Check if logo embedding is requested
@@ -155,7 +195,7 @@ class PillowQRImageFormatter(QRImageFormatter):
                     pil_image = self._add_logo_to_image(pil_image)
                     
                     # Save with format-specific options
-                    if output_format.lower() == "jpeg":
+                    if validated_format == "jpeg":
                         # JPEG doesn't support transparency
                         if pil_image.mode in ("RGBA", "LA", "P"):
                             background = Image.new("RGB", pil_image.size, "white")
@@ -165,24 +205,24 @@ class PillowQRImageFormatter(QRImageFormatter):
                             pil_image = background
                         pil_image.save(output, format="JPEG", quality=getattr(image_params, 'image_quality', 90))
                     else:
-                        pil_image.save(output, format=output_format.upper())
+                        pil_image.save(output, format=validated_format.upper())
                 else:
                     # Direct Segno save for raster without logo
                     qr_data.save(
                         output,
-                        kind=output_format.lower(),
+                        kind=validated_format,
                         scale=scale,
                         border=image_params.border,
                         dark=dark_color,
                         light=light_color
                     )
             else:
-                raise ValueError(f"Unsupported output format: {output_format}")
+                raise ValueError(f"Unsupported output format: {validated_format}")
                 
             output.seek(0)
             image_bytes = output.getvalue()
             
-            logger.debug(f"Generated {output_format} image: {len(image_bytes)} bytes")
+            logger.debug(f"Generated {validated_format} image: {len(image_bytes)} bytes")
             return image_bytes
             
         except Exception as e:
