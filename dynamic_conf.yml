@@ -271,6 +271,26 @@ http:
         - grafana-cors-headers@file  # CORS-enabled headers
       priority: 745
 
+    # --- Grafana Public Routes (for MCP client) ---
+    grafana-public-router:
+      rule: "Host(`127.0.0.1`, `localhost`)"
+      service: grafana-service
+      entryPoints:
+        - web
+      middlewares:
+        - grafana-cors-headers@file  # CORS headers only, no auth
+      priority: 720
+
+    grafana-public-secure-router:
+      rule: "Host(`127.0.0.1`, `localhost`)"
+      service: grafana-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - grafana-cors-headers@file  # CORS headers only, no auth
+      priority: 720
+
   middlewares:
     redirect-to-https:
       redirectScheme:

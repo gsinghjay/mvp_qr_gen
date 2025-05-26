@@ -161,6 +161,7 @@ services:
       - grafana_data:/var/lib/grafana
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini:ro
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/provisioning/dashboards:/home/grafana/dashboards:rw
     ports:
       - "3000:3000"
     restart: unless-stopped
