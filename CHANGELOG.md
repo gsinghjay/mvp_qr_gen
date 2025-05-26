@@ -1,6 +1,41 @@
 # CHANGELOG
 
 
+## v1.5.0 (2025-05-26)
+
+### Documentation
+
+* docs(grafana): add database monitoring dashboard and MCP integration documentation ([`23e3109`](https://github.com/gsinghjay/mvp_qr_gen/commit/23e31090cd4bd38f5edf7bfd55d51bd2fd7acfc7))
+
+### Features
+
+* feat(config): enable MCP Grafana integration and dashboard volume mounting ([`5f1d179`](https://github.com/gsinghjay/mvp_qr_gen/commit/5f1d1799fe223e4fb2ce1035301113b7e10a6e7a))
+
+* feat(grafana): add comprehensive QR database monitoring dashboard ([`1653daa`](https://github.com/gsinghjay/mvp_qr_gen/commit/1653daae23cc1438686eaca1f78fdcb00266bde2))
+
+* feat(grafana): add PostgreSQL datasources for production and test environments ([`83f0a6b`](https://github.com/gsinghjay/mvp_qr_gen/commit/83f0a6be50721bdd973f295a130495b62485bcb7))
+
+* feat(utils): add timing decorator to QR image generation utility ([`e58a7dc`](https://github.com/gsinghjay/mvp_qr_gen/commit/e58a7dcb79ef4986fb2cbffe51989696d3aa6faa))
+
+* feat(service): add comprehensive timing decorators to QRCodeService methods ([`9b7b793`](https://github.com/gsinghjay/mvp_qr_gen/commit/9b7b7934444a2951cf0bc9984e4b26023c8eef03))
+
+* feat(repository): add timing decorators to ScanLogRepository methods ([`27f9bb0`](https://github.com/gsinghjay/mvp_qr_gen/commit/27f9bb0acc7a081f41493d244dc51b4ab32073fd))
+
+* feat(repository): add timing decorators to QRCodeRepository methods ([`c5b9bb4`](https://github.com/gsinghjay/mvp_qr_gen/commit/c5b9bb406a42a0b500b68ac3c940fdc9af473171))
+
+* feat(metrics): integrate feature flags with settings and enhance timing decorators ([`07d75e9`](https://github.com/gsinghjay/mvp_qr_gen/commit/07d75e948fcc300983ebf20e8ad4c1d286fd9079))
+
+* feat(config): add feature flag settings for Observatory-First refactoring ([`91d9d6e`](https://github.com/gsinghjay/mvp_qr_gen/commit/91d9d6e544b6648b1c97b031a356f7d05ff4347c))
+
+### Unknown
+
+* Merge pull request #49 from gsinghjay/feature/enhanced-metrics-instrumentation
+
+Enhanced Metrics Instrumentation for Observatory-First Refactoring ([`0f3750a`](https://github.com/gsinghjay/mvp_qr_gen/commit/0f3750ad986ec1f402b45036398f7d27bbe37678))
+
+* security(docs): remove API key from GRAFANA.md documentation ([`cc37c9e`](https://github.com/gsinghjay/mvp_qr_gen/commit/cc37c9e064dd2133f2f0d889b483f4620c0543b8))
+
+
 ## v1.4.0 (2025-05-26)
 
 ### Documentation
