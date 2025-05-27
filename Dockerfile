@@ -74,8 +74,8 @@ RUN adduser --disabled-password --gecos '' appuser \
 # Copy virtual environment from builder
 COPY --from=builder /app/venv /app/venv
 
-# Copy application code and configuration
-COPY ./app /app/app
+# Copy only configuration files and create placeholder directories
+# App files will be mounted from host
 COPY ./alembic /app/alembic
 COPY ./alembic.ini /app/alembic.ini
 
