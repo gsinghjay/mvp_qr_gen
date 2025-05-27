@@ -32,7 +32,7 @@ APP_ROOT = get_app_root()
 STATIC_DIR = APP_ROOT / "static"
 TEMPLATES_DIR = APP_ROOT / "templates"
 QR_CODES_DIR = STATIC_DIR / "assets" / "images" / "qr_codes"
-DEFAULT_LOGO_PATH = STATIC_DIR / "assets" / "images" / "logo_hccc_qr.jpg"
+DEFAULT_LOGO_PATH = STATIC_DIR / "assets" / "images" / "hccc_logo_official.png"
 
 # Create directories if they don't exist
 QR_CODES_DIR.mkdir(parents=True, exist_ok=True)
