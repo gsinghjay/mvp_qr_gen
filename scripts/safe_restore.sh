@@ -131,7 +131,7 @@ if [ "$API_WAS_RUNNING" = true ]; then
         attempt=0
         
         while [ $attempt -lt $max_attempts ]; do
-            if curl -k -s --max-time 5 -u "${AUTH_USER:-admin_user}:${AUTH_PASS:-strongpassword}" "${API_URL:-https://10.1.6.12}/health" >/dev/null 2>&1; then
+            if curl -k -s --max-time 5 -u "${AUTH_USER}:${AUTH_PASS}" "${API_URL:-https://10.1.6.12}/health" >/dev/null 2>&1; then
                 echo "   ✅ API service is healthy and ready"
                 break
             fi
