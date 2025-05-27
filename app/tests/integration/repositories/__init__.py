@@ -1,3 +1,0 @@
-"""
-Repository integration tests package.
-""" 
