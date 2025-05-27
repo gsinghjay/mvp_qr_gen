@@ -1,6 +1,41 @@
 # CHANGELOG
 
 
+## v1.11.0 (2025-05-27)
+
+### Chores
+
+* chore: removed tests due to refactor ([`4d37f56`](https://github.com/gsinghjay/mvp_qr_gen/commit/4d37f56d559e15eff436c5cf3d5547527d02f884))
+
+### Features
+
+* feat(dashboard): add path comparison panels for QR generation monitoring
+
+- Add 4 new panels for old vs new path performance comparison
+- Include request rate, success rate, duration comparison, and utilization overview
+- Update dashboard status to reflect Phase 1 - Parallel Implementation progress
+- Enable real-time A/B testing visualization and canary deployment monitoring ([`fad9a23`](https://github.com/gsinghjay/mvp_qr_gen/commit/fad9a232c884ed5a11688fbcdc93a7eddf1bcee8))
+
+* feat(qr-service): implement comprehensive path-specific metrics instrumentation
+
+- Add timing instrumentation for create_static_qr, create_dynamic_qr, and generate_qr methods
+- Track performance metrics for both 'old' and 'new' service paths using time.perf_counter()
+- Log success/failure status and duration for all QR generation operations
+- Implement proper error handling with metrics collection in exception paths
+- Support A/B testing and canary deployment monitoring through detailed path comparison ([`e34c2a7`](https://github.com/gsinghjay/mvp_qr_gen/commit/e34c2a73730df4a930492b182acf33c9cc3b88ff))
+
+* feat(metrics): update qr_generation_path_duration_seconds bucket configuration
+
+- Update histogram buckets to match task specification: (0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.5, 1.0, 2.5, 5.0)
+- Ensure consistency with Sub-Task 1.3.1 requirements for path-specific metrics ([`4c586fc`](https://github.com/gsinghjay/mvp_qr_gen/commit/4c586fca25447e9701694fe75d501b6517cf70f7))
+
+### Unknown
+
+* Merge pull request #56 from gsinghjay/task-1.3
+
+Implement path-specific metrics instrumentation for QR generation ([`55f835a`](https://github.com/gsinghjay/mvp_qr_gen/commit/55f835a698db6c4d7f80fda0883a9f90c28f7936))
+
+
 ## v1.10.0 (2025-05-27)
 
 ### Features
