@@ -1,6 +1,66 @@
 # CHANGELOG
 
 
+## v1.12.0 (2025-05-27)
+
+### Build System
+
+* build: configure container for code changes without rebuilds ([`2e5647b`](https://github.com/gsinghjay/mvp_qr_gen/commit/2e5647b152eec5e8638827fe9726b5e9e2cb935b))
+
+### Chores
+
+* chore: add aiobreaker dependency for async circuit breaker implementation ([`bc82000`](https://github.com/gsinghjay/mvp_qr_gen/commit/bc820009c2073d4e620611fe13bc86f76fb1b17d))
+
+### Features
+
+* feat: add verification script for circuit breaker refactoring ([`4232993`](https://github.com/gsinghjay/mvp_qr_gen/commit/4232993395b89ff4e38829494607822fd5f9024a))
+
+### Fixes
+
+* fix: add size limits to QR download options in UI ([`2b1e58c`](https://github.com/gsinghjay/mvp_qr_gen/commit/2b1e58c1944f3c661e56ffecebabe88bc2e1436b))
+
+* fix: update _calculate_precise_scale to properly handle size parameter ([`9c5210d`](https://github.com/gsinghjay/mvp_qr_gen/commit/9c5210d41cce9d344d1b16c5e8e2cc44a89d17dd))
+
+* fix: pass correct scale factor to QRImageParameters in QR generation service ([`ed32c6e`](https://github.com/gsinghjay/mvp_qr_gen/commit/ed32c6e661207c509e97fdae1e39854618ed9aa7))
+
+* fix: update QRImageParameters.size max limit to 50 ([`d7630aa`](https://github.com/gsinghjay/mvp_qr_gen/commit/d7630aa897dfec328dd987d1c0769529d5ef9792))
+
+* fix: update QRCodeService to use decorator pattern with aiobreaker ([`acbf5f9`](https://github.com/gsinghjay/mvp_qr_gen/commit/acbf5f94f80f3f2bfb51f271f289fb606c75905c))
+
+* fix: update circuit breaker to use aiobreaker correctly ([`9057a8c`](https://github.com/gsinghjay/mvp_qr_gen/commit/9057a8c9e3239ed66491525c0a37e6299a3f171a))
+
+* fix: update circuit breaker to use timeout_duration instead of reset_timeout for aiobreaker compatibility
+
+- Changed reset_timeout parameter to timeout_duration as required by aiobreaker
+- Added proper datetime.timedelta conversion for timeout value
+- Updated test_circuit_breaker.py to use aiobreaker and async functions
+- Verified changes with enhanced_smoke_test.sh ([`02faba2`](https://github.com/gsinghjay/mvp_qr_gen/commit/02faba24586faf542ab58cda4a8aee550f18ffa8))
+
+### Refactoring
+
+* refactor: remove deprecated circuit breaker test script ([`b63e4f2`](https://github.com/gsinghjay/mvp_qr_gen/commit/b63e4f257efe0d830ea413758fc5a621093932e4))
+
+* refactor: update API endpoints to await async service methods ([`429d454`](https://github.com/gsinghjay/mvp_qr_gen/commit/429d45452cb7040e119738f6e020b0811925857f))
+
+* refactor: convert service methods to async and use aiobreaker context manager ([`eb0d9f5`](https://github.com/gsinghjay/mvp_qr_gen/commit/eb0d9f563016a5eb4b64da8b61e58b0c27e10c33))
+
+* refactor: remove create_and_format_qr_sync method in favor of direct async calls ([`39ee011`](https://github.com/gsinghjay/mvp_qr_gen/commit/39ee0117454b7dc66123a6a4494830b8c7570d9d))
+
+* refactor: update circuit breaker implementation to use aiobreaker with async support ([`d2fe774`](https://github.com/gsinghjay/mvp_qr_gen/commit/d2fe774a4c6499320c69901cf6d0ad31b2e430f3))
+
+### Testing
+
+* test: add unit tests for aiobreaker implementation ([`9fee07a`](https://github.com/gsinghjay/mvp_qr_gen/commit/9fee07a0af55d224377104a8d035bfe9b01abba6))
+
+* test: update E2E circuit breaker tests for aiobreaker compatibility ([`be33bf6`](https://github.com/gsinghjay/mvp_qr_gen/commit/be33bf65e9ade96db7cf62d27d142fe949c67903))
+
+### Unknown
+
+* Merge pull request #58 from gsinghjay/feat/aiobreaker
+
+Replace pybreaker with aiobreaker for Asynchronous Circuit Breaking ([`17b74ec`](https://github.com/gsinghjay/mvp_qr_gen/commit/17b74ec647dff62d6c9d2c54bcb5a3aa5cb0d4c4))
+
+
 ## v1.11.1 (2025-05-27)
 
 ### Chores
