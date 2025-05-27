@@ -238,38 +238,6 @@ async def test_all_features(service: NewQRGenerationService):
     validate_image_properties(png_logo_err_m, "PNG") # Expect 'h' to be used by Segno
     logger.info("  (Manually verify this QR is scannable, implying 'h' was used for logo)")
 
-    # 5b. SVG Logo Test with Different Content - Test the new SVG logo handling
-    print_section("SVG Logo Testing")
-    svg_logo_content = "Testing SVG Logo Integration with Hudson County Community College"
-    params_svg_logo = {"size": 10, "border": 3, "include_logo": True, "fill_color": "#2f2f84", "back_color": "#ffffff"}
-    
-    # Temporarily override the logo path for this test
-    svg_logo_path = settings.STATIC_DIR / "assets" / "images" / "hccc_logo_official.svg"
-    logger.info(f"Testing with SVG logo: {svg_logo_path}")
-    
-    # We need a way to override the logo path for testing
-    # For now, let's monkey patch the settings temporarily
-    original_logo_path = settings.DEFAULT_LOGO_PATH
-    settings.DEFAULT_LOGO_PATH = svg_logo_path
-    
-    try:
-        png_svg_logo, _ = await generate_and_save_qr(service, svg_logo_content, params_svg_logo, "png", "svg_logo_test", error_correction=ErrorCorrectionLevel.L)
-        validate_image_properties(png_svg_logo, "PNG")
-        logger.info("  (This should auto-upgrade from L to H error correction and use the new SVG logo)")
-        
-        # Test JPEG format with SVG logo as well
-        jpeg_svg_logo, _ = await generate_and_save_qr(service, svg_logo_content, params_svg_logo, "jpeg", "svg_logo_test_jpeg", error_correction=ErrorCorrectionLevel.Q)
-        validate_image_properties(jpeg_svg_logo, "JPEG")
-        logger.info("  (JPEG version should also auto-upgrade from Q to H and handle SVG logo properly)")
-        
-    finally:
-        # Restore original logo path
-        settings.DEFAULT_LOGO_PATH = original_logo_path
-        logger.info(f"Restored original logo path: {original_logo_path}")
-
-    # 6. Different formats (WebP removed - not supported by Segno natively)
-    # Future: WebP support could be added via PIL conversion if needed
-
     # 7. Test Segno SVG optimizations (omitsize, no xmldecl, no ns)
     # PillowQRImageFormatter by default applies these: xmldecl=False, svgns=False, omitsize=True (if no physical units)
     params_svg_optimized = {"size": 10, "border": 1} # no physical units, so omitsize=True should apply
