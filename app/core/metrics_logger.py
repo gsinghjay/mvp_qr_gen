@@ -52,6 +52,48 @@ feature_flag_active = Gauge(
     ['flag_name']
 )
 
+# ============================================================================
+# Path-Specific Metrics for Canary Monitoring
+# ============================================================================
+
+# QR Generation Path Metrics (for old vs new service tracking)
+qr_generation_path_total = Counter(
+    'qr_generation_path_total',
+    'Total QR generation requests by service path',
+    ['path', 'operation', 'status']
+)
+
+qr_generation_path_duration_seconds = Histogram(
+    'qr_generation_path_duration_seconds',
+    'Duration of QR generation requests by service path',
+    ['path', 'operation'],
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0)
+)
+
+# ============================================================================
+# Circuit Breaker Metrics
+# ============================================================================
+
+# Circuit Breaker State Metrics
+app_circuit_breaker_state_enum = Gauge(
+    'app_circuit_breaker_state_enum',
+    'Circuit breaker state (0=closed, 1=open, 2=half_open)',
+    ['service', 'operation']
+)
+
+# Circuit Breaker Fallback Metrics
+app_circuit_breaker_fallbacks_total = Counter(
+    'app_circuit_breaker_fallbacks_total',
+    'Total circuit breaker fallbacks to legacy implementation',
+    ['service', 'operation', 'reason']
+)
+
+# Circuit Breaker Failure Metrics
+app_circuit_breaker_failures_total = Counter(
+    'app_circuit_breaker_failures_total',
+    'Total circuit breaker failures',
+    ['service', 'operation', 'error_type']
+)
 
 class MetricsLogger:
     """
@@ -156,6 +198,73 @@ class MetricsLogger:
             return wrapper
         return decorator
 
+    # ============================================================================
+    # Path-Specific Metrics Methods
+    # ============================================================================
+    
+    @staticmethod
+    def log_qr_generation_path(path: str, operation: str, success: bool, duration: float) -> None:
+        """
+        Log QR generation request by service path (old vs new).
+        
+        Args:
+            path: Service path ('old' or 'new')
+            operation: Operation name ('create_static_qr', 'create_dynamic_qr', 'generate_image')
+            success: Whether the operation was successful
+            duration: Duration in seconds
+        """
+        status = 'success' if success else 'failure'
+        qr_generation_path_total.labels(path=path, operation=operation, status=status).inc()
+        qr_generation_path_duration_seconds.labels(path=path, operation=operation).observe(duration)
+    
+    # ============================================================================
+    # Circuit Breaker Metrics Methods
+    # ============================================================================
+    
+    @staticmethod
+    def set_circuit_breaker_state(service: str, operation: str, state: str) -> None:
+        """
+        Set circuit breaker state.
+        
+        Args:
+            service: Service name ('QRGenerationService', 'AnalyticsService', etc.)
+            operation: Operation name
+            state: Circuit breaker state ('closed', 'open', 'half_open')
+        """
+        state_value = {'closed': 0, 'open': 1, 'half_open': 2}.get(state, 0)
+        app_circuit_breaker_state_enum.labels(service=service, operation=operation).set(state_value)
+    
+    @staticmethod
+    def log_circuit_breaker_fallback(service: str, operation: str, reason: str) -> None:
+        """
+        Log circuit breaker fallback to legacy implementation.
+        
+        Args:
+            service: Service name
+            operation: Operation name
+            reason: Reason for fallback ('circuit_open', 'timeout', 'error')
+        """
+        app_circuit_breaker_fallbacks_total.labels(
+            service=service, 
+            operation=operation, 
+            reason=reason
+        ).inc()
+    
+    @staticmethod
+    def log_circuit_breaker_failure(service: str, operation: str, error_type: str) -> None:
+        """
+        Log circuit breaker failure.
+        
+        Args:
+            service: Service name
+            operation: Operation name
+            error_type: Type of error ('timeout', 'exception', 'validation_error')
+        """
+        app_circuit_breaker_failures_total.labels(
+            service=service,
+            operation=operation,
+            error_type=error_type
+        ).inc()
 
 # ============================================================================
 # Utility Functions

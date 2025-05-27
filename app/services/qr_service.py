@@ -23,7 +23,7 @@ from ..core.exceptions import (
     QRCodeValidationError,
     RedirectURLError,
 )
-from ..core.config import settings
+from ..core.config import settings, should_use_new_service
 from ..models.qr import QRCode
 from ..models.scan_log import ScanLog
 from ..repositories import QRCodeRepository, ScanLogRepository
@@ -36,6 +36,10 @@ from ..schemas.qr.parameters import (
 )
 from ..utils.qr_imaging import generate_qr_image as qr_imaging_util, generate_qr_response
 from ..core.metrics_logger import MetricsLogger
+
+# Circuit breaker and new service imports
+import pybreaker
+from ..services.new_qr_generation_service import NewQRGenerationService
 
 # Configure UTC timezone
 UTC = ZoneInfo("UTC")
@@ -59,17 +63,23 @@ class QRCodeService:
     def __init__(
         self, 
         qr_code_repo: QRCodeRepository,
-        scan_log_repo: ScanLogRepository
+        scan_log_repo: ScanLogRepository,
+        new_qr_generation_service: Optional[NewQRGenerationService] = None,
+        new_qr_generation_breaker: Optional[pybreaker.CircuitBreaker] = None
     ):
         """
-        Initialize the QR code service with repositories.
+        Initialize the QR code service with repositories and optional new services.
 
         Args:
             qr_code_repo: Specialized QRCodeRepository for QR code operations
             scan_log_repo: ScanLogRepository for scan log operations
+            new_qr_generation_service: Optional NewQRGenerationService for enhanced QR generation
+            new_qr_generation_breaker: Optional circuit breaker for NewQRGenerationService protection
         """
         self.qr_code_repo = qr_code_repo
         self.scan_log_repo = scan_log_repo
+        self.new_qr_generation_service = new_qr_generation_service
+        self.new_qr_generation_breaker = new_qr_generation_breaker
 
     @MetricsLogger.time_service_call("QRCodeService", "_is_safe_redirect_url")
     def _is_safe_redirect_url(self, url: str) -> bool:
@@ -226,7 +236,6 @@ class QRCodeService:
         try:
             # Create QR code data
             qr_data = QRCodeCreate(
-                id=str(uuid.uuid4()),
                 content=data.content,
                 qr_type=QRType.STATIC,
                 title=data.title,
@@ -236,16 +245,62 @@ class QRCodeService:
                 size=data.size,
                 border=data.border,
                 error_level=data.error_level.value,
-                created_at=datetime.now(UTC),
             )
 
             # Validate QR code data
             self.validate_qr_code(qr_data)
 
-            # Create QR code using repository
-            qr = self.qr_code_repo.create(qr_data.model_dump())
+            # Check if we should use the new QR generation service with circuit breaker protection
+            if (self.new_qr_generation_service is not None and 
+                self.new_qr_generation_breaker is not None and
+                settings.USE_NEW_QR_GENERATION_SERVICE and
+                should_use_new_service(settings, user_identifier=qr_data.content)):
+                
+                try:
+                    # Use circuit breaker to protect calls to new service
+                    from ..schemas.qr.parameters import QRImageParameters
+                    image_params = QRImageParameters(
+                        fill_color=data.fill_color,
+                        back_color=data.back_color,
+                        size=data.size,
+                        border=data.border,
+                        include_logo=False  # Static QRs typically don't include logos
+                    )
+                    
+                    # Wrap the new service call with circuit breaker
+                    image_bytes = self.new_qr_generation_breaker.call(
+                        self.new_qr_generation_service.create_and_format_qr_sync,
+                        content=data.content,
+                        image_params=image_params,
+                        output_format="png",
+                        error_correction=data.error_level
+                    )
+                    
+                    logger.info(f"Created static QR code with new service (ID: {qr_data.id})")
+                    MetricsLogger.log_qr_generation_path("new", "create_static_qr", True, 0.0)
+                    
+                except pybreaker.CircuitBreakerError as e:
+                    # Circuit is open - fall back to legacy implementation
+                    logger.warning(f"Circuit breaker open for NewQRGenerationService: {e}")
+                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_static_qr", "circuit_open")
+                    # Continue to legacy implementation below
+                    
+                except Exception as e:
+                    # Other errors - fall back to legacy implementation
+                    logger.error(f"Error with NewQRGenerationService: {e}")
+                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_static_qr", "exception")
+                    # Continue to legacy implementation below
+                else:
+                    # New service succeeded - create QR code record and return
+                    qr = self.qr_code_repo.create(qr_data.model_dump())
+                    logger.info(f"Created static QR code with ID {qr.id} using new service")
+                    MetricsLogger.log_qr_created('static', True)
+                    return qr
 
-            logger.info(f"Created static QR code with ID {qr.id}")
+            # Legacy implementation (fallback or when new service is disabled)
+            qr = self.qr_code_repo.create(qr_data.model_dump())
+            logger.info(f"Created static QR code with ID {qr.id} using legacy service")
+            MetricsLogger.log_qr_generation_path("legacy", "create_static_qr", True, 0.0)
             
             # Log metrics for successful creation
             MetricsLogger.log_qr_created('static', True)
@@ -292,7 +347,6 @@ class QRCodeService:
 
             # Create QR code data
             qr_data = QRCodeCreate(
-                id=str(uuid.uuid4()),
                 content=full_url,
                 qr_type=QRType.DYNAMIC,
                 redirect_url=redirect_url_str,  # Use validated string
@@ -303,13 +357,65 @@ class QRCodeService:
                 size=data.size,
                 border=data.border,
                 error_level=data.error_level.value,
-                created_at=datetime.now(UTC),
                 short_id=short_id,  # Store the short_id in the database
             )
 
             # Validate QR code data
             self.validate_qr_code(qr_data)
 
+            # Check if we should use the new QR generation service with circuit breaker protection
+            if (self.new_qr_generation_service is not None and 
+                self.new_qr_generation_breaker is not None and
+                settings.USE_NEW_QR_GENERATION_SERVICE and
+                should_use_new_service(settings, user_identifier=qr_data.content)):
+                
+                try:
+                    # Use circuit breaker to protect calls to new service
+                    from ..schemas.qr.parameters import QRImageParameters
+                    image_params = QRImageParameters(
+                        fill_color=data.fill_color,
+                        back_color=data.back_color,
+                        size=data.size,
+                        border=data.border,
+                        include_logo=False  # Dynamic QRs typically don't include logos
+                    )
+                    
+                    # Wrap the new service call with circuit breaker
+                    image_bytes = self.new_qr_generation_breaker.call(
+                        self.new_qr_generation_service.create_and_format_qr_sync,
+                        content=full_url,  # Use the full URL for dynamic QRs
+                        image_params=image_params,
+                        output_format="png",
+                        error_correction=data.error_level
+                    )
+                    
+                    logger.info(f"Created dynamic QR code with new service (ID: {qr_data.id})")
+                    MetricsLogger.log_qr_generation_path("new", "create_dynamic_qr", True, 0.0)
+                    
+                except pybreaker.CircuitBreakerError as e:
+                    # Circuit is open - fall back to legacy implementation
+                    logger.warning(f"Circuit breaker open for NewQRGenerationService: {e}")
+                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_dynamic_qr", "circuit_open")
+                    # Continue to legacy implementation below
+                    
+                except Exception as e:
+                    # Other errors - fall back to legacy implementation
+                    logger.error(f"Error with NewQRGenerationService: {e}")
+                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_dynamic_qr", "exception")
+                    # Continue to legacy implementation below
+                else:
+                    # New service succeeded - create QR code record and return
+                    model_data = qr_data.model_dump()
+                    # Double check that redirect_url is a string
+                    if "redirect_url" in model_data and not isinstance(model_data["redirect_url"], str):
+                        model_data["redirect_url"] = str(model_data["redirect_url"])
+                    
+                    qr = self.qr_code_repo.create(model_data)
+                    logger.info(f"Created dynamic QR code with ID {qr.id} using new service, short_id: {short_id}")
+                    MetricsLogger.log_qr_created('dynamic', True)
+                    return qr
+
+            # Legacy implementation (fallback or when new service is disabled)
             # Create QR code using repository - ensure model_dump() converts HttpUrl to string
             model_data = qr_data.model_dump()
             # Double check that redirect_url is a string
@@ -317,8 +423,8 @@ class QRCodeService:
                 model_data["redirect_url"] = str(model_data["redirect_url"])
 
             qr = self.qr_code_repo.create(model_data)
-
-            logger.info(f"Created dynamic QR code with ID {qr.id} and redirect path {qr.content}, short_id: {short_id}")
+            logger.info(f"Created dynamic QR code with ID {qr.id} using legacy service, redirect path {qr.content}, short_id: {short_id}")
+            MetricsLogger.log_qr_generation_path("legacy", "create_dynamic_qr", True, 0.0)
             
             # Log metrics for successful creation
             MetricsLogger.log_qr_created('dynamic', True)
@@ -720,6 +826,76 @@ class QRCodeService:
             pixel_size = size * 25  # Rough estimate based on typical QR code size
         
         try:
+            # Check if we should use the new QR generation service with circuit breaker protection
+            if (self.new_qr_generation_service is not None and 
+                self.new_qr_generation_breaker is not None and
+                settings.USE_NEW_QR_GENERATION_SERVICE and
+                should_use_new_service(settings, user_identifier=data)):
+                
+                try:
+                    # Use circuit breaker to protect calls to new service
+                    from ..schemas.qr.parameters import QRImageParameters
+                    from ..schemas.common import ErrorCorrectionLevel
+                    
+                    # Convert error level string to enum
+                    error_correction = ErrorCorrectionLevel.M  # Default
+                    if error_level:
+                        error_level_map = {
+                            'l': ErrorCorrectionLevel.L,
+                            'm': ErrorCorrectionLevel.M,
+                            'q': ErrorCorrectionLevel.Q,
+                            'h': ErrorCorrectionLevel.H
+                        }
+                        error_correction = error_level_map.get(error_level.lower(), ErrorCorrectionLevel.M)
+                    
+                    image_params = QRImageParameters(
+                        fill_color=fill_color,
+                        back_color=back_color,
+                        size=pixel_size,
+                        border=border,
+                        include_logo=include_logo,
+                        svg_title=svg_title,
+                        svg_description=svg_description,
+                        physical_size=physical_size,
+                        physical_unit=physical_unit,
+                        dpi=dpi
+                    )
+                    
+                    # Wrap the new service call with circuit breaker
+                    image_bytes = self.new_qr_generation_breaker.call(
+                        self.new_qr_generation_service.create_and_format_qr_sync,
+                        content=data,
+                        image_params=image_params,
+                        output_format=image_format,
+                        error_correction=error_correction
+                    )
+                    
+                    logger.info(f"Generated QR code with new service (format: {image_format})")
+                    MetricsLogger.log_qr_generation_path("new", "generate_qr", True, 0.0)
+                    MetricsLogger.log_image_generated(image_format, True)
+                    
+                    # Create streaming response from bytes
+                    from io import BytesIO
+                    media_type = IMAGE_FORMATS.get(image_format.lower(), "application/octet-stream")
+                    return StreamingResponse(
+                        BytesIO(image_bytes),
+                        media_type=media_type,
+                        headers={"Content-Disposition": f"inline; filename=qr_code.{image_format.lower()}"}
+                    )
+                    
+                except pybreaker.CircuitBreakerError as e:
+                    # Circuit is open - fall back to legacy implementation
+                    logger.warning(f"Circuit breaker open for NewQRGenerationService: {e}")
+                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "generate_qr", "circuit_open")
+                    # Continue to legacy implementation below
+                    
+                except Exception as e:
+                    # Other errors - fall back to legacy implementation
+                    logger.error(f"Error with NewQRGenerationService: {e}")
+                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "generate_qr", "exception")
+                    # Continue to legacy implementation below
+
+            # Legacy implementation (fallback or when new service is disabled)
             response = generate_qr_response(
                 content=data,
                 image_format=image_format,
@@ -736,6 +912,9 @@ class QRCodeService:
                 physical_unit=physical_unit,
                 dpi=dpi
             )
+            
+            logger.info(f"Generated QR code with legacy service (format: {image_format})")
+            MetricsLogger.log_qr_generation_path("legacy", "generate_qr", True, 0.0)
             
             # Log metrics for successful image generation
             MetricsLogger.log_image_generated(image_format, True)

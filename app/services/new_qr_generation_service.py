@@ -90,6 +90,42 @@ class NewQRGenerationService:
             logger.error(f"Failed to create and format QR code: {e}")
             raise
 
+    @MetricsLogger.time_service_call("NewQRGenerationService", "create_and_format_qr_sync")
+    def create_and_format_qr_sync(
+        self, 
+        content: str, 
+        image_params: Any, 
+        output_format: str = "png",
+        error_correction: Any = None
+    ) -> bytes:
+        """
+        Create and format a QR code in one operation (synchronous version).
+        
+        This is a simple wrapper around the async version for circuit breaker compatibility.
+        
+        Args:
+            content: Content to encode in the QR code
+            image_params: Image formatting parameters
+            output_format: Target image format
+            error_correction: Error correction level
+            
+        Returns:
+            Formatted QR code image as bytes
+            
+        Raises:
+            QRCodeValidationError: If parameters are invalid
+            ValueError: If operation fails
+        """
+        import asyncio
+        
+        # Simply run the async version synchronously
+        return asyncio.run(self.create_and_format_qr(
+            content=content,
+            image_params=image_params,
+            output_format=output_format,
+            error_correction=error_correction
+        ))
+
     def _validate_service_inputs(self, content: str, output_format: str) -> None:
         """
         Validate service-level inputs before processing.
