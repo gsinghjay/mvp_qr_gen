@@ -72,9 +72,12 @@ class PillowQRImageFormatter(QRImageFormatter):
     SUPPORTED_FORMATS = {
         "png": {"supports_transparency": True, "is_raster": True},
         "jpeg": {"supports_transparency": False, "is_raster": True},  
-        "jpg": {"supports_transparency": False, "is_raster": True},   # Alias for jpeg
+        "jpg": {"supports_transparency": False, "is_raster": True},
         "svg": {"supports_transparency": True, "is_raster": False},
-        "webp": {"supports_transparency": True, "is_raster": True}
+        "webp": {"supports_transparency": True, "is_raster": True},   # Will be deprecated in the future
+        "eps": {"supports_transparency": True, "is_raster": False},   # Encapsulated PostScript (needs `format_qr_image` implementation)
+        "txt": {"supports_transparency": False, "is_raster": False},  # Text/ASCII art (needs `format_qr_image` implementation)
+        "gif": {"supports_transparency": True, "is_raster": True}     # GIF format (needs `format_qr_image` implementation)
     }
 
     def _validate_output_format(self, output_format: str) -> str:
@@ -451,7 +454,7 @@ class PillowQRImageFormatter(QRImageFormatter):
 
     def _add_logo_to_image(self, qr_image: Image.Image, logo_path_override: str | None = None) -> Image.Image:
         """
-        Add logo to QR code image using Pillow with SVG support.
+        Add logo to QR code image using Pillow.
         
         Args:
             qr_image: The base QR code image
@@ -471,19 +474,12 @@ class PillowQRImageFormatter(QRImageFormatter):
                 logger.warning("Logo file not found, returning QR image without logo")
                 return qr_image
                 
-            # Calculate optimal logo size following Segno's recommendation (33% of QR image)
+            # Calculate logo size as 25% of the QR image (smaller than Segno's recommendation for better aesthetics)
             qr_width, qr_height = qr_image.size
-            logo_size = max(min(qr_width, qr_height) // 3, 20)  # At least 20px, max 33% of QR size (Segno recommended)
+            logo_size = min(qr_width, qr_height) // 4  # 25% of QR size (smaller than Segno's recommendation of 1/3)
             
-            # Handle SVG files specially
-            if logo_path.suffix.lower() == '.svg':
-                logo = self._load_svg_as_pil(logo_path, logo_size)
-                if logo is None:
-                    logger.warning("Failed to load SVG logo, returning QR image without logo")
-                    return qr_image
-            else:
-                # Load regular image formats
-                logo = Image.open(logo_path)
+            # Load regular image formats
+            logo = Image.open(logo_path)
                 
             # Convert logo to RGBA for proper blending
             logo = logo.convert("RGBA")
@@ -498,11 +494,14 @@ class PillowQRImageFormatter(QRImageFormatter):
             # Ensure QR image is in RGBA mode for proper blending
             if qr_image.mode != "RGBA":
                 qr_image = qr_image.convert("RGBA")
-                
-            # Create a white circular background for the logo (optional)
-            # This helps with logo visibility against dark QR patterns
-            background_size = max(logo.size) + 4  # Add padding
-            background = Image.new("RGBA", (background_size, background_size), (255, 255, 255, 200))
+            
+            # Sample the background color from the QR code (center point should be light/background)
+            # Use the corner pixel which is always the background color
+            bg_color = qr_image.getpixel((0, 0))
+            
+            # Create a background with the same color as the QR code background
+            background_size = max(logo.size) + 3  # Add padding
+            background = Image.new("RGBA", (background_size, background_size), bg_color)
             
             # Center the logo on the background
             bg_x = (background_size - logo.size[0]) // 2
@@ -519,60 +518,4 @@ class PillowQRImageFormatter(QRImageFormatter):
             
         except Exception as e:
             logger.error(f"Failed to add logo to QR image: {e}")
-            return qr_image  # Return original image if logo addition fails
-            
-    def _load_svg_as_pil(self, svg_path: Path, target_size: int = 200) -> Image.Image | None:
-        """
-        Load an SVG file and convert it to a PIL Image.
-        
-        Args:
-            svg_path: Path to the SVG file
-            target_size: Target size for conversion (default 200px)
-            
-        Returns:
-            PIL Image or None if conversion fails
-        """
-        try:
-            # Try using cairosvg if available
-            try:
-                import cairosvg
-                from io import BytesIO
-                
-                # Convert SVG to PNG bytes at optimal resolution
-                # Use 2x target size for better quality when scaling down
-                conversion_size = target_size * 2
-                png_bytes = cairosvg.svg2png(
-                    url=str(svg_path), 
-                    output_width=conversion_size, 
-                    output_height=conversion_size
-                )
-                
-                # Load PNG bytes into PIL Image
-                return Image.open(BytesIO(png_bytes))
-                
-            except ImportError:
-                logger.warning("cairosvg not available, falling back to SVG text replacement method")
-                
-                # Fallback: Try a simple approach using Wand if available
-                try:
-                    from wand.image import Image as WandImage
-                    from wand.color import Color
-                    
-                    with WandImage(filename=str(svg_path), resolution=target_size) as wand_img:
-                        wand_img.format = 'png'
-                        wand_img.background_color = Color('transparent')
-                        blob = wand_img.make_blob()
-                        return Image.open(BytesIO(blob))
-                        
-                except ImportError:
-                    logger.warning("Neither cairosvg nor Wand available for SVG conversion")
-                    
-                    # Last resort: Create a simple placeholder
-                    # In production, you'd want to pre-convert SVG to PNG or install svg libraries
-                    logger.warning("Creating simple placeholder for SVG logo")
-                    placeholder = Image.new("RGBA", (target_size, target_size), (47, 47, 132, 255))  # HCCC blue color
-                    return placeholder
-                    
-        except Exception as e:
-            logger.error(f"Failed to load SVG as PIL image: {e}")
-            return None 
+            return qr_image  # Return original image if logo addition fails 
