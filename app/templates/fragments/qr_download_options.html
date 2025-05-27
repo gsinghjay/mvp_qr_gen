@@ -31,7 +31,7 @@
         <div class="col-6 mb-2">
           <label for="downloadSize" class="form-label">Physical Size:</label>
           <div class="input-group input-group-sm">
-            <input type="number" class="form-control" id="downloadSize" value="2" min="0.1" max="500" step="0.1">
+            <input type="number" class="form-control" id="downloadSize" value="2" min="0.1" max="50" step="0.1">
             <select class="form-select" id="downloadUnit">
               <option value="in" selected>inches</option>
               <option value="cm">cm</option>
@@ -46,13 +46,18 @@
         </div>
       </div>
       
+      <!-- Size limit note -->
+      <div class="form-text mb-2">
+        <i class="bi bi-info-circle me-1"></i> For pixel measurements, maximum size is 50 (1250px). For physical dimensions, please use inches, cm, or mm.
+      </div>
+      
       <div class="size-presets mb-3">
         <label class="form-label">Size Presets:</label>
         <div>
           <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="1" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Business Card</button>
           <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="3" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Small</button>
-          <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="12" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Poster</button>
-          <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn" data-size="500" data-unit="px" data-dpi="0" onclick="event.preventDefault(); applyPreset(this);">500px</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="10" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Poster</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn" data-size="50" data-unit="px" data-dpi="0" onclick="event.preventDefault(); applyPreset(this);">50px</button>
         </div>
       </div>
       
@@ -212,10 +217,17 @@ function updateDownloadLinks() {
     return;
   }
   
-  const size = sizeInput.value;
+  let size = parseFloat(sizeInput.value);
   const unit = unitSelect.value;
   const dpi = dpiInput.value;
   const includeLogo = logoCheckbox.checked;
+  
+  // Cap the size at 50 if using pixels
+  if (unit === 'px' && size > 50) {
+    size = 50;
+    sizeInput.value = 50;
+    console.log('Capped pixel size at 50');
+  }
   
   console.log('Updating download links with:');
   console.log('- Size:', size, unit);
