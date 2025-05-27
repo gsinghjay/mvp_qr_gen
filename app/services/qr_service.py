@@ -270,14 +270,17 @@ class QRCodeService:
                         include_logo=False  # Static QRs typically don't include logos
                     )
                     
-                    # Use the async context manager pattern with await on the service method
-                    async with self.new_qr_generation_breaker:
-                        image_bytes = await self.new_qr_generation_service.create_and_format_qr(
+                    # Use the circuit breaker decorator pattern with await on the service method
+                    @self.new_qr_generation_breaker
+                    async def protected_create_static_qr():
+                        return await self.new_qr_generation_service.create_and_format_qr(
                             content=data.content,
                             image_params=image_params,
                             output_format="png",
                             error_correction=data.error_level
                         )
+                    
+                    image_bytes = await protected_create_static_qr()
                     
                     # New service succeeded - create QR code record and return
                     qr = self.qr_code_repo.create(qr_data.model_dump())
@@ -404,14 +407,17 @@ class QRCodeService:
                         include_logo=False  # Dynamic QRs typically don't include logos
                     )
                     
-                    # Use the async context manager pattern with await on the service method
-                    async with self.new_qr_generation_breaker:
-                        image_bytes = await self.new_qr_generation_service.create_and_format_qr(
+                    # Use the circuit breaker decorator pattern with await on the service method
+                    @self.new_qr_generation_breaker
+                    async def protected_create_dynamic_qr():
+                        return await self.new_qr_generation_service.create_and_format_qr(
                             content=full_url,  # Use the full URL for dynamic QRs
                             image_params=image_params,
                             output_format="png",
                             error_correction=data.error_level
                         )
+                    
+                    image_bytes = await protected_create_dynamic_qr()
                     
                     # New service succeeded - create QR code record and return
                     model_data = qr_data.model_dump()
@@ -906,14 +912,17 @@ class QRCodeService:
                         dpi=dpi
                     )
                     
-                    # Use the async context manager pattern with await on the service method
-                    async with self.new_qr_generation_breaker:
-                        image_bytes = await self.new_qr_generation_service.create_and_format_qr(
+                    # Use the circuit breaker decorator pattern with await on the service method
+                    @self.new_qr_generation_breaker
+                    async def protected_generate_qr():
+                        return await self.new_qr_generation_service.create_and_format_qr(
                             content=data,
                             image_params=image_params,
                             output_format=image_format,
                             error_correction=error_correction
                         )
+                    
+                    image_bytes = await protected_generate_qr()
                     
                     # Calculate duration and log success metrics for new path
                     new_path_duration = time.perf_counter() - new_path_start_time
