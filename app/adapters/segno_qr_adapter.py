@@ -143,9 +143,9 @@ class PillowQRImageFormatter(QRImageFormatter):
                     "lineclass": None,     # Remove line classes  
                     "nl": False,           # Remove newlines
                     "border": image_params.border,
-                    "dark": self._get_effective_color(image_params.fill_color, image_params.data_dark_color),
+                    "dark": self._get_effective_color(image_params.fill_color, image_params.data_dark_color, is_dark=True),
                     "light": self._handle_transparency(
-                        self._get_effective_color(image_params.back_color, image_params.data_light_color), 
+                        self._get_effective_color(image_params.back_color, image_params.data_light_color, is_dark=False), 
                         "svg"
                     )
                 }
@@ -155,11 +155,13 @@ class PillowQRImageFormatter(QRImageFormatter):
                     image_params.physical_size and 
                     image_params.dpi):
                     svg_params["unit"] = image_params.physical_unit
-                    svg_params["scale"] = image_params.physical_size
+                    # Calculate scale per module for SVG (total size / module count)
+                    module_count_with_border = qr_data.symbol_size(border=image_params.border)[0]
+                    svg_params["scale"] = image_params.physical_size / module_count_with_border
                     # Note: omitsize=False (default) when using unit for width/height attributes
                 else:
                     svg_params["scale"] = image_params.size
-                    svg_params["omitsize"] = True  # Remove size attributes for relative sizing
+                    # Keep size attributes for better browser compatibility (omitsize=False is default)
                 
                 # Add SVG accessibility attributes if provided
                 if image_params.svg_title:
@@ -175,9 +177,9 @@ class PillowQRImageFormatter(QRImageFormatter):
                 scale = self._calculate_precise_scale(qr_data, image_params)
                 
                 # Prepare color parameters with advanced color support
-                dark_color = self._get_effective_color(image_params.fill_color, image_params.data_dark_color)
+                dark_color = self._get_effective_color(image_params.fill_color, image_params.data_dark_color, is_dark=True)
                 light_color = self._handle_transparency(
-                    self._get_effective_color(image_params.back_color, image_params.data_light_color), 
+                    self._get_effective_color(image_params.back_color, image_params.data_light_color, is_dark=False), 
                     validated_format
                 )
                 
@@ -203,7 +205,11 @@ class PillowQRImageFormatter(QRImageFormatter):
                                 pil_image = pil_image.convert("RGBA")
                             background.paste(pil_image, mask=pil_image.split()[-1] if pil_image.mode == "RGBA" else None)
                             pil_image = background
-                        pil_image.save(output, format="JPEG", quality=getattr(image_params, 'image_quality', 90))
+                        # Handle JPEG quality following Segno documentation pattern
+                        if image_params.image_quality is not None:
+                            pil_image.save(output, format="JPEG", quality=image_params.image_quality)
+                        else:
+                            pil_image.save(output, format="JPEG")  # Use Pillow's default quality
                     else:
                         pil_image.save(output, format=validated_format.upper())
                 else:
@@ -243,8 +249,8 @@ class PillowQRImageFormatter(QRImageFormatter):
         try:
             # Use Segno's built-in data URI generation with precise scale
             scale = self._calculate_precise_scale(qr_data, image_params)
-            dark_color = self._get_effective_color(image_params.fill_color, image_params.data_dark_color)
-            light_color = self._get_effective_color(image_params.back_color, image_params.data_light_color)
+            dark_color = self._get_effective_color(image_params.fill_color, image_params.data_dark_color, is_dark=True)
+            light_color = self._get_effective_color(image_params.back_color, image_params.data_light_color, is_dark=False)
             
             return qr_data.png_data_uri(
                 scale=scale,
@@ -277,8 +283,11 @@ class PillowQRImageFormatter(QRImageFormatter):
                 "omitsize": True,
                 "nl": False,
                 "border": image_params.border,
-                "dark": self._get_effective_color(image_params.fill_color, image_params.data_dark_color),
-                "light": self._get_effective_color(image_params.back_color, image_params.data_light_color)
+                "dark": self._get_effective_color(image_params.fill_color, image_params.data_dark_color, is_dark=True),
+                "light": self._handle_transparency(
+                    self._get_effective_color(image_params.back_color, image_params.data_light_color, is_dark=False), 
+                    "svg"
+                )
             }
             
             # Handle physical dimensions for SVG
@@ -286,7 +295,9 @@ class PillowQRImageFormatter(QRImageFormatter):
                 image_params.physical_size and 
                 image_params.dpi):
                 svg_params["unit"] = image_params.physical_unit
-                svg_params["scale"] = image_params.physical_size
+                # Calculate scale per module for SVG (total size / module count)
+                module_count_with_border = qr_data.symbol_size(border=image_params.border)[0]
+                svg_params["scale"] = image_params.physical_size / module_count_with_border
                 svg_params["omitsize"] = False  # Keep size attributes for physical dimensions
             else:
                 svg_params["scale"] = image_params.size
@@ -315,13 +326,15 @@ class PillowQRImageFormatter(QRImageFormatter):
         """
         try:
             # Prepare parameters for minimal inline SVG
+            # Note: svg_inline() sets xmldecl=False, svgns=False, nl=False by default
             svg_params = {
-                "xmldecl": False,      # No XML declaration for inline
-                "svgns": False,        # No SVG namespace for inline
                 "omitsize": True,      # No size attributes for responsive inline SVG
                 "border": image_params.border,
-                "dark": self._get_effective_color(image_params.fill_color, image_params.data_dark_color),
-                "light": self._get_effective_color(image_params.back_color, image_params.data_light_color)
+                "dark": self._get_effective_color(image_params.fill_color, image_params.data_dark_color, is_dark=True),
+                "light": self._handle_transparency(
+                    self._get_effective_color(image_params.back_color, image_params.data_light_color, is_dark=False), 
+                    "svg"
+                )
             }
             
             # Handle physical dimensions
@@ -329,7 +342,9 @@ class PillowQRImageFormatter(QRImageFormatter):
                 image_params.physical_size and 
                 image_params.dpi):
                 svg_params["unit"] = image_params.physical_unit
-                svg_params["scale"] = image_params.physical_size
+                # Calculate scale per module for SVG (total size / module count)
+                module_count_with_border = qr_data.symbol_size(border=image_params.border)[0]
+                svg_params["scale"] = image_params.physical_size / module_count_with_border
                 svg_params["omitsize"] = False  # Keep size for physical dimensions
             else:
                 svg_params["scale"] = image_params.size
@@ -340,27 +355,34 @@ class PillowQRImageFormatter(QRImageFormatter):
             if image_params.svg_description:
                 svg_params["desc"] = image_params.svg_description
             
-            # Generate inline SVG using BytesIO
-            output = BytesIO()
-            qr_data.save(output, kind="svg", **svg_params)
-            output.seek(0)
-            return output.getvalue().decode('utf-8')
+            # Use Segno's built-in svg_inline method
+            return qr_data.svg_inline(**svg_params)
         except Exception as e:
             logger.error(f"Failed to generate inline SVG: {e}")
             raise ValueError(f"Inline SVG generation failed: {e}")
 
-    def _get_effective_color(self, base_color: str | None, data_color: str | None) -> str | None:
+    def _get_effective_color(self, base_color: str | None, data_color: str | None, is_dark: bool = False) -> str | None:
         """
-        Get the effective color, preferring data_color over base_color.
+        Get the effective color, preferring data_color over base_color with fallbacks.
         
         Args:
             base_color: Base color (fill_color or back_color)
             data_color: Data-specific color (data_dark_color or data_light_color)
+            is_dark: Whether this is for dark modules (True) or light/background (False)
             
         Returns:
-            Effective color to use, or None if both are None
+            Effective color to use, with fallback to Segno defaults if both are None
         """
-        return data_color if data_color is not None else base_color
+        effective_color = data_color if data_color is not None else base_color
+        
+        # Apply Segno default fallbacks when both are None
+        if effective_color is None:
+            if is_dark:
+                return "#000000"  # Default black for dark modules
+            else:
+                return "#FFFFFF"  # Default white for light/background
+        
+        return effective_color
 
     def _calculate_precise_scale(self, qr_data: segno.QRCode, image_params: QRImageParameters) -> float:
         """
@@ -427,47 +449,130 @@ class PillowQRImageFormatter(QRImageFormatter):
                 return "#FFFFFF"  # Fallback for formats that don't support transparency
         return color
 
-    def _add_logo_to_image(self, qr_image: Image.Image) -> Image.Image:
+    def _add_logo_to_image(self, qr_image: Image.Image, logo_path_override: str | None = None) -> Image.Image:
         """
-        Add logo to QR code image using Pillow.
+        Add logo to QR code image using Pillow with SVG support.
         
         Args:
             qr_image: The base QR code image
+            logo_path_override: Optional path to override the default logo
             
         Returns:
             QR code image with logo embedded
         """
         try:
-            # Check if default logo exists
-            logo_path = Path(settings.DEFAULT_LOGO_PATH) if hasattr(settings, 'DEFAULT_LOGO_PATH') else None
+            # Use override path if provided, otherwise use default
+            if logo_path_override:
+                logo_path = Path(logo_path_override)
+            else:
+                logo_path = Path(settings.DEFAULT_LOGO_PATH) if hasattr(settings, 'DEFAULT_LOGO_PATH') else None
             
             if not logo_path or not logo_path.exists():
                 logger.warning("Logo file not found, returning QR image without logo")
                 return qr_image
                 
-            # Load and resize logo
-            with Image.open(logo_path) as logo:
-                # Convert logo to RGBA for proper blending
-                logo = logo.convert("RGBA")
+            # Calculate optimal logo size following Segno's recommendation (33% of QR image)
+            qr_width, qr_height = qr_image.size
+            logo_size = max(min(qr_width, qr_height) // 3, 20)  # At least 20px, max 33% of QR size (Segno recommended)
+            
+            # Handle SVG files specially
+            if logo_path.suffix.lower() == '.svg':
+                logo = self._load_svg_as_pil(logo_path, logo_size)
+                if logo is None:
+                    logger.warning("Failed to load SVG logo, returning QR image without logo")
+                    return qr_image
+            else:
+                # Load regular image formats
+                logo = Image.open(logo_path)
                 
-                # Resize logo to 20-25% of QR image size
-                qr_width, qr_height = qr_image.size
-                logo_size = min(qr_width, qr_height) // 4  # 25% of the smaller dimension
-                logo = logo.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
+            # Convert logo to RGBA for proper blending
+            logo = logo.convert("RGBA")
+            
+            # Resize logo maintaining aspect ratio
+            logo.thumbnail((logo_size, logo_size), Image.Resampling.LANCZOS)
+            
+            # Calculate center position
+            logo_x = (qr_width - logo.size[0]) // 2
+            logo_y = (qr_height - logo.size[1]) // 2
+            
+            # Ensure QR image is in RGBA mode for proper blending
+            if qr_image.mode != "RGBA":
+                qr_image = qr_image.convert("RGBA")
                 
-                # Calculate center position
-                logo_x = (qr_width - logo_size) // 2
-                logo_y = (qr_height - logo_size) // 2
+            # Create a white circular background for the logo (optional)
+            # This helps with logo visibility against dark QR patterns
+            background_size = max(logo.size) + 4  # Add padding
+            background = Image.new("RGBA", (background_size, background_size), (255, 255, 255, 200))
+            
+            # Center the logo on the background
+            bg_x = (background_size - logo.size[0]) // 2
+            bg_y = (background_size - logo.size[1]) // 2
+            background.paste(logo, (bg_x, bg_y), logo)
+            
+            # Paste the background with logo onto QR code
+            final_x = (qr_width - background_size) // 2
+            final_y = (qr_height - background_size) // 2
+            qr_image.paste(background, (final_x, final_y), background)
                 
-                # Paste logo onto QR code
-                if qr_image.mode != "RGBA":
-                    qr_image = qr_image.convert("RGBA")
-                    
-                qr_image.paste(logo, (logo_x, logo_y), logo)
-                
-            logger.debug("Successfully added logo to QR image")
+            logger.debug(f"Successfully added logo to QR image (logo size: {logo.size}, background: {background_size}px)")
             return qr_image
             
         except Exception as e:
             logger.error(f"Failed to add logo to QR image: {e}")
-            return qr_image  # Return original image if logo addition fails 
+            return qr_image  # Return original image if logo addition fails
+            
+    def _load_svg_as_pil(self, svg_path: Path, target_size: int = 200) -> Image.Image | None:
+        """
+        Load an SVG file and convert it to a PIL Image.
+        
+        Args:
+            svg_path: Path to the SVG file
+            target_size: Target size for conversion (default 200px)
+            
+        Returns:
+            PIL Image or None if conversion fails
+        """
+        try:
+            # Try using cairosvg if available
+            try:
+                import cairosvg
+                from io import BytesIO
+                
+                # Convert SVG to PNG bytes at optimal resolution
+                # Use 2x target size for better quality when scaling down
+                conversion_size = target_size * 2
+                png_bytes = cairosvg.svg2png(
+                    url=str(svg_path), 
+                    output_width=conversion_size, 
+                    output_height=conversion_size
+                )
+                
+                # Load PNG bytes into PIL Image
+                return Image.open(BytesIO(png_bytes))
+                
+            except ImportError:
+                logger.warning("cairosvg not available, falling back to SVG text replacement method")
+                
+                # Fallback: Try a simple approach using Wand if available
+                try:
+                    from wand.image import Image as WandImage
+                    from wand.color import Color
+                    
+                    with WandImage(filename=str(svg_path), resolution=target_size) as wand_img:
+                        wand_img.format = 'png'
+                        wand_img.background_color = Color('transparent')
+                        blob = wand_img.make_blob()
+                        return Image.open(BytesIO(blob))
+                        
+                except ImportError:
+                    logger.warning("Neither cairosvg nor Wand available for SVG conversion")
+                    
+                    # Last resort: Create a simple placeholder
+                    # In production, you'd want to pre-convert SVG to PNG or install svg libraries
+                    logger.warning("Creating simple placeholder for SVG logo")
+                    placeholder = Image.new("RGBA", (target_size, target_size), (47, 47, 132, 255))  # HCCC blue color
+                    return placeholder
+                    
+        except Exception as e:
+            logger.error(f"Failed to load SVG as PIL image: {e}")
+            return None 
