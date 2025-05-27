@@ -1,6 +1,39 @@
 # CHANGELOG
 
 
+## v1.11.1 (2025-05-27)
+
+### Chores
+
+* chore: update docker-compose.yml with volume mounts for testing ([`08d20e0`](https://github.com/gsinghjay/mvp_qr_gen/commit/08d20e000c65eafbd88965f67a2b83c8e266367f))
+
+* chore: update Dockerfile for testing environment improvements ([`378de44`](https://github.com/gsinghjay/mvp_qr_gen/commit/378de44ee8144f61f9af6528775c4caa1ce9fc48))
+
+### Fixes
+
+* fix: improve enhanced smoke test with proper Prometheus connectivity ([`7ed5821`](https://github.com/gsinghjay/mvp_qr_gen/commit/7ed58212c1967afbf73f49853fd0e6484bd9f1da))
+
+* fix: resolve asyncio.run() error in create_and_format_qr_sync method ([`b1c085a`](https://github.com/gsinghjay/mvp_qr_gen/commit/b1c085a5ba5d1d0cc7d6423921b59e26e078fbe6))
+
+### Refactoring
+
+* refactor: enhance metrics logger for more accurate path-specific measurements ([`760644d`](https://github.com/gsinghjay/mvp_qr_gen/commit/760644d6c8214b5eeb06c2e38c6a5e51eb38377d))
+
+* refactor: improve circuit breaker implementation with better error handling ([`1c41389`](https://github.com/gsinghjay/mvp_qr_gen/commit/1c4138930e9ac9872435c504e64da07924fe9b9d))
+
+### Testing
+
+* test: implement comprehensive E2E test suite ([`b99c7ef`](https://github.com/gsinghjay/mvp_qr_gen/commit/b99c7ef99ee262957178b5da1b017b72a8c4188d))
+
+* test: add circuit breaker test script ([`e4d1564`](https://github.com/gsinghjay/mvp_qr_gen/commit/e4d156484498496533dfd16922fd0ef0a22ab4e1))
+
+### Unknown
+
+* Merge pull request #57 from gsinghjay/task-1.4
+
+Internal Testing Plan & Initial Tests ([`c149a11`](https://github.com/gsinghjay/mvp_qr_gen/commit/c149a113dea8703abc1a13d0f88bdf314ec3e2a4))
+
+
 ## v1.11.0 (2025-05-27)
 
 ### Chores
