@@ -402,7 +402,7 @@ class QRCodeService:
                     image_params = QRImageParameters(
                         fill_color=data.fill_color,
                         back_color=data.back_color,
-                        size=data.size,
+                        size=data.size,  # Already correct, using the scale factor
                         border=data.border,
                         include_logo=False  # Dynamic QRs typically don't include logos
                     )
@@ -902,7 +902,7 @@ class QRCodeService:
                     image_params = QRImageParameters(
                         fill_color=fill_color,
                         back_color=back_color,
-                        size=pixel_size,
+                        size=size,  # Pass the original scale factor, not pixel_size
                         border=border,
                         include_logo=include_logo,
                         svg_title=svg_title,
