@@ -8,6 +8,7 @@ prometheus-client>=0.19.0  # Latest metrics client
 segno[pil]>=1.6.0  # QR code generation
 qrcode-artistic>=3.0.0  # Artistic QR codes with to_pil() support
 Pillow>=10.2.0  # Latest Pillow for image processing
+pybreaker>=1.0.0  # Circuit breaker pattern for service resilience
 cairosvg>=2.8.2  # SVG to PNG conversion for logo support
 psutil>=5.9.8  # System metrics for health checks
 psycopg2-binary>=2.9.9  # PostgreSQL driver
