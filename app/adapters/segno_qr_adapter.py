@@ -412,9 +412,11 @@ class PillowQRImageFormatter(QRImageFormatter):
             elif image_params.physical_unit == "mm":
                 target_pixels = (image_params.physical_size / 25.4) * image_params.dpi
             else:
-                target_pixels = image_params.size * 25  # Fallback to relative sizing
+                # This is now a scale factor (1-50), so multiply by 25 to get pixels
+                target_pixels = image_params.size * 25
         else:
-            # Use relative sizing (size * 25 for pixel dimension)
+            # Use relative sizing - image_params.size is now the scale factor (1-50)
+            # Multiply by 25 to get the target pixel size
             target_pixels = image_params.size * 25
         
         # Get QR code module count without border
