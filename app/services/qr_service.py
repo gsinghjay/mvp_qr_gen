@@ -3,6 +3,7 @@ QR code service layer for the QR code generator application.
 """
 
 import logging
+import time
 import uuid
 from datetime import UTC, datetime
 from io import BytesIO
@@ -256,6 +257,8 @@ class QRCodeService:
                 settings.USE_NEW_QR_GENERATION_SERVICE and
                 should_use_new_service(settings, user_identifier=qr_data.content)):
                 
+                # Time the new service path
+                new_path_start_time = time.perf_counter()
                 try:
                     # Use circuit breaker to protect calls to new service
                     from ..schemas.qr.parameters import QRImageParameters
@@ -276,31 +279,50 @@ class QRCodeService:
                         error_correction=data.error_level
                     )
                     
-                    logger.info(f"Created static QR code with new service (ID: {qr_data.id})")
-                    MetricsLogger.log_qr_generation_path("new", "create_static_qr", True, 0.0)
+                    # New service succeeded - create QR code record and return
+                    qr = self.qr_code_repo.create(qr_data.model_dump())
+                    
+                    # Calculate duration and log success metrics for new path
+                    new_path_duration = time.perf_counter() - new_path_start_time
+                    MetricsLogger.log_qr_generation_path("new", "create_static_qr", True, new_path_duration)
+                    
+                    logger.info(f"Created static QR code with ID {qr.id} using new service")
+                    MetricsLogger.log_qr_created('static', True)
+                    return qr
                     
                 except pybreaker.CircuitBreakerError as e:
                     # Circuit is open - fall back to legacy implementation
+                    new_path_duration = time.perf_counter() - new_path_start_time
+                    MetricsLogger.log_qr_generation_path("new", "create_static_qr", False, new_path_duration)
+                    
                     logger.warning(f"Circuit breaker open for NewQRGenerationService: {e}")
                     MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_static_qr", "circuit_open")
                     # Continue to legacy implementation below
                     
                 except Exception as e:
                     # Other errors - fall back to legacy implementation
+                    new_path_duration = time.perf_counter() - new_path_start_time
+                    MetricsLogger.log_qr_generation_path("new", "create_static_qr", False, new_path_duration)
+                    
                     logger.error(f"Error with NewQRGenerationService: {e}")
                     MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_static_qr", "exception")
                     # Continue to legacy implementation below
-                else:
-                    # New service succeeded - create QR code record and return
-                    qr = self.qr_code_repo.create(qr_data.model_dump())
-                    logger.info(f"Created static QR code with ID {qr.id} using new service")
-                    MetricsLogger.log_qr_created('static', True)
-                    return qr
 
             # Legacy implementation (fallback or when new service is disabled)
-            qr = self.qr_code_repo.create(qr_data.model_dump())
-            logger.info(f"Created static QR code with ID {qr.id} using legacy service")
-            MetricsLogger.log_qr_generation_path("legacy", "create_static_qr", True, 0.0)
+            old_path_start_time = time.perf_counter()
+            try:
+                qr = self.qr_code_repo.create(qr_data.model_dump())
+                
+                # Calculate duration and log success metrics for old path
+                old_path_duration = time.perf_counter() - old_path_start_time
+                MetricsLogger.log_qr_generation_path("old", "create_static_qr", True, old_path_duration)
+                
+                logger.info(f"Created static QR code with ID {qr.id} using legacy service")
+            except Exception as e:
+                # Legacy path failed
+                old_path_duration = time.perf_counter() - old_path_start_time
+                MetricsLogger.log_qr_generation_path("old", "create_static_qr", False, old_path_duration)
+                raise
             
             # Log metrics for successful creation
             MetricsLogger.log_qr_created('static', True)
@@ -369,6 +391,8 @@ class QRCodeService:
                 settings.USE_NEW_QR_GENERATION_SERVICE and
                 should_use_new_service(settings, user_identifier=qr_data.content)):
                 
+                # Time the new service path
+                new_path_start_time = time.perf_counter()
                 try:
                     # Use circuit breaker to protect calls to new service
                     from ..schemas.qr.parameters import QRImageParameters
@@ -389,21 +413,6 @@ class QRCodeService:
                         error_correction=data.error_level
                     )
                     
-                    logger.info(f"Created dynamic QR code with new service (ID: {qr_data.id})")
-                    MetricsLogger.log_qr_generation_path("new", "create_dynamic_qr", True, 0.0)
-                    
-                except pybreaker.CircuitBreakerError as e:
-                    # Circuit is open - fall back to legacy implementation
-                    logger.warning(f"Circuit breaker open for NewQRGenerationService: {e}")
-                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_dynamic_qr", "circuit_open")
-                    # Continue to legacy implementation below
-                    
-                except Exception as e:
-                    # Other errors - fall back to legacy implementation
-                    logger.error(f"Error with NewQRGenerationService: {e}")
-                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_dynamic_qr", "exception")
-                    # Continue to legacy implementation below
-                else:
                     # New service succeeded - create QR code record and return
                     model_data = qr_data.model_dump()
                     # Double check that redirect_url is a string
@@ -411,20 +420,54 @@ class QRCodeService:
                         model_data["redirect_url"] = str(model_data["redirect_url"])
                     
                     qr = self.qr_code_repo.create(model_data)
+                    
+                    # Calculate duration and log success metrics for new path
+                    new_path_duration = time.perf_counter() - new_path_start_time
+                    MetricsLogger.log_qr_generation_path("new", "create_dynamic_qr", True, new_path_duration)
+                    
                     logger.info(f"Created dynamic QR code with ID {qr.id} using new service, short_id: {short_id}")
                     MetricsLogger.log_qr_created('dynamic', True)
                     return qr
+                    
+                except pybreaker.CircuitBreakerError as e:
+                    # Circuit is open - fall back to legacy implementation
+                    new_path_duration = time.perf_counter() - new_path_start_time
+                    MetricsLogger.log_qr_generation_path("new", "create_dynamic_qr", False, new_path_duration)
+                    
+                    logger.warning(f"Circuit breaker open for NewQRGenerationService: {e}")
+                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_dynamic_qr", "circuit_open")
+                    # Continue to legacy implementation below
+                    
+                except Exception as e:
+                    # Other errors - fall back to legacy implementation
+                    new_path_duration = time.perf_counter() - new_path_start_time
+                    MetricsLogger.log_qr_generation_path("new", "create_dynamic_qr", False, new_path_duration)
+                    
+                    logger.error(f"Error with NewQRGenerationService: {e}")
+                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_dynamic_qr", "exception")
+                    # Continue to legacy implementation below
 
             # Legacy implementation (fallback or when new service is disabled)
-            # Create QR code using repository - ensure model_dump() converts HttpUrl to string
-            model_data = qr_data.model_dump()
-            # Double check that redirect_url is a string
-            if "redirect_url" in model_data and not isinstance(model_data["redirect_url"], str):
-                model_data["redirect_url"] = str(model_data["redirect_url"])
+            old_path_start_time = time.perf_counter()
+            try:
+                # Create QR code using repository - ensure model_dump() converts HttpUrl to string
+                model_data = qr_data.model_dump()
+                # Double check that redirect_url is a string
+                if "redirect_url" in model_data and not isinstance(model_data["redirect_url"], str):
+                    model_data["redirect_url"] = str(model_data["redirect_url"])
 
-            qr = self.qr_code_repo.create(model_data)
-            logger.info(f"Created dynamic QR code with ID {qr.id} using legacy service, redirect path {qr.content}, short_id: {short_id}")
-            MetricsLogger.log_qr_generation_path("legacy", "create_dynamic_qr", True, 0.0)
+                qr = self.qr_code_repo.create(model_data)
+                
+                # Calculate duration and log success metrics for old path
+                old_path_duration = time.perf_counter() - old_path_start_time
+                MetricsLogger.log_qr_generation_path("old", "create_dynamic_qr", True, old_path_duration)
+                
+                logger.info(f"Created dynamic QR code with ID {qr.id} using legacy service, redirect path {qr.content}, short_id: {short_id}")
+            except Exception as e:
+                # Legacy path failed
+                old_path_duration = time.perf_counter() - old_path_start_time
+                MetricsLogger.log_qr_generation_path("old", "create_dynamic_qr", False, old_path_duration)
+                raise
             
             # Log metrics for successful creation
             MetricsLogger.log_qr_created('dynamic', True)
@@ -832,6 +875,8 @@ class QRCodeService:
                 settings.USE_NEW_QR_GENERATION_SERVICE and
                 should_use_new_service(settings, user_identifier=data)):
                 
+                # Time the new service path
+                new_path_start_time = time.perf_counter()
                 try:
                     # Use circuit breaker to protect calls to new service
                     from ..schemas.qr.parameters import QRImageParameters
@@ -870,8 +915,11 @@ class QRCodeService:
                         error_correction=error_correction
                     )
                     
+                    # Calculate duration and log success metrics for new path
+                    new_path_duration = time.perf_counter() - new_path_start_time
+                    MetricsLogger.log_qr_generation_path("new", "generate_qr", True, new_path_duration)
+                    
                     logger.info(f"Generated QR code with new service (format: {image_format})")
-                    MetricsLogger.log_qr_generation_path("new", "generate_qr", True, 0.0)
                     MetricsLogger.log_image_generated(image_format, True)
                     
                     # Create streaming response from bytes
@@ -885,41 +933,60 @@ class QRCodeService:
                     
                 except pybreaker.CircuitBreakerError as e:
                     # Circuit is open - fall back to legacy implementation
+                    new_path_duration = time.perf_counter() - new_path_start_time
+                    MetricsLogger.log_qr_generation_path("new", "generate_qr", False, new_path_duration)
+                    
                     logger.warning(f"Circuit breaker open for NewQRGenerationService: {e}")
                     MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "generate_qr", "circuit_open")
                     # Continue to legacy implementation below
                     
                 except Exception as e:
                     # Other errors - fall back to legacy implementation
+                    new_path_duration = time.perf_counter() - new_path_start_time
+                    MetricsLogger.log_qr_generation_path("new", "generate_qr", False, new_path_duration)
+                    
                     logger.error(f"Error with NewQRGenerationService: {e}")
                     MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "generate_qr", "exception")
                     # Continue to legacy implementation below
 
             # Legacy implementation (fallback or when new service is disabled)
-            response = generate_qr_response(
-                content=data,
-                image_format=image_format,
-                size=pixel_size,
-                fill_color=fill_color,
-                back_color=back_color,
-                border=border,
-                image_quality=image_quality,
-                logo_path=True if include_logo else None,  # Pass logo_path based on include_logo
-                error_level=error_level,
-                svg_title=svg_title,
-                svg_description=svg_description,
-                physical_size=physical_size,
-                physical_unit=physical_unit,
-                dpi=dpi
-            )
-            
-            logger.info(f"Generated QR code with legacy service (format: {image_format})")
-            MetricsLogger.log_qr_generation_path("legacy", "generate_qr", True, 0.0)
-            
-            # Log metrics for successful image generation
-            MetricsLogger.log_image_generated(image_format, True)
-            
-            return response
+            old_path_start_time = time.perf_counter()
+            try:
+                response = generate_qr_response(
+                    content=data,
+                    image_format=image_format,
+                    size=pixel_size,
+                    fill_color=fill_color,
+                    back_color=back_color,
+                    border=border,
+                    image_quality=image_quality,
+                    logo_path=True if include_logo else None,  # Pass logo_path based on include_logo
+                    error_level=error_level,
+                    svg_title=svg_title,
+                    svg_description=svg_description,
+                    physical_size=physical_size,
+                    physical_unit=physical_unit,
+                    dpi=dpi
+                )
+                
+                # Calculate duration and log success metrics for old path
+                old_path_duration = time.perf_counter() - old_path_start_time
+                MetricsLogger.log_qr_generation_path("old", "generate_qr", True, old_path_duration)
+                
+                logger.info(f"Generated QR code with legacy service (format: {image_format})")
+                
+                # Log metrics for successful image generation
+                MetricsLogger.log_image_generated(image_format, True)
+                
+                return response
+            except Exception as e:
+                # Legacy path failed
+                old_path_duration = time.perf_counter() - old_path_start_time
+                MetricsLogger.log_qr_generation_path("old", "generate_qr", False, old_path_duration)
+                
+                # Log metrics for failed image generation
+                MetricsLogger.log_image_generated(image_format, False)
+                raise
         except Exception as e:
             # Log metrics for failed image generation
             MetricsLogger.log_image_generated(image_format, False)
