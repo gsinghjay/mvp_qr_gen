@@ -35,7 +35,7 @@ class NewQRGenerationServiceListener(aiobreaker.CircuitBreakerListener):
         """
         self.service_name = service_name
     
-    async def state_change(self, cb: aiobreaker.CircuitBreaker, old_state, new_state) -> None:
+    def state_change(self, cb: aiobreaker.CircuitBreaker, old_state, new_state) -> None:
         """
         Handle circuit breaker state changes.
         
@@ -72,7 +72,7 @@ class NewQRGenerationServiceListener(aiobreaker.CircuitBreakerListener):
             state=new_state_name
         )
     
-    async def failure(self, cb: aiobreaker.CircuitBreaker, exception: Exception) -> None:
+    def failure(self, cb: aiobreaker.CircuitBreaker, exception: Exception) -> None:
         """
         Handle circuit breaker failures.
         
@@ -90,7 +90,7 @@ class NewQRGenerationServiceListener(aiobreaker.CircuitBreakerListener):
             error_type=error_type
         )
     
-    async def success(self, cb: aiobreaker.CircuitBreaker) -> None:
+    def success(self, cb: aiobreaker.CircuitBreaker) -> None:
         """
         Handle circuit breaker successes.
         
