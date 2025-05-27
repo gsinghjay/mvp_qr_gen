@@ -29,11 +29,23 @@ services:
       - TEST_DATABASE_URL=${TEST_DATABASE_URL:-postgresql+psycopg2://pguser_test:pgpassword_test@postgres_test:5432/qrdb_test}
       # Cookie settings (if needed for any non-auth CSRF or future features)
       - COOKIE_DOMAIN=${COOKIE_DOMAIN:-10.1.6.12} # Align with your internal dashboard access
+      # Testing Configuration
+      - E2E_API_BASE_URL=${E2E_API_BASE_URL:-https://10.1.6.12}
+      # Feature Flags
+      - USE_NEW_QR_GENERATION_SERVICE=${USE_NEW_QR_GENERATION_SERVICE:-false}
+      - USE_NEW_ANALYTICS_SERVICE=${USE_NEW_ANALYTICS_SERVICE:-false}
+      - USE_NEW_VALIDATION_SERVICE=${USE_NEW_VALIDATION_SERVICE:-false}
+      - CANARY_TESTING_ENABLED=${CANARY_TESTING_ENABLED:-false}
+      - CANARY_PERCENTAGE=${CANARY_PERCENTAGE:-0}
+      # Circuit Breaker Configuration
+      - QR_GENERATION_CB_FAIL_MAX=${QR_GENERATION_CB_FAIL_MAX:-5}
+      - QR_GENERATION_CB_RESET_TIMEOUT=${QR_GENERATION_CB_RESET_TIMEOUT:-60}
     volumes:
       - qr_data:/app/data
       - ./backups:/app/backups
       - qr_logs:/logs
       - ./app/tests:/app/app/tests # For development/testing if running tests inside container
+      - ./tests:/app/tests # Mount the top-level tests directory for E2E tests
       - ./app/scripts:/app/scripts # Mount scripts for immediate availability without rebuild (includes init.sh)
       - ./app/scripts:/app/app/scripts # Also mount to app/scripts for Python imports
       - test_advanced_qr_images:/app/test_advanced_qr_images # Use a named volume to avoid permission issues

@@ -34,7 +34,7 @@ class NewQRGenerationServiceListener(pybreaker.CircuitBreakerListener):
         """
         self.service_name = service_name
     
-    def state_change(self, cb: pybreaker.CircuitBreaker, old_state: pybreaker.CircuitBreakerState, new_state: pybreaker.CircuitBreakerState) -> None:
+    def state_change(self, cb: pybreaker.CircuitBreaker, old_state, new_state) -> None:
         """
         Handle circuit breaker state changes.
         
@@ -43,14 +43,24 @@ class NewQRGenerationServiceListener(pybreaker.CircuitBreakerListener):
             old_state: Previous state
             new_state: New state
         """
-        state_names = {
-            pybreaker.STATE_CLOSED: "closed",
-            pybreaker.STATE_OPEN: "open", 
-            pybreaker.STATE_HALF_OPEN: "half_open"
-        }
+        # Debug what types are actually being passed
+        logger.info(f"Circuit breaker {cb.name} state change - old_state type: {type(old_state)}, new_state type: {type(new_state)}")
+        logger.info(f"Circuit breaker {cb.name} state change - old_state: {repr(old_state)}, new_state: {repr(new_state)}")
         
-        old_state_name = state_names.get(old_state, "unknown")
-        new_state_name = state_names.get(new_state, "unknown")
+        # Handle different state object types
+        if hasattr(old_state, 'name'):
+            old_state_name = old_state.name
+        elif isinstance(old_state, str):
+            old_state_name = old_state.replace('-', '_')
+        else:
+            old_state_name = "unknown"
+            
+        if hasattr(new_state, 'name'):
+            new_state_name = new_state.name
+        elif isinstance(new_state, str):
+            new_state_name = new_state.replace('-', '_')
+        else:
+            new_state_name = "unknown"
         
         logger.info(f"Circuit breaker {cb.name} state changed from {old_state_name} to {new_state_name}")
         
