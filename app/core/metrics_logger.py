@@ -231,7 +231,17 @@ class MetricsLogger:
             operation: Operation name
             state: Circuit breaker state ('closed', 'open', 'half_open')
         """
-        state_value = {'closed': 0, 'open': 1, 'half_open': 2}.get(state, 0)
+        # Map state string to numeric value for the gauge
+        # Note: pybreaker uses 'half-open' (with hyphen) but we standardize to 'half_open'
+        state_map = {'closed': 0, 'open': 1, 'half_open': 2, 'half-open': 2}
+        state_value = state_map.get(state, 0)
+        
+        # Log the state change for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Setting circuit breaker state for {service}/{operation} to {state} ({state_value})")
+        
+        # Update the gauge
         app_circuit_breaker_state_enum.labels(service=service, operation=operation).set(state_value)
     
     @staticmethod
