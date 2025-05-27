@@ -1,15 +1,15 @@
 """
 Circuit breaker implementation for service resilience.
 
-This module provides circuit breaker functionality using the pybreaker library
+This module provides circuit breaker functionality using the aiobreaker library
 to protect against failures in new service implementations and ensure graceful
-fallback to legacy implementations.
+fallback to legacy implementations with proper asyncio support.
 """
 
 import logging
 from typing import Any
 
-import pybreaker
+import aiobreaker
 
 from .config import settings
 from .metrics_logger import MetricsLogger
@@ -17,7 +17,7 @@ from .metrics_logger import MetricsLogger
 logger = logging.getLogger(__name__)
 
 
-class NewQRGenerationServiceListener(pybreaker.CircuitBreakerListener):
+class NewQRGenerationServiceListener(aiobreaker.CircuitBreakerListener):
     """
     Circuit breaker listener for NewQRGenerationService.
     
@@ -34,7 +34,7 @@ class NewQRGenerationServiceListener(pybreaker.CircuitBreakerListener):
         """
         self.service_name = service_name
     
-    def state_change(self, cb: pybreaker.CircuitBreaker, old_state, new_state) -> None:
+    async def state_change(self, cb: aiobreaker.CircuitBreaker, old_state, new_state) -> None:
         """
         Handle circuit breaker state changes.
         
@@ -71,7 +71,7 @@ class NewQRGenerationServiceListener(pybreaker.CircuitBreakerListener):
             state=new_state_name
         )
     
-    def failure(self, cb: pybreaker.CircuitBreaker, exception: Exception) -> None:
+    async def failure(self, cb: aiobreaker.CircuitBreaker, exception: Exception) -> None:
         """
         Handle circuit breaker failures.
         
@@ -89,7 +89,7 @@ class NewQRGenerationServiceListener(pybreaker.CircuitBreakerListener):
             error_type=error_type
         )
     
-    def success(self, cb: pybreaker.CircuitBreaker) -> None:
+    async def success(self, cb: aiobreaker.CircuitBreaker) -> None:
         """
         Handle circuit breaker successes.
         
@@ -101,9 +101,9 @@ class NewQRGenerationServiceListener(pybreaker.CircuitBreakerListener):
         # in the absence of failures and the circuit being closed
 
 
-def get_new_qr_generation_breaker() -> pybreaker.CircuitBreaker:
+def get_new_qr_generation_breaker() -> aiobreaker.CircuitBreaker:
     """
-    Create and configure a circuit breaker for NewQRGenerationService.
+    Create and configure an async circuit breaker for NewQRGenerationService.
     
     This function creates a circuit breaker instance configured with values
     from application settings and attaches a listener for monitoring.
@@ -112,7 +112,7 @@ def get_new_qr_generation_breaker() -> pybreaker.CircuitBreaker:
         Configured CircuitBreaker instance for NewQRGenerationService
     """
     # Create the circuit breaker with configuration from settings
-    breaker = pybreaker.CircuitBreaker(
+    breaker = aiobreaker.CircuitBreaker(
         fail_max=settings.QR_GENERATION_CB_FAIL_MAX,
         reset_timeout=settings.QR_GENERATION_CB_RESET_TIMEOUT,
         name="NewQRGenerationService"
@@ -129,6 +129,6 @@ def get_new_qr_generation_breaker() -> pybreaker.CircuitBreaker:
         state="closed"
     )
     
-    logger.info(f"Created circuit breaker for NewQRGenerationService with fail_max={settings.QR_GENERATION_CB_FAIL_MAX}, reset_timeout={settings.QR_GENERATION_CB_RESET_TIMEOUT}")
+    logger.info(f"Created async circuit breaker for NewQRGenerationService with fail_max={settings.QR_GENERATION_CB_FAIL_MAX}, reset_timeout={settings.QR_GENERATION_CB_RESET_TIMEOUT}")
     
     return breaker 
