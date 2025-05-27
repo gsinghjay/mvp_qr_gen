@@ -69,6 +69,14 @@ class NewQRGenerationService:
                 from app.schemas.common import ErrorCorrectionLevel
                 error_correction = ErrorCorrectionLevel.M
             
+            # AUTO-UPGRADE ERROR CORRECTION FOR LOGOS
+            # When logos are included, high error correction is required for scannability
+            if hasattr(image_params, 'include_logo') and image_params.include_logo:
+                from app.schemas.common import ErrorCorrectionLevel
+                original_level = error_correction
+                error_correction = ErrorCorrectionLevel.H
+                logger.info(f"Auto-upgraded error correction from {original_level.value} to {error_correction.value} for logo inclusion")
+            
             # Generate QR data
             qr_data = await self.generator.generate_qr_data(content, error_correction)
             

@@ -151,8 +151,8 @@ def generate_qr_image(
             if logo_img.mode != 'RGB':
                 logo_img = logo_img.convert('RGB')
             
-            # Calculate logo size - use 1/2 of QR code instead of 1/3 for better visibility
-            logo_max_size = img.height // 2  # Changed from img.height // 3
+            # Calculate logo size - use 1/6 of QR code instead of 1/3 for better visibility
+            logo_max_size = img.height // 6  # Changed from img.height // 3
             # Maintain aspect ratio
             logo_img.thumbnail((logo_max_size, logo_max_size), Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS)
             

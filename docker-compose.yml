@@ -34,7 +34,9 @@ services:
       - ./backups:/app/backups
       - qr_logs:/logs
       - ./app/tests:/app/app/tests # For development/testing if running tests inside container
-      - ./app/scripts:/app/scripts # Mount scripts for immediate availability without rebuild
+      - ./app/scripts:/app/scripts # Mount scripts for immediate availability without rebuild (includes init.sh)
+      - ./app/scripts:/app/app/scripts # Also mount to app/scripts for Python imports
+      - ./test_advanced_qr_images:/app/test_advanced_qr_images # Mount test images directory for immediate access
       - /var/run/docker.sock:/var/run/docker.sock:ro # Allow container to control Docker (for backup/restore API management)
       - ./.env:/app/.env:ro # Mount .env file for init.sh script
     healthcheck:
