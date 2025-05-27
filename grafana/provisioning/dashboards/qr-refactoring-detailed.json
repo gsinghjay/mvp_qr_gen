@@ -17,7 +17,7 @@
       "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
       "options": {
         "mode": "markdown",
-        "content": "# Observatory-First Refactoring Status\n\n## Current Phase: **Phase -1 - Observatory Setup** ✅\n\n### Completed:\n- ✅ **M.1**: Prometheus deployed and scraping\n- ✅ **M.2**: Grafana deployed with dashboards\n- ✅ **M.3**: Baseline dashboards operational\n\n### Next Steps:\n- 🔄 **M.4**: Critical alerts setup\n- ⏳ **M.5**: 1-week baseline collection\n\n**🎯 Goal**: Transform high-risk refactoring into controlled, data-driven process"
+        "content": "# Observatory-First Refactoring Status\n\n## Current Phase: **Phase 1 - Parallel Implementation** 🔄\n\n### Completed:\n- ✅ **Phase 0**: Pure additions (interfaces, adapters, feature flags)\n- ✅ **Task 1.1**: QR service integration with feature flags\n- ✅ **Task 1.2**: Circuit breaker implementation\n- ✅ **Task 1.3**: Path-specific metrics instrumentation\n\n### Current Focus:\n- 🎯 **A/B Testing**: Old vs new path performance comparison\n- 📊 **Path Metrics**: Real-time monitoring of both implementations\n- 🔄 **Circuit Breaker**: Automatic fallback protection\n\n**🎯 Goal**: Safe, data-driven transition to new QR generation service"
       }
     },
     {
@@ -271,9 +271,183 @@
     },
     {
       "id": 9,
+      "title": "🆚 Path Performance Comparison (Old vs New)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 26},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(qr_generation_path_duration_seconds_bucket[5m])) by (le, path, operation))",
+          "legendFormat": "{{path}} - {{operation}} (P95)",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(qr_generation_path_duration_seconds_bucket[5m])) by (le, path, operation))",
+          "legendFormat": "{{path}} - {{operation}} (P50)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 0.05},
+              {"color": "red", "value": 0.1}
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 10,
+      "title": "🔄 Path Request Rate Comparison",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 26},
+      "targets": [
+        {
+          "expr": "sum(rate(qr_generation_path_total[1m])) by (path, operation)",
+          "legendFormat": "{{path}} - {{operation}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 10}
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 11,
+      "title": "✅ Path Success Rate Comparison",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 34},
+      "targets": [
+        {
+          "expr": "(sum(rate(qr_generation_path_total{status=\"success\"}[5m])) by (path, operation)) / (sum(rate(qr_generation_path_total[5m])) by (path, operation)) * 100",
+          "legendFormat": "{{path}} - {{operation}} Success %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 95},
+              {"color": "green", "value": 99}
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 12,
+      "title": "📊 Path Utilization Overview",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 34},
+      "targets": [
+        {
+          "expr": "sum(rate(qr_generation_path_total{path=\"new\"}[5m]))",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(qr_generation_path_total{path=\"old\"}[5m]))",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(qr_generation_path_total{path=\"new\", status=\"success\"}[5m])) / sum(rate(qr_generation_path_total{path=\"new\"}[5m])) * 100",
+          "refId": "C"
+        },
+        {
+          "expr": "sum(rate(qr_generation_path_total{path=\"old\", status=\"success\"}[5m])) / sum(rate(qr_generation_path_total{path=\"old\"}[5m])) * 100",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 0.5},
+              {"color": "red", "value": 2}
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byFrameRefID", "options": "A"},
+            "properties": [
+              {"id": "displayName", "value": "New Path RPS"},
+              {"id": "unit", "value": "reqps"}
+            ]
+          },
+          {
+            "matcher": {"id": "byFrameRefID", "options": "B"},
+            "properties": [
+              {"id": "displayName", "value": "Old Path RPS"},
+              {"id": "unit", "value": "reqps"}
+            ]
+          },
+          {
+            "matcher": {"id": "byFrameRefID", "options": "C"},
+            "properties": [
+              {"id": "displayName", "value": "New Path Success"},
+              {"id": "unit", "value": "percent"}
+            ]
+          },
+          {
+            "matcher": {"id": "byFrameRefID", "options": "D"},
+            "properties": [
+              {"id": "displayName", "value": "Old Path Success"},
+              {"id": "unit", "value": "percent"}
+            ]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 13,
       "title": "Error Analysis by Operation",
       "type": "table",
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 26},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 42},
       "targets": [
         {
           "expr": "sum(rate(app_http_requests_total{status=~\"[45]..\"}[1h])) by (endpoint, method, status) * 3600 or vector(0)",
