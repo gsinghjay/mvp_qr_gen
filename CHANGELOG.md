@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v1.9.1 (2025-05-27)
+
+### Fixes
+
+* fix: update traefik routing configuration to fix connection issues ([`0be55fb`](https://github.com/gsinghjay/mvp_qr_gen/commit/0be55fb3f9f88fb2982298f0cbe781d8749645bd))
+
+* fix: use named volume for test_advanced_qr_images to resolve permission issues ([`fffa095`](https://github.com/gsinghjay/mvp_qr_gen/commit/fffa0956875899c5e42c5b110625208337abc671))
+
+* fix: add test_advanced_qr_images directory with proper permissions ([`933a934`](https://github.com/gsinghjay/mvp_qr_gen/commit/933a9340a87ee1e2acee31864272e2672281bda1))
+
+
 ## v1.9.0 (2025-05-27)
 
 ### Chores
