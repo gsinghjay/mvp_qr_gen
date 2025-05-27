@@ -47,9 +47,17 @@ WAIT_TIME=1
 OUTPUT_FILE="${SCRIPT_DIR}/performance_results.csv"
 VERBOSE=false
 
-# Authentication credentials
-AUTH_USER=${AUTH_USER:-"admin_user"}
-AUTH_PASS=${AUTH_PASS:-"strongpassword"}
+# Authentication credentials - use .env values without hardcoded defaults
+AUTH_USER=${AUTH_USER}
+AUTH_PASS=${AUTH_PASS}
+
+# Check if credentials are empty and warn if needed
+if [[ -z "$AUTH_USER" || -z "$AUTH_PASS" ]]; then
+    echo -e "${RED}Warning: Authentication credentials not found in environment variables.${NC}"
+    echo -e "${RED}Please ensure AUTH_USER and AUTH_PASS are set in .env file.${NC}"
+    exit 1
+fi
+
 AUTH_HEADER="--user ${AUTH_USER}:${AUTH_PASS}"
 
 # Parse command line arguments
