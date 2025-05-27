@@ -84,7 +84,7 @@ groups:
           component: system_health
         annotations:
           summary: "Monitor health endpoint for degraded status"
-          description: "Health endpoint is responding but may report 'degraded' status. Check system metrics: disk usage (>90%), memory usage (>90%), CPU usage (>90%), or database connectivity issues. Manual health check recommended: curl -k -u admin_user:strongpassword https://10.1.6.12/health"
+          description: "Health endpoint is responding but may report 'degraded' status. Check system metrics: disk usage (>90%), memory usage (>90%), CPU usage (>90%), or database connectivity issues. Manual health check recommended: curl -k -u ${AUTH_USER}:${AUTH_PASS} https://10.1.6.12/health"
 
       # Health Endpoint Unavailable Alert
       - alert: HealthEndpointUnavailable
