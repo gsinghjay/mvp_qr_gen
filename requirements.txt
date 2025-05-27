@@ -1,37 +1,60 @@
-fastapi[all]>=0.109.2  # Latest FastAPI
-alembic>=1.13.1  # Latest Alembic
-SQLAlchemy>=2.0.27  # Latest SQLAlchemy 2.0
-pydantic>=2.6.1  # Latest Pydantic v2
-pydantic-settings>=2.1.0  # Required for settings management
-python-multipart>=0.0.7  # Form data parsing
-prometheus-client>=0.19.0  # Latest metrics client
-segno[pil]>=1.6.0  # QR code generation
-qrcode-artistic>=3.0.0  # Artistic QR codes with to_pil() support
-Pillow>=10.2.0  # Latest Pillow for image processing
-pybreaker>=1.0.0  # Circuit breaker pattern for service resilience
-cairosvg>=2.8.2  # SVG to PNG conversion for logo support
-psutil>=5.9.8  # System metrics for health checks
-psycopg2-binary>=2.9.9  # PostgreSQL driver
-asyncpg>=0.30.0  # Async PostgreSQL driver for testing
-PyYAML>=6.0.1  # Required for user-agents
-ua-parser>=0.18.0  # User agent string parsing
-user-agents>=2.2.0  # Device detection from user agent strings
+fastapi==0.115.12  # FastAPI
+alembic==1.16.1  # Database migrations
+SQLAlchemy==2.0.41  # SQL toolkit and ORM
+pydantic==2.11.5  # Data validation
+pydantic-settings==2.9.1  # Settings management
+python-multipart==0.0.20  # Form data parsing
+prometheus-client==0.22.0  # Metrics client
+segno==1.6.6  # QR code generation
+qrcode-artistic==3.0.2  # Artistic QR codes with to_pil() support
+Pillow==11.2.1  # Image processing
+pybreaker==1.3.0  # Circuit breaker pattern for service resilience
+aiobreaker==1.2.0  # Async circuit breaker for asyncio compatibility
+cairosvg==2.8.2  # SVG to PNG conversion for logo support
+psutil==7.0.0  # System metrics for health checks
+psycopg2-binary==2.9.10  # PostgreSQL driver
+asyncpg==0.30.0  # Async PostgreSQL driver for testing
+PyYAML==6.0.2  # Required for user-agents
+ua-parser==1.0.1  # User agent string parsing
+user-agents==2.2.0  # Device detection from user agent strings
 
 # Test dependencies
-pytest>=8.0.0
-pytest-asyncio>=0.23.5
-pytest-cov>=4.1.0
-pytest-env>=1.1.1
-pytest-xdist>=3.5.0
-coverage>=7.4.1
-Faker>=22.5.1
+pytest==8.3.5
+pytest-asyncio==1.0.0
+pytest-cov==6.1.1
+pytest-env==1.1.5
+pytest-xdist==3.7.0
+coverage==7.8.2
+Faker==37.3.0
 
 # Type checking
-types-SQLAlchemy>=1.4.0
-types-Pillow>=10.1.0
-types-PyYAML>=6.0.0
+types-SQLAlchemy==1.4.53.38
+types-Pillow==10.2.0.20240822
+types-PyYAML==6.0.12.20250516
 
 # Development tools
-black>=24.2.0  # Code formatting
-ruff>=0.3.0  # Fast Python linter
-mypy>=1.8.0  # Static type checking
+black==25.1.0  # Code formatting
+ruff==0.11.11  # Fast Python linter
+mypy==1.15.0  # Static type checking
+
+# Additional dependencies from container
+anyio==4.9.0
+certifi==2025.4.26
+click==8.2.1
+dnspython==2.7.0
+email_validator==2.2.0
+greenlet==3.2.2
+h11==0.16.0
+httpcore==1.0.9
+httptools==0.6.4
+httpx==0.28.1
+idna==3.10
+itsdangerous==2.2.0
+Jinja2==3.1.6
+orjson==3.10.18
+starlette==0.46.2
+ujson==5.10.0
+uvicorn==0.34.2
+uvloop==0.21.0
+watchfiles==1.0.5
+websockets==15.0.1

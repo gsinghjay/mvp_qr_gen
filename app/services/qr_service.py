@@ -39,7 +39,7 @@ from ..utils.qr_imaging import generate_qr_image as qr_imaging_util, generate_qr
 from ..core.metrics_logger import MetricsLogger
 
 # Circuit breaker and new service imports
-import pybreaker
+import aiobreaker
 from ..services.new_qr_generation_service import NewQRGenerationService
 
 # Configure UTC timezone
@@ -66,7 +66,7 @@ class QRCodeService:
         qr_code_repo: QRCodeRepository,
         scan_log_repo: ScanLogRepository,
         new_qr_generation_service: Optional[NewQRGenerationService] = None,
-        new_qr_generation_breaker: Optional[pybreaker.CircuitBreaker] = None
+        new_qr_generation_breaker: Optional[aiobreaker.CircuitBreaker] = None
     ):
         """
         Initialize the QR code service with repositories and optional new services.
@@ -220,7 +220,7 @@ class QRCodeService:
         )
 
     @MetricsLogger.time_service_call("QRCodeService", "create_static_qr")
-    def create_static_qr(self, data: StaticQRCreateParameters) -> QRCode:
+    async def create_static_qr(self, data: StaticQRCreateParameters) -> QRCode:
         """
         Create a static QR code with the provided content.
 
@@ -260,7 +260,7 @@ class QRCodeService:
                 # Time the new service path
                 new_path_start_time = time.perf_counter()
                 try:
-                    # Use circuit breaker to protect calls to new service
+                    # Use circuit breaker as an async context manager for calls to new service
                     from ..schemas.qr.parameters import QRImageParameters
                     image_params = QRImageParameters(
                         fill_color=data.fill_color,
@@ -270,14 +270,17 @@ class QRCodeService:
                         include_logo=False  # Static QRs typically don't include logos
                     )
                     
-                    # Wrap the new service call with circuit breaker
-                    image_bytes = self.new_qr_generation_breaker.call(
-                        self.new_qr_generation_service.create_and_format_qr_sync,
-                        content=data.content,
-                        image_params=image_params,
-                        output_format="png",
-                        error_correction=data.error_level
-                    )
+                    # Use the circuit breaker decorator pattern with await on the service method
+                    @self.new_qr_generation_breaker
+                    async def protected_create_static_qr():
+                        return await self.new_qr_generation_service.create_and_format_qr(
+                            content=data.content,
+                            image_params=image_params,
+                            output_format="png",
+                            error_correction=data.error_level
+                        )
+                    
+                    image_bytes = await protected_create_static_qr()
                     
                     # New service succeeded - create QR code record and return
                     qr = self.qr_code_repo.create(qr_data.model_dump())
@@ -290,7 +293,7 @@ class QRCodeService:
                     MetricsLogger.log_qr_created('static', True)
                     return qr
                     
-                except pybreaker.CircuitBreakerError as e:
+                except aiobreaker.CircuitBreakerError as e:
                     # Circuit is open - fall back to legacy implementation
                     new_path_duration = time.perf_counter() - new_path_start_time
                     MetricsLogger.log_qr_generation_path("new", "create_static_qr", False, new_path_duration)
@@ -340,7 +343,7 @@ class QRCodeService:
             raise QRCodeValidationError(str(e))
 
     @MetricsLogger.time_service_call("QRCodeService", "create_dynamic_qr")
-    def create_dynamic_qr(self, data: DynamicQRCreateParameters) -> QRCode:
+    async def create_dynamic_qr(self, data: DynamicQRCreateParameters) -> QRCode:
         """
         Create a dynamic QR code with the provided data.
 
@@ -394,24 +397,27 @@ class QRCodeService:
                 # Time the new service path
                 new_path_start_time = time.perf_counter()
                 try:
-                    # Use circuit breaker to protect calls to new service
+                    # Use circuit breaker as an async context manager for calls to new service
                     from ..schemas.qr.parameters import QRImageParameters
                     image_params = QRImageParameters(
                         fill_color=data.fill_color,
                         back_color=data.back_color,
-                        size=data.size,
+                        size=data.size,  # Already correct, using the scale factor
                         border=data.border,
                         include_logo=False  # Dynamic QRs typically don't include logos
                     )
                     
-                    # Wrap the new service call with circuit breaker
-                    image_bytes = self.new_qr_generation_breaker.call(
-                        self.new_qr_generation_service.create_and_format_qr_sync,
-                        content=full_url,  # Use the full URL for dynamic QRs
-                        image_params=image_params,
-                        output_format="png",
-                        error_correction=data.error_level
-                    )
+                    # Use the circuit breaker decorator pattern with await on the service method
+                    @self.new_qr_generation_breaker
+                    async def protected_create_dynamic_qr():
+                        return await self.new_qr_generation_service.create_and_format_qr(
+                            content=full_url,  # Use the full URL for dynamic QRs
+                            image_params=image_params,
+                            output_format="png",
+                            error_correction=data.error_level
+                        )
+                    
+                    image_bytes = await protected_create_dynamic_qr()
                     
                     # New service succeeded - create QR code record and return
                     model_data = qr_data.model_dump()
@@ -429,7 +435,7 @@ class QRCodeService:
                     MetricsLogger.log_qr_created('dynamic', True)
                     return qr
                     
-                except pybreaker.CircuitBreakerError as e:
+                except aiobreaker.CircuitBreakerError as e:
                     # Circuit is open - fall back to legacy implementation
                     new_path_duration = time.perf_counter() - new_path_start_time
                     MetricsLogger.log_qr_generation_path("new", "create_dynamic_qr", False, new_path_duration)
@@ -551,7 +557,7 @@ class QRCodeService:
             }
 
     @MetricsLogger.time_service_call("QRCodeService", "update_qr")
-    def update_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
+    async def update_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
         """
         Update a QR code with the provided data.
 
@@ -625,7 +631,7 @@ class QRCodeService:
             raise QRCodeValidationError(str(e))
     
     # Keep the update_dynamic_qr method for backwards compatibility
-    def update_dynamic_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
+    async def update_dynamic_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
         """
         Update a dynamic QR code.
 
@@ -644,7 +650,7 @@ class QRCodeService:
             RedirectURLError: If the redirect URL is invalid
             DatabaseError: If a database error occurs
         """
-        return self.update_qr(qr_id, data)
+        return await self.update_qr(qr_id, data)
 
     def update_scan_count(self, qr_id: str, timestamp: datetime | None = None) -> None:
         """
@@ -809,7 +815,7 @@ class QRCodeService:
             raise QRCodeValidationError(f"Error processing QR code image: {str(e)}")
 
     @MetricsLogger.time_service_call("QRCodeService", "generate_qr_streaming")
-    def generate_qr(
+    async def generate_qr(
         self,
         data: str,
         size: int = 10,
@@ -878,7 +884,7 @@ class QRCodeService:
                 # Time the new service path
                 new_path_start_time = time.perf_counter()
                 try:
-                    # Use circuit breaker to protect calls to new service
+                    # Use circuit breaker as an async context manager for calls to new service
                     from ..schemas.qr.parameters import QRImageParameters
                     from ..schemas.common import ErrorCorrectionLevel
                     
@@ -896,7 +902,7 @@ class QRCodeService:
                     image_params = QRImageParameters(
                         fill_color=fill_color,
                         back_color=back_color,
-                        size=pixel_size,
+                        size=size,  # Pass the original scale factor, not pixel_size
                         border=border,
                         include_logo=include_logo,
                         svg_title=svg_title,
@@ -906,14 +912,17 @@ class QRCodeService:
                         dpi=dpi
                     )
                     
-                    # Wrap the new service call with circuit breaker
-                    image_bytes = self.new_qr_generation_breaker.call(
-                        self.new_qr_generation_service.create_and_format_qr_sync,
-                        content=data,
-                        image_params=image_params,
-                        output_format=image_format,
-                        error_correction=error_correction
-                    )
+                    # Use the circuit breaker decorator pattern with await on the service method
+                    @self.new_qr_generation_breaker
+                    async def protected_generate_qr():
+                        return await self.new_qr_generation_service.create_and_format_qr(
+                            content=data,
+                            image_params=image_params,
+                            output_format=image_format,
+                            error_correction=error_correction
+                        )
+                    
+                    image_bytes = await protected_generate_qr()
                     
                     # Calculate duration and log success metrics for new path
                     new_path_duration = time.perf_counter() - new_path_start_time
@@ -931,7 +940,7 @@ class QRCodeService:
                         headers={"Content-Disposition": f"inline; filename=qr_code.{image_format.lower()}"}
                     )
                     
-                except pybreaker.CircuitBreakerError as e:
+                except aiobreaker.CircuitBreakerError as e:
                     # Circuit is open - fall back to legacy implementation
                     new_path_duration = time.perf_counter() - new_path_start_time
                     MetricsLogger.log_qr_generation_path("new", "generate_qr", False, new_path_duration)

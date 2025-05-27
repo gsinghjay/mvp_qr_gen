@@ -169,7 +169,7 @@ async def get_qr_image(
     qr = qr_service.get_qr_by_id(qr_id)
 
     # Generate the QR code image
-    return qr_service.generate_qr(
+    return await qr_service.generate_qr(
         data=qr.content,
         size=params.size,
         border=params.border,
@@ -221,7 +221,7 @@ async def create_static_qr(
     """
     # The service layer will raise appropriate exceptions that will be
     # handled by the exception handlers in main.py
-    qr = qr_service.create_static_qr(data)
+    qr = await qr_service.create_static_qr(data)
     logger.info("Created static QR code", extra={"qr_id": qr.id})
     return qr
 
@@ -257,7 +257,7 @@ async def create_dynamic_qr(
     """
     # The service layer will raise appropriate exceptions that will be
     # handled by the exception handlers in main.py
-    qr = qr_service.create_dynamic_qr(data)
+    qr = await qr_service.create_dynamic_qr(data)
     logger.info("Created dynamic QR code", extra={"qr_id": qr.id})
     return qr
 
@@ -297,7 +297,7 @@ async def update_qr(
         RedirectURLError: If the redirect URL is invalid
         DatabaseError: If a database error occurs
     """
-    qr = qr_service.update_qr(qr_id, qr_update)
+    qr = await qr_service.update_qr(qr_id, qr_update)
     logger.info(f"Updated QR code {qr_id}")
     return qr
 

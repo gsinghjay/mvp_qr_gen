@@ -44,10 +44,9 @@ services:
       - qr_data:/app/data
       - ./backups:/app/backups
       - qr_logs:/logs
-      - ./app/tests:/app/app/tests # For development/testing if running tests inside container
+      - ./app:/app/app # Mount entire app directory for live code changes
       - ./tests:/app/tests # Mount the top-level tests directory for E2E tests
       - ./app/scripts:/app/scripts # Mount scripts for immediate availability without rebuild (includes init.sh)
-      - ./app/scripts:/app/app/scripts # Also mount to app/scripts for Python imports
       - test_advanced_qr_images:/app/test_advanced_qr_images # Use a named volume to avoid permission issues
       - /var/run/docker.sock:/var/run/docker.sock:ro # Allow container to control Docker (for backup/restore API management)
       - ./.env:/app/.env:ro # Mount .env file for init.sh script

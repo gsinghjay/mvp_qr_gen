@@ -46,8 +46,8 @@ class QRImageParameters(BaseModel):
     size: int = Field(
         default=10, 
         ge=1, 
-        le=500, 
-        description="QR code size (1-500) - relative unit that gets multiplied by 25 to determine pixel size; ignored if physical dimensions are provided"
+        le=50, 
+        description="QR code size (1-50) - relative unit that gets multiplied by 25 to determine pixel size; ignored if physical dimensions are provided"
     )
     border: int = Field(default=4, ge=0, le=20, description="QR code border width (0-20)")
     fill_color: str | None = Field(
@@ -223,8 +223,8 @@ class QRCreateParameters(BaseModel):
     size: int = Field(
         default=10, 
         ge=1, 
-        le=500, 
-        description="QR code size (1-500) - relative unit that gets multiplied by 25 to determine pixel size"
+        le=50, 
+        description="QR code size (1-50) - relative unit that gets multiplied by 25 to determine pixel size"
     )
     border: int = Field(default=4, ge=0, le=20, description="QR code border width (0-20)")
     error_level: ErrorCorrectionLevel = Field(
