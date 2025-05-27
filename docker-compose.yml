@@ -36,7 +36,7 @@ services:
       - ./app/tests:/app/app/tests # For development/testing if running tests inside container
       - ./app/scripts:/app/scripts # Mount scripts for immediate availability without rebuild (includes init.sh)
       - ./app/scripts:/app/app/scripts # Also mount to app/scripts for Python imports
-      - ./test_advanced_qr_images:/app/test_advanced_qr_images # Mount test images directory for immediate access
+      - test_advanced_qr_images:/app/test_advanced_qr_images # Use a named volume to avoid permission issues
       - /var/run/docker.sock:/var/run/docker.sock:ro # Allow container to control Docker (for backup/restore API management)
       - ./.env:/app/.env:ro # Mount .env file for init.sh script
     healthcheck:
@@ -45,6 +45,8 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    extra_hosts:
+      - "10.1.6.12:host-gateway" # Maps the host IP to this hostname inside the container
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,6 +123,8 @@ services:
       - "8080:8080"   # Traefik Dashboard (if entryPoint 'traefik' is on :8080)
       - "8082:8082"   # Metrics endpoint (if entryPoint 'metrics' is on :8082)
     restart: unless-stopped
+    extra_hosts:
+      - "10.1.6.12:host-gateway" # Maps the host IP to this hostname inside the container
     # depends_on: # Optional: if you want api to be up for traefik to configure it, though dynamic config handles this
     #   - api
 
@@ -234,4 +238,6 @@ volumes:
   grafana_data:
     driver: local
   loki_data:
+    driver: local
+  test_advanced_qr_images:
     driver: local
