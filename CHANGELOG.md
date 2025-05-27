@@ -1,6 +1,37 @@
 # CHANGELOG
 
 
+## v1.10.0 (2025-05-27)
+
+### Features
+
+* feat: add enhanced API testing script for circuit breaker validation ([`b236f6d`](https://github.com/gsinghjay/mvp_qr_gen/commit/b236f6d85e1d78d8656a803bc101b95b3afc8849))
+
+* feat: integrate circuit breaker protection for all QR generation methods ([`b3f075c`](https://github.com/gsinghjay/mvp_qr_gen/commit/b3f075cc68207c260cd28fff0ecf6ec63cb5f835))
+
+* feat: add synchronous wrapper for circuit breaker compatibility ([`a6f74ec`](https://github.com/gsinghjay/mvp_qr_gen/commit/a6f74ec3ceda9471189200ea7130a34a82d78835))
+
+* feat: integrate circuit breaker into dependency injection system ([`4b2f74e`](https://github.com/gsinghjay/mvp_qr_gen/commit/4b2f74eb62a19b68968811e490db28bd69a8b000))
+
+* feat: add circuit breaker metrics collection and logging ([`e085f42`](https://github.com/gsinghjay/mvp_qr_gen/commit/e085f4263fe0005eec038beaf85e5ea722385e6c))
+
+* feat: implement circuit breaker with listener and dependency injection ([`5ddc275`](https://github.com/gsinghjay/mvp_qr_gen/commit/5ddc27524c783a7d61c21afb403e47841749f871))
+
+* feat: add circuit breaker configuration settings ([`651b2dc`](https://github.com/gsinghjay/mvp_qr_gen/commit/651b2dcb716fa9c6f6540301777bed9f66d43717))
+
+* feat: add pybreaker>=1.0.0 dependency for circuit breaker pattern ([`361bc40`](https://github.com/gsinghjay/mvp_qr_gen/commit/361bc40bd50e4c4e29734d38d7812fd33b54b1bc))
+
+### Testing
+
+* test: add QR test images for circuit breaker validation ([`3fa6bea`](https://github.com/gsinghjay/mvp_qr_gen/commit/3fa6bea7512358164a277aa6f6098e432bcc3371))
+
+### Unknown
+
+* Merge pull request #55 from gsinghjay/phase-1.2
+
+Circuit Breaker Implementation ([`5e66c8a`](https://github.com/gsinghjay/mvp_qr_gen/commit/5e66c8a8378aa2da2268e0d923a8a1f45089d5f6))
+
+
 ## v1.9.1 (2025-05-27)
 
 ### Fixes
