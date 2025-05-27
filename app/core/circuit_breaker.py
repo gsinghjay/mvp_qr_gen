@@ -8,6 +8,7 @@ fallback to legacy implementations with proper asyncio support.
 
 import logging
 from typing import Any
+import datetime
 
 import aiobreaker
 
@@ -112,9 +113,12 @@ def get_new_qr_generation_breaker() -> aiobreaker.CircuitBreaker:
         Configured CircuitBreaker instance for NewQRGenerationService
     """
     # Create the circuit breaker with configuration from settings
+    # Convert reset_timeout (seconds) to a timedelta for aiobreaker
+    timeout_duration = datetime.timedelta(seconds=settings.QR_GENERATION_CB_RESET_TIMEOUT)
+    
     breaker = aiobreaker.CircuitBreaker(
         fail_max=settings.QR_GENERATION_CB_FAIL_MAX,
-        reset_timeout=settings.QR_GENERATION_CB_RESET_TIMEOUT,
+        timeout_duration=timeout_duration,
         name="NewQRGenerationService"
     )
     
@@ -129,6 +133,6 @@ def get_new_qr_generation_breaker() -> aiobreaker.CircuitBreaker:
         state="closed"
     )
     
-    logger.info(f"Created async circuit breaker for NewQRGenerationService with fail_max={settings.QR_GENERATION_CB_FAIL_MAX}, reset_timeout={settings.QR_GENERATION_CB_RESET_TIMEOUT}")
+    logger.info(f"Created async circuit breaker for NewQRGenerationService with fail_max={settings.QR_GENERATION_CB_FAIL_MAX}, timeout_duration={timeout_duration}")
     
     return breaker 
