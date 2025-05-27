@@ -3,7 +3,7 @@ http:
   routers:
     # --- Goal 1: Dashboard on 10.1.6.12 (Internal IP) ---
     internal-dashboard-router:
-      rule: "Host(`10.1.6.12`)" # Covers all paths on this host
+      rule: "Host(`10.1.6.12`)" # Just focus on this specific host
       service: api-service
       entryPoints:
         - web # HTTP
@@ -15,7 +15,7 @@ http:
       priority: 700 # High priority for specific internal IP
 
     internal-dashboard-secure-router:
-      rule: "Host(`10.1.6.12`)" # Covers all paths on this host
+      rule: "Host(`10.1.6.12`)" # Just focus on this specific host
       service: api-service
       entryPoints:
         - websecure # HTTPS
@@ -292,25 +292,28 @@ http:
         - grafana-cors-headers@file  # CORS-enabled headers
       priority: 745
 
-    # --- Grafana Public Routes (for MCP client) ---
-    grafana-public-router:
-      rule: "Host(`127.0.0.1`, `localhost`)"
-      service: grafana-service
+    # --- Localhost API Router (Higher priority than Grafana for localhost) ---
+    localhost-api-router:
+      rule: "Host(`localhost`) && PathPrefix(`/api/`, `/health`, `/static/assets/`)"
+      service: api-service
       entryPoints:
         - web
       middlewares:
-        - grafana-cors-headers@file  # CORS headers only, no auth
-      priority: 720
+        - redirect-to-https@file
+        - public-endpoints@file  # Allow all IPs
+        - security-headers@file
+      priority: 730 # Higher than Grafana routes
 
-    grafana-public-secure-router:
-      rule: "Host(`127.0.0.1`, `localhost`)"
-      service: grafana-service
+    localhost-api-secure-router:
+      rule: "Host(`localhost`) && PathPrefix(`/api/`, `/health`, `/static/assets/`)"
+      service: api-service
       entryPoints:
         - websecure
       tls: {}
       middlewares:
-        - grafana-cors-headers@file  # CORS headers only, no auth
-      priority: 720
+        - public-endpoints@file
+        - security-headers@file
+      priority: 730
 
   middlewares:
     redirect-to-https:
