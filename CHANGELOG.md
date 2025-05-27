@@ -1,6 +1,75 @@
 # CHANGELOG
 
 
+## v1.9.0 (2025-05-27)
+
+### Chores
+
+* chore(assets): update test QR images with new logo implementation ([`8a039e2`](https://github.com/gsinghjay/mvp_qr_gen/commit/8a039e2cca280264623baad0c3aa35d5cd510dea))
+
+* chore(config): update default logo path to use hccc_logo_official.png ([`64ae2ae`](https://github.com/gsinghjay/mvp_qr_gen/commit/64ae2aee5f17bfa313a0043c69940c9a06715860))
+
+### Features
+
+* feat(assets): add official HCCC logo for QR codes ([`7908888`](https://github.com/gsinghjay/mvp_qr_gen/commit/790888869c28da8a9b7ac6967591a15ccea1b6a0))
+
+* feat(docker): add volume mounts for test scripts and images
+
+- Mount app/scripts to /app/app/scripts for Python imports
+- Mount test_advanced_qr_images for immediate test access
+- Update script mount comment to clarify init.sh inclusion ([`c6a4b35`](https://github.com/gsinghjay/mvp_qr_gen/commit/c6a4b35a4829924c292d0df9ef703f0f8cfacdca))
+
+* feat(test): add comprehensive QR generation test suite
+
+- Test SVG logo handling and error correction auto-upgrade
+- Validate Segno best practices implementation
+- Include physical dimensions and accessibility testing ([`912eb3e`](https://github.com/gsinghjay/mvp_qr_gen/commit/912eb3e396b951679da412ce8331b349eeec54d4))
+
+* feat(qr): add automatic error correction upgrade for logos
+
+- Auto-upgrade error correction to 'H' when include_logo=True
+- Ensure QR codes with logos maintain scannability
+- Implement service-layer validation for logo requirements ([`cbf273d`](https://github.com/gsinghjay/mvp_qr_gen/commit/cbf273d3a794d53fcce73665e93112042fa3b896))
+
+* feat(qr): implement Segno best practices and SVG logo support
+
+- Use Segno's recommended 33% logo scaling (was 25%)
+- Add svg_inline() method using native Segno implementation
+- Fix color defaults to prevent white QR codes
+- Add adaptive SVG conversion with cairosvg integration
+- Implement proper fallback handling for SVG logos ([`ddf2951`](https://github.com/gsinghjay/mvp_qr_gen/commit/ddf2951447d92d94b1c2adfb5a4f1282375555fa))
+
+* feat(deps): add cairosvg for SVG logo conversion
+
+- Add cairosvg>=2.8.2 for SVG to PNG conversion
+- Enables proper SVG logo handling in QR codes ([`6b987a3`](https://github.com/gsinghjay/mvp_qr_gen/commit/6b987a30475e33d47aacf273eb2efe37ba50f6b1))
+
+* feat(docker): add Cairo libraries for SVG logo support
+
+- Add libcairo2-dev and libgirepository1.0-dev for cairosvg
+- Enable SVG to PNG conversion for QR code logo embedding ([`74c90a4`](https://github.com/gsinghjay/mvp_qr_gen/commit/74c90a4ff6eaf6bd8ba4e704782a7024106eda1a))
+
+### Fixes
+
+* fix(qr): improve logo integration with QR background color matching ([`6dad531`](https://github.com/gsinghjay/mvp_qr_gen/commit/6dad531ff5d52eb6723aeeea77b7fe7107057ad6))
+
+### Refactoring
+
+* refactor(qr): update legacy QR imaging utilities for logo handling ([`ec5a4a9`](https://github.com/gsinghjay/mvp_qr_gen/commit/ec5a4a971efd6ee68204dae86e3d84dcdc69f768))
+
+### Testing
+
+* test(qr): remove SVG logo tests and update logo tests for PNG ([`ad5359f`](https://github.com/gsinghjay/mvp_qr_gen/commit/ad5359fa40e7982afb1ede08b3a598273fcd3f91))
+
+* test: add generated QR test images for validation ([`675a9ba`](https://github.com/gsinghjay/mvp_qr_gen/commit/675a9ba3fe2ebe3a290d554c7f39cdc381b8ed29))
+
+### Unknown
+
+* Merge pull request #54 from gsinghjay/feat/segno
+
+Implement Segno QR Code Best Practices and SVG Logo Support ([`80af5db`](https://github.com/gsinghjay/mvp_qr_gen/commit/80af5db7efeb0c25efe78532c261405f9fa5a295))
+
+
 ## v1.8.0 (2025-05-26)
 
 ### Chores
