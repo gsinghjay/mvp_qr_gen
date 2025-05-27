@@ -118,13 +118,50 @@ class NewQRGenerationService:
         """
         import asyncio
         
-        # Simply run the async version synchronously
-        return asyncio.run(self.create_and_format_qr(
-            content=content,
-            image_params=image_params,
-            output_format=output_format,
-            error_correction=error_correction
-        ))
+        # Fixed version that works whether there's an existing event loop or not
+        try:
+            # Get the current event loop or create one if it doesn't exist
+            loop = asyncio.get_event_loop()
+            
+            # Check if the loop is running
+            if loop.is_running():
+                # Create a new loop for this execution if the current one is running
+                # This avoids the "asyncio.run() cannot be called from a running event loop" error
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                try:
+                    return new_loop.run_until_complete(self.create_and_format_qr(
+                        content=content,
+                        image_params=image_params,
+                        output_format=output_format,
+                        error_correction=error_correction
+                    ))
+                finally:
+                    new_loop.close()
+                    asyncio.set_event_loop(loop)  # Restore the original loop
+            else:
+                # If we have a loop but it's not running, use it
+                return loop.run_until_complete(self.create_and_format_qr(
+                    content=content,
+                    image_params=image_params,
+                    output_format=output_format,
+                    error_correction=error_correction
+                ))
+        except RuntimeError as e:
+            # If we can't get a loop or there's another runtime error, log it and try one more approach
+            logger.warning(f"Event loop handling error: {e}, trying alternative approach")
+            # Last resort approach: create a new thread with its own event loop
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    lambda: asyncio.run(self.create_and_format_qr(
+                        content=content,
+                        image_params=image_params,
+                        output_format=output_format,
+                        error_correction=error_correction
+                    ))
+                )
+                return future.result()
 
     def _validate_service_inputs(self, content: str, output_format: str) -> None:
         """
