@@ -63,11 +63,13 @@ RUN adduser --disabled-password --gecos '' appuser \
                 /app/app/static/qr_codes \
                 /app/app/templates \
                 /app/test_advanced_qr_images \
+                /app/tests/e2e \
     && chown -R appuser:appuser /app /logs \
     && chmod -R 755 /app \
     && chmod -R 775 /logs \
     && chmod -R 777 /app/data \
-    && chmod 777 /app/test_advanced_qr_images  # Ensure test_advanced_qr_images directory is fully writable
+    && chmod 777 /app/test_advanced_qr_images \
+    && chmod -R 755 /app/tests  # Ensure tests directory is readable and executable
 
 # Copy virtual environment from builder
 COPY --from=builder /app/venv /app/venv
