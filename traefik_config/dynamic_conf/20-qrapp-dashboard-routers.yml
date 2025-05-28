@@ -48,6 +48,29 @@ http:
         - security-headers@file
       priority: 700
 
+    # Logout endpoint (no authentication required)
+    internal-logout-router:
+      rule: "Host(`10.1.6.12`) && PathPrefix(`/logout`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file      # Internal IPs only
+        - security-headers@file
+      priority: 690 # Higher than dashboard but lower than hello-secure
+
+    internal-logout-secure-router:
+      rule: "Host(`10.1.6.12`) && PathPrefix(`/logout`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - ip-whitelist@file      # Internal IPs only
+        - security-headers@file
+      priority: 690
+
     # Regular dashboard routes (NOT OIDC protected, using basic auth)
     internal-dashboard-router:
       rule: "Host(`10.1.6.12`)" # Just focus on this specific host
