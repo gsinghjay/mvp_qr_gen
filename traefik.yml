@@ -61,7 +61,7 @@ providers:
     exposedByDefault: false
     network: qr_generator_network            # Confirm network name
   file:
-    filename: /etc/traefik/dynamic_conf.yml
+    directory: /etc/traefik/conf.d/
     watch: true
 
 api:
