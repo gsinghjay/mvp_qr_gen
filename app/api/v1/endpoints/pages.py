@@ -359,3 +359,113 @@ async def logout_success(request: Request):
         logger.error(f"Error in logout success page", extra={"error": str(e)})
         # Fallback to a simple redirect to home
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND) 
+
+
+@router.get("/logout/oidc", response_class=RedirectResponse)
+async def oidc_logout(
+    request: Request,
+    x_auth_request_access_token: Optional[str] = Header(None, alias="X-Auth-Request-Access-Token"),
+    x_auth_request_user: Optional[str] = Header(None, alias="X-Auth-Request-User"),
+    x_auth_request_email: Optional[str] = Header(None, alias="X-Auth-Request-Email"),
+    authorization: Optional[str] = Header(None)
+):
+    """
+    OIDC logout endpoint that properly handles logout with id_token_hint.
+    
+    This endpoint:
+    1. Extracts token information from OAuth2-Proxy headers
+    2. Constructs the proper Keycloak logout URL with available parameters
+    3. Redirects to OAuth2-Proxy sign_out with the proper OIDC logout URL
+    
+    Args:
+        request: The FastAPI request object.
+        x_auth_request_access_token: Access token from OAuth2-Proxy headers.
+        x_auth_request_user: User ID from OAuth2-Proxy headers.
+        x_auth_request_email: Email from OAuth2-Proxy headers.
+        authorization: Authorization header containing Bearer token.
+        
+    Returns:
+        RedirectResponse: Redirect to OAuth2-Proxy logout with proper OIDC parameters.
+    """
+    try:
+        import base64
+        import json
+        from urllib.parse import quote, urlencode
+        
+        # Log all available headers for debugging
+        all_headers = dict(request.headers)
+        logger.info(f"OIDC logout - Available headers: {list(all_headers.keys())}")
+        logger.info(f"OIDC logout - Auth headers: access_token={bool(x_auth_request_access_token)}, user={x_auth_request_user}, email={x_auth_request_email}")
+        
+        # Try to extract ID token from various sources
+        id_token = None
+        
+        # Method 1: Check Authorization header
+        if authorization and authorization.startswith("Bearer "):
+            potential_token = authorization[7:]  # Remove "Bearer " prefix
+            logger.info(f"Found Authorization Bearer token: {potential_token[:50]}...")
+            
+            # Try to decode and check if it's an ID token (has 'aud' claim)
+            try:
+                # JWT tokens have 3 parts separated by dots
+                if potential_token.count('.') == 2:
+                    # Decode the payload (middle part) without verification for inspection
+                    header, payload, signature = potential_token.split('.')
+                    # Add padding if needed
+                    payload += '=' * (4 - len(payload) % 4)
+                    decoded_payload = base64.urlsafe_b64decode(payload)
+                    token_data = json.loads(decoded_payload)
+                    
+                    logger.info(f"Token claims: {list(token_data.keys())}")
+                    
+                    # Check if this looks like an ID token (has 'aud', 'iss', 'sub' claims)
+                    if all(claim in token_data for claim in ['aud', 'iss', 'sub']):
+                        id_token = potential_token
+                        logger.info("Using Authorization header token as ID token")
+                    else:
+                        logger.info("Authorization token doesn't appear to be an ID token")
+                        
+            except Exception as e:
+                logger.warning(f"Could not decode Authorization token: {e}")
+        
+        # Method 2: Check X-Auth-Request-Access-Token header  
+        if not id_token and x_auth_request_access_token:
+            logger.info(f"Found X-Auth-Request-Access-Token: {x_auth_request_access_token[:50]}...")
+            # This might actually be the ID token depending on OAuth2-Proxy config
+            id_token = x_auth_request_access_token
+        
+        # Construct the base logout URL
+        base_logout_url = "https://auth.hccc.edu/realms/hccc-apps-realm/protocol/openid-connect/logout"
+        # Use public domain for post-logout redirect
+        post_logout_redirect_uri = "https://web.hccc.edu/logout"
+        
+        # Build logout parameters
+        logout_params = {
+            "post_logout_redirect_uri": post_logout_redirect_uri
+        }
+        
+        # Add id_token_hint if we have an ID token
+        if id_token:
+            logout_params["id_token_hint"] = id_token
+            logger.info("OIDC logout with id_token_hint")
+        else:
+            logger.warning("OIDC logout without id_token_hint - may show confirmation page")
+            # Add a hint about the user for better UX
+            if x_auth_request_email:
+                logout_params["login_hint"] = x_auth_request_email
+        
+        # Construct the full Keycloak logout URL
+        keycloak_logout_url = f"{base_logout_url}?{urlencode(logout_params)}"
+        
+        # URL encode the Keycloak logout URL for OAuth2-Proxy redirect
+        oauth2_proxy_logout_url = f"/oauth2/sign_out?rd={quote(keycloak_logout_url)}"
+        
+        logger.info(f"Redirecting to OAuth2-Proxy logout: {oauth2_proxy_logout_url}")
+        
+        return RedirectResponse(url=oauth2_proxy_logout_url, status_code=status.HTTP_302_FOUND)
+        
+    except Exception as e:
+        logger.error(f"Error in OIDC logout endpoint", extra={"error": str(e)})
+        # Fallback to simple OAuth2-Proxy logout
+        fallback_logout_url = f"/oauth2/sign_out?rd={quote('https://10.1.6.12/logout')}"
+        return RedirectResponse(url=fallback_logout_url, status_code=status.HTTP_302_FOUND) 
