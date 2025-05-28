@@ -331,3 +331,31 @@ async def hello_secure(
             },
             status_code=500,
         ) 
+
+
+@router.get("/logout", response_class=HTMLResponse)
+async def logout_success(request: Request):
+    """
+    Post-logout landing page.
+    
+    This endpoint provides a clean landing page after users have been logged out
+    through the oauth2-proxy logout flow.
+    
+    Args:
+        request: The FastAPI request object.
+        
+    Returns:
+        HTMLResponse: A logout success page.
+    """
+    try:
+        return templates.TemplateResponse(
+            name="pages/logout_success.html",
+            context={
+                "request": request,
+                "page_title": "Logged Out",
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error in logout success page", extra={"error": str(e)})
+        # Fallback to a simple redirect to home
+        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND) 
