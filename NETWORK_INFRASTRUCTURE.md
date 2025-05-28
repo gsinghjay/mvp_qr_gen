@@ -113,7 +113,7 @@ graph LR
 
 | Domain | Purpose | Audience | Security | External IP |
 |--------|---------|----------|----------|-------------|
-| **web.hccc.edu** | 🌐 QR Operations & Public Dashboard | 👥 Students, Faculty, Public | 🔒 Rate Limiting + Path-based | 130.156.44.52 |
+| **web.hccc.edu** | 🌐 QR Operations & Public Dashboard | 👥 Students, Faculty, Public | 🔒 Basic Auth + Rate Limiting + Path-based | 130.156.44.52 |
 | **auth.hccc.edu** | 🔐 Authentication Service | 🎫 All authenticated users | 🛡️ Public with OIDC security | 130.156.44.53 |
 | **webhost.hccc.edu** | 🛠️ Administration & Monitoring | 👨‍💻 IT Staff, Admins | 🔐 IP Whitelist + Basic Auth | 10.1.6.12 |
 
@@ -234,6 +234,20 @@ graph LR
 
 Our security is **layered at the edge** rather than within applications, providing consistent protection across all services.
 
+**🆕 Hybrid Authentication Model for web.hccc.edu:**
+
+The system implements a **sophisticated hybrid authentication strategy** that balances public accessibility with administrative security:
+
+- **🟢 Public Endpoints**: QR redirects (`/r/*`), static assets (`/static/*`), OAuth2 flows (`/oauth2/*`), logout pages
+- **🔐 OIDC Protected**: Specific endpoints like `/hello-secure` use OAuth2-Proxy with Azure AD authentication
+- **🔒 Basic Auth Protected**: Dashboard/admin routes use basic auth (`admin_user:strongpassword`)
+
+This approach ensures:
+✅ **Business continuity** - QR codes always work without authentication barriers  
+✅ **Modern user experience** - OIDC authentication for interactive features  
+✅ **Administrative control** - Simple basic auth for dashboard access  
+✅ **Static asset performance** - CSS, JS, images load without auth delays  
+
 ```mermaid
 graph TD
     subgraph "🌍 External Threats"
@@ -244,7 +258,7 @@ graph TD
         TLS[🔒 TLS Termination<br/>HTTPS Enforcement]
         IP[🌐 IP Whitelisting<br/>Geographic Filtering]
         RATE[⏱️ Rate Limiting<br/>Burst Protection]
-        AUTH[🔐 Authentication<br/>OAuth2 + Basic Auth]
+        AUTH[🔐 Hybrid Authentication<br/>OAuth2 + Basic Auth + Public]
         HEADERS[🛡️ Security Headers<br/>CSP, HSTS, etc.]
     end
     
@@ -260,6 +274,7 @@ graph TD
     HEADERS --> SERVICES
     
     style ATTACKS fill:#ffebee
+    style AUTH fill:#e1f5fe
     style SERVICES fill:#e8f5e8
 ```
 
@@ -607,13 +622,22 @@ nslookup web.hccc.edu 10.1.1.238
 
 #### 2. 🔐 Authentication Flow Failures
 
-**Symptoms**: Login redirects fail, 404 on OAuth2 endpoints
+**Symptoms**: Login redirects fail, 404 on OAuth2 endpoints, basic auth prompts on wrong pages
 
 **Diagnostic Commands**:
 ```bash
-# Check OAuth2 endpoints
+# Check OAuth2 endpoints (should be public)
 curl -k -s -I https://web.hccc.edu/oauth2/sign_out
 curl -k -s -I https://web.hccc.edu/hello-secure
+
+# Check static assets (should be public)
+curl -k -s -I https://web.hccc.edu/static/portal_template/css/main-public.css
+
+# Check dashboard access (should require basic auth)
+curl -k -s https://web.hccc.edu/
+
+# Check dashboard with basic auth (should work)
+curl -k -s -u admin_user:strongpassword https://web.hccc.edu/
 
 # Check Keycloak health
 curl -k -s -I https://auth.hccc.edu/
@@ -622,7 +646,8 @@ curl -k -s -I https://auth.hccc.edu/
 **Solutions**:
 - Verify OAuth2-Proxy container is running
 - Check Keycloak client configuration
-- Confirm Traefik routing for OAuth2 endpoints
+- Confirm Traefik routing priorities (static assets: 860, hello-secure: 850, dashboard: 800)
+- Verify basic auth credentials in `users.htpasswd`
 
 #### 3. 🚦 Traefik Routing Issues
 
@@ -782,13 +807,15 @@ graph TB
 
 ### Essential URLs
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| **Public QR App** | https://web.hccc.edu | Main application access |
-| **Authentication** | https://auth.hccc.edu | User login & OIDC |
-| **Admin Dashboard** | https://webhost.hccc.edu | System administration |
-| **Grafana Monitoring** | https://webhost.hccc.edu/grafana/ | System dashboards |
-| **Prometheus Metrics** | https://webhost.hccc.edu/prometheus/ | Raw metrics data |
+| Service | URL | Purpose | Authentication |
+|---------|-----|---------|----------------|
+| **Public QR App** | https://web.hccc.edu | Main application access | Basic Auth (admin_user:strongpassword) |
+| **QR Redirects** | https://web.hccc.edu/r/{id} | QR code scanning | None (Public) |
+| **OAuth2 Demo** | https://web.hccc.edu/hello-secure | OIDC authentication demo | Azure AD via OAuth2-Proxy |
+| **Authentication** | https://auth.hccc.edu | User login & OIDC | Public (OIDC flow) |
+| **Admin Dashboard** | https://webhost.hccc.edu | System administration | IP Whitelist + Basic Auth |
+| **Grafana Monitoring** | https://webhost.hccc.edu/grafana/ | System dashboards | IP Whitelist + Basic Auth |
+| **Prometheus Metrics** | https://webhost.hccc.edu/prometheus/ | Raw metrics data | IP Whitelist + Basic Auth |
 
 ### Critical Commands
 
@@ -796,8 +823,17 @@ graph TB
 # Health Checks
 curl -k -s -u admin_user:strongpassword https://webhost.hccc.edu/health | jq .
 
-# Authentication Test
+# Authentication Test (OIDC)
 curl -k -s https://web.hccc.edu/hello-secure | grep -o "auth.hccc.edu"
+
+# Basic Auth Test (Dashboard)
+curl -k -s -u admin_user:strongpassword https://web.hccc.edu/
+
+# Public Endpoint Test (QR Redirects)
+curl -k -s -I https://web.hccc.edu/r/test
+
+# Static Assets Test (Should be public)
+curl -k -s -I https://web.hccc.edu/static/portal_template/css/main-public.css
 
 # Container Status
 docker-compose ps
