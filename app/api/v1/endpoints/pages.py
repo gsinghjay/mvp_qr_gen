@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, status, Header
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import SQLAlchemyError
@@ -287,3 +287,47 @@ async def redirect_qr_to_qr_list():
     (without additional segments) redirects to the full QR list page.
     """
     return RedirectResponse(url="/qr-list", status_code=status.HTTP_301_MOVED_PERMANENTLY) 
+
+
+@router.get("/hello-secure", response_class=HTMLResponse)
+async def hello_secure(
+    request: Request,
+    x_auth_request_email: Optional[str] = Header(None, alias="X-Auth-Request-Email"),
+    x_auth_request_preferred_username: Optional[str] = Header(None, alias="X-Auth-Request-Preferred-Username")
+):
+    """
+    Protected page that displays authenticated user information.
+    
+    This endpoint will be secured by oauth2-proxy and will display the 
+    authenticated user information passed in the headers.
+    
+    Args:
+        request: The FastAPI request object.
+        x_auth_request_email: Email address of the authenticated user (from oauth2-proxy).
+        x_auth_request_preferred_username: Preferred username of the authenticated user (from oauth2-proxy).
+        
+    Returns:
+        HTMLResponse: The rendered secure hello page with user information.
+    """
+    try:
+        logger.info(f"Secure page accessed with auth headers: email={x_auth_request_email}, username={x_auth_request_preferred_username}")
+        
+        return templates.TemplateResponse(
+            name="pages/hello_secure.html",
+            context={
+                "request": request,
+                "email": x_auth_request_email,
+                "preferred_username": x_auth_request_preferred_username,
+                "page_title": "Secure Hello Page",
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error in secure hello page", extra={"error": str(e)})
+        return templates.TemplateResponse(
+            name="pages/hello_secure.html",
+            context={
+                "request": request,
+                "error": "An error occurred while loading the secure page",
+            },
+            status_code=500,
+        ) 
