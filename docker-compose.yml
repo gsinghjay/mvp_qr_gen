@@ -48,6 +48,7 @@ services:
       - ./tests:/app/tests # Mount the top-level tests directory for E2E tests
       - ./app/scripts:/app/scripts # Mount scripts for immediate availability without rebuild (includes init.sh)
       - test_advanced_qr_images:/app/test_advanced_qr_images # Use a named volume to avoid permission issues
+      - qr_codes_data:/app/app/static/assets/images/qr_codes # Use a named volume for QR codes
       - /var/run/docker.sock:/var/run/docker.sock:ro # Allow container to control Docker (for backup/restore API management)
       - ./.env:/app/.env:ro # Mount .env file for init.sh script
     healthcheck:
@@ -251,4 +252,6 @@ volumes:
   loki_data:
     driver: local
   test_advanced_qr_images:
+    driver: local
+  qr_codes_data:
     driver: local
