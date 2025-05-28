@@ -118,6 +118,6 @@ ignore_missing_imports = true
 # Semantic Release Configuration
 [tool.semantic_release]
 # Current version
-version = "1.12.0"
+version = "1.12.1"
 # Version location
 version_toml = ["pyproject.toml:tool.semantic_release.version"] 

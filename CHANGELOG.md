@@ -1,6 +1,45 @@
 # CHANGELOG
 
 
+## v1.12.1 (2025-05-28)
+
+### Chores
+
+* chore: add .env.example template for environment variables
+
+- Create example environment file with proper structure
+- Replace sensitive values with descriptive placeholders
+- Maintain all required configuration sections
+- Add comments explaining variable purposes
+- Ensure example file is git-tracked while .env remains ignored ([`eca1f2a`](https://github.com/gsinghjay/mvp_qr_gen/commit/eca1f2a92fc37edfc059a5909423944b2b708e7d))
+
+### Fixes
+
+* fix: qr code using size outside defined model ([`10ea752`](https://github.com/gsinghjay/mvp_qr_gen/commit/10ea752f770873205ff4765aef071684acd538b4))
+
+* fix: use environment variables for auth in test_qr_paths.py ([`f61eb89`](https://github.com/gsinghjay/mvp_qr_gen/commit/f61eb89b66c6667a5970b655d12aff60f21ebbd4))
+
+* fix: use environment variables for auth in test_paths_metrics.py ([`dbc2a19`](https://github.com/gsinghjay/mvp_qr_gen/commit/dbc2a190a29b935d1f6c7421ab3ec4d95e52f071))
+
+* fix: use environment variables for auth in test_circuit_breaker.py ([`4cb8cfa`](https://github.com/gsinghjay/mvp_qr_gen/commit/4cb8cfa68a9d1a0e1f2fa61e728266eea00d5116))
+
+* fix: add proper auth variable checking to check_health.sh ([`8edefc0`](https://github.com/gsinghjay/mvp_qr_gen/commit/8edefc00eca16085a838b475856e6a1cd61f31f7))
+
+* fix: remove hardcoded credential defaults from safe_restore.sh ([`22a240c`](https://github.com/gsinghjay/mvp_qr_gen/commit/22a240c7db31099087e0b868fe133c9436de96c4))
+
+* fix: remove hardcoded credentials from rollback.sh error messages ([`207616b`](https://github.com/gsinghjay/mvp_qr_gen/commit/207616b78c4edf46581d22404328d49abea01077))
+
+* fix: remove hardcoded credential defaults from performance_test.sh ([`24d808e`](https://github.com/gsinghjay/mvp_qr_gen/commit/24d808e87992d70073bb88bc8f4365cf02e89242))
+
+* fix: remove hardcoded credentials from alerts.yml ([`5008acf`](https://github.com/gsinghjay/mvp_qr_gen/commit/5008acfaf8d24f2d206e50298afbdb992d586817))
+
+### Unknown
+
+* Merge pull request #59 from gsinghjay/fix/hardcoded-credentials
+
+Remove Hardcoded Credentials From Codebase ([`4e67b5a`](https://github.com/gsinghjay/mvp_qr_gen/commit/4e67b5a5ff687c7b5d016ec63af59c9eb1e21695))
+
+
 ## v1.12.0 (2025-05-27)
 
 ### Build System
