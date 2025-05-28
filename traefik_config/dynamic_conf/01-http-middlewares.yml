@@ -57,8 +57,8 @@ http:
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         forceSTSHeader: true
-        # Adjust CSP for Keycloak's needs
-        contentSecurityPolicy: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; font-src 'self'; frame-ancestors 'self'; object-src 'none';"
+        # UPDATED: Enhanced CSP for Keycloak with proper iframe support using hostname
+        contentSecurityPolicy: "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; font-src 'self'; frame-src 'self' https://webhost.hccc.edu:8180 https://auth.hccc.edu; frame-ancestors 'self'; object-src 'none'; connect-src 'self' https: wss:;"
         # Allow Keycloak to be embedded in iframes from the same origin
         customFrameOptionsValue: "SAMEORIGIN"
 
@@ -88,7 +88,7 @@ http:
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         forceSTSHeader: true
-        contentSecurityPolicy: "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; frame-ancestors 'self'; object-src 'none'; connect-src 'self' https: wss: https://webhost.hccc.edu https://10.1.6.12 https://grafana.com https://grafana.net;"
+        contentSecurityPolicy: "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; frame-ancestors 'self'; object-src 'none'; connect-src 'self' https: wss: https://webhost.hccc.edu https://webhost.hccc.edu https://grafana.com https://grafana.net;"
 
     dashboard-auth: # Basic Auth for dashboard/internal routes (keeping for non-OIDC protected routes)
       basicAuth:
