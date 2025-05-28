@@ -1,0 +1,48 @@
+http:
+  routers:
+    # --- Goal 3: auth.hccc.edu (Keycloak Authentication) ---
+    # Main Keycloak router for auth.hccc.edu
+    auth-hccc-keycloak-router:
+      rule: "Host(`auth.hccc.edu`, `130.156.44.53`)"
+      service: keycloak-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - keycloak-headers@file
+        - public-endpoints@file # Allow all IPs for authentication
+      priority: 600 # Higher priority than the catch-all redirect
+
+    auth-hccc-keycloak-secure-router:
+      rule: "Host(`auth.hccc.edu`, `130.156.44.53`)"
+      service: keycloak-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - keycloak-headers@file
+        - public-endpoints@file # Allow all IPs for authentication
+      priority: 600
+
+    # Keep static assets routes for compatibility
+    auth-hccc-static-assets-router:
+      rule: "Host(`auth.hccc.edu`, `130.156.44.53`) && PathPrefix(`/static/assets/`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file
+        - security-headers@file
+      priority: 540
+
+    auth-hccc-static-assets-secure-router:
+      rule: "Host(`auth.hccc.edu`, `130.156.44.53`) && PathPrefix(`/static/assets/`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - public-endpoints@file
+        - security-headers@file
+      priority: 540 

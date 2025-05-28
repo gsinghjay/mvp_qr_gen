@@ -1,0 +1,81 @@
+http:
+  routers:
+    # --- Goal 2: web.hccc.edu (Public Redirect Domain) ---
+    web-hccc-qr-redirect-router: # Handles /r/ path
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && PathPrefix(`/r/`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - qr-redirect-rate-limit@file  # Changed from rate-limit@file for classroom scenarios
+        - public-endpoints@file  # Allow all IPs for this path
+        - security-headers@file
+      priority: 650
+
+    web-hccc-qr-redirect-secure-router:
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && PathPrefix(`/r/`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - qr-redirect-rate-limit@file  # Changed from rate-limit@file for classroom scenarios
+        - public-endpoints@file
+        - security-headers@file
+      priority: 650
+
+    web-hccc-static-assets-router: # Handles static assets for restricted page
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && PathPrefix(`/static/assets/`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file
+        - security-headers@file
+      priority: 640 # Needs to be higher than the catch-all redirect
+
+    web-hccc-static-assets-secure-router:
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && PathPrefix(`/static/assets/`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - public-endpoints@file
+        - security-headers@file
+      priority: 640
+
+    web-hccc-access-restricted-page-router: # Serves the actual restricted page
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && Path(`/static/access-restricted.html`)" # Exact path
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file
+        - security-headers@file
+      priority: 630 # Higher than the catch-all redirect
+
+    web-hccc-access-restricted-page-secure-router:
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`) && Path(`/static/access-restricted.html`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - public-endpoints@file
+        - security-headers@file
+      priority: 630
+
+    web-hccc-catch-all-redirect-router: # Catches everything else on web.hccc.edu
+      rule: "Host(`web.hccc.edu`, `130.156.44.52`)" # Lowest priority for this host
+      service: api-service # Dummy service, middleware handles it
+      entryPoints:
+        - web
+        - websecure # Important: handle for HTTPS too
+      tls: {} # For websecure
+      middlewares:
+        - access-restricted-redirect@file # Redirects to the static page
+      priority: 100 # Low priority for this host, catches unmatched paths 

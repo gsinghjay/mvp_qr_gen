@@ -1,0 +1,6 @@
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/certs/wildcard.crt.pem
+        keyFile: /etc/certs/wildcard.key.pem.nopass 

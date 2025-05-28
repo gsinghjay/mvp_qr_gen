@@ -1,0 +1,31 @@
+http:
+  services:
+    api-service:
+      loadBalancer:
+        servers:
+          - url: "http://api:8000" # Points to your FastAPI app container
+        passHostHeader: true
+
+    keycloak-service:
+      loadBalancer:
+        servers:
+          - url: "http://keycloak_service:8080" # Points to the Keycloak container
+        passHostHeader: true
+
+    oauth2-proxy-qr-dashboard-service:
+      loadBalancer:
+        servers:
+          - url: "http://oauth2-proxy-qr-dashboard:4180" # Points to the OAuth2 Proxy container
+        passHostHeader: true
+
+    prometheus-service:
+      loadBalancer:
+        servers:
+          - url: "http://prometheus:9090"
+        passHostHeader: true
+
+    grafana-service:
+      loadBalancer:
+        servers:
+          - url: "http://grafana:3000"
+        passHostHeader: true 

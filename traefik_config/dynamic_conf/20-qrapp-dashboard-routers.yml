@@ -1,0 +1,74 @@
+http:
+  routers:
+    # --- Goal 1: Dashboard on 10.1.6.12 (Internal IP) ---
+    
+    # OAuth2 Proxy callback endpoint (highest priority for this specific path)
+    internal-oauth2-callback-router:
+      rule: "Host(`10.1.6.12`) && PathPrefix(`/oauth2/`)"
+      service: oauth2-proxy-qr-dashboard-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file      # Internal IPs only
+        - security-headers@file
+      priority: 710 # Higher than hello-secure
+
+    internal-oauth2-callback-secure-router:
+      rule: "Host(`10.1.6.12`) && PathPrefix(`/oauth2/`)"
+      service: oauth2-proxy-qr-dashboard-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - ip-whitelist@file      # Internal IPs only
+        - security-headers@file
+      priority: 710
+
+    # Protected hello-secure endpoint with OIDC authentication
+    internal-hello-secure-router:
+      rule: "Host(`10.1.6.12`) && PathPrefix(`/hello-secure`)"
+      service: oauth2-proxy-qr-dashboard-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file      # Internal IPs only
+        - security-headers@file
+      priority: 700
+
+    internal-hello-secure-secure-router:
+      rule: "Host(`10.1.6.12`) && PathPrefix(`/hello-secure`)"
+      service: oauth2-proxy-qr-dashboard-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - ip-whitelist@file      # Internal IPs only
+        - security-headers@file
+      priority: 700
+
+    # Regular dashboard routes (NOT OIDC protected, using basic auth)
+    internal-dashboard-router:
+      rule: "Host(`10.1.6.12`)" # Just focus on this specific host
+      service: api-service
+      entryPoints:
+        - web # HTTP
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file      # Internal IPs only
+        - dashboard-auth@file    # Basic Auth (keeping for non-OIDC routes)
+        - security-headers@file
+      priority: 600 # Lower than hello-secure and oauth2 callback
+
+    internal-dashboard-secure-router:
+      rule: "Host(`10.1.6.12`)" # Just focus on this specific host
+      service: api-service
+      entryPoints:
+        - websecure # HTTPS
+      tls: {}
+      middlewares:
+        - ip-whitelist@file      # Internal IPs only
+        - dashboard-auth@file    # Basic Auth (keeping for non-OIDC routes)
+        - security-headers@file
+      priority: 600 
