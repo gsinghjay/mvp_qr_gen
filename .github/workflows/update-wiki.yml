@@ -8,6 +8,7 @@ on:
       - 'GRAFANA.md'
       - 'BACKUP-RESTORE.md'
       - 'WIKI.md'
+      - 'NETWORK_INFRASTRUCTURE.md'
       - 'scripts/update_wiki.sh'
   workflow_dispatch:  # Allow manual triggering
 
@@ -139,6 +140,12 @@ jobs:
         if [ -f "BACKUP-RESTORE.md" ]; then
             echo "✅ Updating Backup & Recovery Guide from BACKUP-RESTORE.md"
             create_wiki_page "Backup-Recovery-Guide.md" "Backup & Recovery Guide" "$(cat BACKUP-RESTORE.md)"
+        fi
+        
+        # Update Network Infrastructure documentation
+        if [ -f "NETWORK_INFRASTRUCTURE.md" ]; then
+            echo "✅ Updating Network Infrastructure Guide from NETWORK_INFRASTRUCTURE.md"
+            create_wiki_page "Network-Infrastructure-Guide.md" "Network Infrastructure Guide" "$(cat NETWORK_INFRASTRUCTURE.md)"
         fi
         
         # Update Wiki maintenance guide
