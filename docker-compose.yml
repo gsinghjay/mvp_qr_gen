@@ -132,8 +132,7 @@ services:
     ports:
       - "80:80"       # HTTP
       - "443:443"     # HTTPS
-      - "8080:8080"   # Traefik Dashboard (if entryPoint 'traefik' is on :8080)
-      - "8082:8082"   # Metrics endpoint (if entryPoint 'metrics' is on :8082)
+      - "8082:8082"   # Metrics endpoint
     restart: unless-stopped
     extra_hosts:
       - "10.1.6.12:host-gateway" # Maps the host IP to this hostname inside the container
@@ -151,12 +150,12 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=30d'
       - '--web.enable-lifecycle'
+      - '--web.external-url=https://webhost.hccc.edu/prometheus/'
+      - '--web.route-prefix=/prometheus/'
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
