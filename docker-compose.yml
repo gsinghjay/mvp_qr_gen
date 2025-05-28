@@ -126,7 +126,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro # So Traefik can listen to Docker events
       - ./certs:/etc/certs:ro                         # Mount your certificates
       - ./traefik.yml:/etc/traefik/traefik.yml:ro     # Static configuration
-      - ./dynamic_conf.yml:/etc/traefik/dynamic_conf.yml:ro # Dynamic configuration
+      - ./traefik_config/dynamic_conf:/etc/traefik/conf.d:ro # Dynamic configuration directory
       - ./users.htpasswd:/etc/traefik/users.htpasswd:ro # Basic Auth users file
       - traefik_logs:/logs/traefik # For Traefik's own logs, if configured in traefik.yml
     ports:
@@ -228,6 +228,19 @@ services:
     restart: unless-stopped
     depends_on:
       - loki
+
+  # OAuth2 Proxy for authentication
+  oauth2-proxy-qr-dashboard:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+    container_name: qr_generator_oauth2_proxy
+    command: --config=/etc/oauth2-proxy/oauth2-proxy.cfg
+    volumes:
+      - ./oauth2-proxy:/etc/oauth2-proxy
+    restart: unless-stopped
+    ports:
+      - "4180:4180"
+    depends_on:
+      - api
 
 networks:
   default:
