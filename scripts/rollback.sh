@@ -69,8 +69,8 @@ load_environment() {
         echo "   POSTGRES_USER=pguser"
         echo "   POSTGRES_DB=qrdb"
         echo "   API_URL=https://10.1.6.12"
-        echo "   AUTH_USER=admin_user"
-        echo "   AUTH_PASS=strongpassword"
+        echo "   AUTH_USER=[username]"
+        echo "   AUTH_PASS=[password]"
         exit 1
     fi
     

@@ -1,15 +1,26 @@
 import httpx
 import time
 import os
+import sys
 
 API_BASE_URL = os.getenv("E2E_API_BASE_URL", "http://localhost:80")  # Traefik entry point
 print(f"Using API base URL: {API_BASE_URL}")
+
+# Get auth credentials from environment variables
+AUTH_USER = os.getenv("AUTH_USER")
+AUTH_PASS = os.getenv("AUTH_PASS")
+
+# Check if credentials are set
+if not AUTH_USER or not AUTH_PASS:
+    print("ERROR: Authentication credentials not found in environment variables.")
+    print("Please ensure AUTH_USER and AUTH_PASS are set in .env file.")
+    sys.exit(1)
 
 # For HTTPS with self-signed certificates:
 client = httpx.Client(
     base_url=API_BASE_URL, 
     verify=False,  # Disable SSL verification for self-signed certs
-    auth=("admin_user", "strongpassword")  # Add basic auth
+    auth=(AUTH_USER, AUTH_PASS)  # Use environment variables for basic auth
 )
 
 def test_create_static_qr():
