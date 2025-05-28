@@ -59,29 +59,6 @@ http:
         - security-headers@file
       priority: 740
 
-    # --- Grafana via webhost.hccc.edu (Internal Only) ---
-    grafana-webhost-router:
-      rule: "Host(`webhost.hccc.edu`)"
-      service: grafana-service
-      entryPoints:
-        - web
-      middlewares:
-        - redirect-to-https@file
-        - ip-whitelist@file      # Same security as internal access
-        - grafana-cors-headers@file  # CORS-enabled headers
-      priority: 745
-
-    grafana-webhost-secure-router:
-      rule: "Host(`webhost.hccc.edu`)"
-      service: grafana-service
-      entryPoints:
-        - websecure
-      tls: {}
-      middlewares:
-        - ip-whitelist@file      # Same security as internal access
-        - grafana-cors-headers@file  # CORS-enabled headers
-      priority: 745
-
     # --- Localhost API Router (Higher priority than Grafana for localhost) ---
     localhost-api-router:
       rule: "Host(`localhost`) && PathPrefix(`/api/`, `/health`, `/static/assets/`)"
