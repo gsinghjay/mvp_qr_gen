@@ -71,7 +71,7 @@ http:
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         forceSTSHeader: true
-        contentSecurityPolicy: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://www.youtube.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; frame-ancestors 'self'; object-src 'none'; frame-src https://www.youtube.com;"
+        contentSecurityPolicy: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://www.youtube.com https://traefik.github.io; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; frame-ancestors 'self'; object-src 'none'; frame-src https://www.youtube.com;"
         customFrameOptionsValue: "DENY"
 
     grafana-cors-headers:
@@ -94,4 +94,14 @@ http:
       basicAuth:
         usersFile: "/etc/traefik/users.htpasswd"
         realm: "QR System - Authorized Access Only"
-        # headerField: "X-WebAuth-User" # Optional: if you want to pass user to backend 
+        # headerField: "X-WebAuth-User" # Optional: if you want to pass user to backend
+
+    strip-traefik-prefix:
+      stripPrefix:
+        prefixes:
+          - "/traefik"
+
+    strip-prometheus-prefix:
+      stripPrefix:
+        prefixes:
+          - "/prometheus" 
