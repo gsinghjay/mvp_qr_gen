@@ -52,6 +52,29 @@ http:
         - security-headers@file
       priority: 815
 
+    # ADDED: Static Assets for web.hccc.edu (PUBLIC ACCESS)
+    web-hccc-static-all-router:
+      rule: "Host(`web.hccc.edu`) && PathPrefix(`/static/`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file  # Public access for static assets
+        - security-headers@file
+      priority: 860 # Higher than hello-secure to catch all static content
+
+    web-hccc-static-all-secure-router:
+      rule: "Host(`web.hccc.edu`) && PathPrefix(`/static/`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - public-endpoints@file  # Public access for static assets
+        - security-headers@file
+      priority: 860 # Higher than hello-secure to catch all static content
+
     # ADDED: OIDC logout endpoint for web.hccc.edu
     web-hccc-logout-oidc-router:
       rule: "Host(`web.hccc.edu`) && PathPrefix(`/logout/oidc`)"
@@ -75,7 +98,7 @@ http:
         - security-headers@file
       priority: 810
 
-    # ADDED: Protected hello-secure endpoint for web.hccc.edu
+    # ADDED: Protected hello-secure endpoint for web.hccc.edu - HIGH PRIORITY
     web-hccc-hello-secure-router:
       rule: "Host(`web.hccc.edu`) && PathPrefix(`/hello-secure`)"
       service: oauth2-proxy-qr-dashboard-service
@@ -85,7 +108,7 @@ http:
         - redirect-to-https@file
         - public-endpoints@file  # Public access
         - security-headers@file
-      priority: 805
+      priority: 850 # Higher than dashboard catch-all (800)
 
     web-hccc-hello-secure-secure-router:
       rule: "Host(`web.hccc.edu`) && PathPrefix(`/hello-secure`)"
@@ -96,7 +119,7 @@ http:
       middlewares:
         - public-endpoints@file  # Public access
         - security-headers@file
-      priority: 805
+      priority: 850 # Higher than dashboard catch-all (800)
 
     # ADDED: Logout success endpoint for web.hccc.edu (no auth required)
     web-hccc-logout-router:
@@ -121,7 +144,7 @@ http:
         - security-headers@file
       priority: 801
 
-    # web.hccc.edu - Admin/Dashboard paths (PUBLIC with OAuth2 protection)
+    # web.hccc.edu - Admin/Dashboard paths (PROTECTED with Basic Auth)
     web-hccc-internal-dashboard-router:
       rule: "Host(`web.hccc.edu`)"  # Catch-all for everything else
       service: api-service
@@ -129,7 +152,8 @@ http:
         - web
       middlewares:
         - redirect-to-https@file
-        - public-endpoints@file  # Public access (OAuth2 provides security)
+        - public-endpoints@file  # Public access (but basic auth provides security)
+        - dashboard-auth@file    # Basic Auth for dashboard access
         - security-headers@file
       priority: 800 # Lower than /r/ paths, higher than other domains
 
@@ -140,7 +164,8 @@ http:
         - websecure
       tls: {}
       middlewares:
-        - public-endpoints@file  # Public access (OAuth2 provides security)
+        - public-endpoints@file  # Public access (but basic auth provides security)
+        - dashboard-auth@file    # Basic Auth for dashboard access
         - security-headers@file
       priority: 800
 
@@ -259,4 +284,4 @@ http:
       middlewares:
         - ip-whitelist@file      # Internal IPs only
         - security-headers@file
-      priority: 720 
+      priority: 720
