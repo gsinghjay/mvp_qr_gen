@@ -121,7 +121,7 @@ http:
         - security-headers@file
       priority: 801
 
-    # web.hccc.edu - Admin/Dashboard paths (PROTECTED with basic auth)
+    # web.hccc.edu - Admin/Dashboard paths (PUBLIC with OAuth2 protection)
     web-hccc-internal-dashboard-router:
       rule: "Host(`web.hccc.edu`)"  # Catch-all for everything else
       service: api-service
@@ -129,8 +129,7 @@ http:
         - web
       middlewares:
         - redirect-to-https@file
-        - ip-whitelist@file      # Internal IPs only
-        - dashboard-auth@file    # Basic Auth from users.htpasswd
+        - public-endpoints@file  # Public access (OAuth2 provides security)
         - security-headers@file
       priority: 800 # Lower than /r/ paths, higher than other domains
 
@@ -141,8 +140,7 @@ http:
         - websecure
       tls: {}
       middlewares:
-        - ip-whitelist@file      # Internal IPs only
-        - dashboard-auth@file    # Basic Auth from users.htpasswd
+        - public-endpoints@file  # Public access (OAuth2 provides security)
         - security-headers@file
       priority: 800
 
@@ -169,56 +167,8 @@ http:
         - public-endpoints@file  # Public access like external routing
       priority: 800
 
-    # webhost.hccc.edu (Direct VM hostname) - Admin/Internal Access
-    webhost-hccc-dashboard-router:
-      rule: "Host(`webhost.hccc.edu`)"
-      service: api-service
-      entryPoints:
-        - web
-      middlewares:
-        - redirect-to-https@file
-        - ip-whitelist@file      # Internal IPs only
-        - dashboard-auth@file    # Basic Auth for admin access
-        - security-headers@file
-      priority: 790 # High priority but below the public domains
-
-    webhost-hccc-dashboard-secure-router:
-      rule: "Host(`webhost.hccc.edu`)"
-      service: api-service
-      entryPoints:
-        - websecure
-      tls: {}
-      middlewares:
-        - ip-whitelist@file      # Internal IPs only
-        - dashboard-auth@file    # Basic Auth for admin access
-        - security-headers@file
-      priority: 790
-
-    # Regular dashboard routes - MAIN ROUTER (updated to use hostname)
-    internal-dashboard-router:
-      rule: "Host(`webhost.hccc.edu`)" # Updated from 10.1.6.12
-      service: api-service
-      entryPoints:
-        - web # HTTP
-      middlewares:
-        - redirect-to-https@file
-        - ip-whitelist@file      # Internal IPs only
-        - dashboard-auth@file    # Basic Auth
-        - security-headers@file
-      priority: 700 # RESTORED to match old working config
-
-    internal-dashboard-secure-router:
-      rule: "Host(`webhost.hccc.edu`)" # Updated from 10.1.6.12
-      service: api-service
-      entryPoints:
-        - websecure # HTTPS
-      tls: {}
-      middlewares:
-        - ip-whitelist@file      # Internal IPs only
-        - dashboard-auth@file    # Basic Auth
-        - security-headers@file
-      priority: 700 # RESTORED to match old working config
-
+    # webhost.hccc.edu specific paths - OAuth2 and monitoring only (no catch-all)
+    
     # OAuth2 Proxy callback endpoint (highest priority for this specific path)
     internal-oauth2-callback-router:
       rule: "Host(`webhost.hccc.edu`) && PathPrefix(`/oauth2/`)" # Updated from 10.1.6.12
