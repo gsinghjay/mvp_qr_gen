@@ -197,11 +197,11 @@ Our routing uses a **priority-based system** to ensure correct request handling:
 
 ```mermaid
 graph TD
-    A[🔢 Priority 820: QR Redirects (/r/)] --> B[🔢 Priority 815: OAuth2 Endpoints (/oauth2/)]
-    B --> C[🔢 Priority 810: OIDC Logout (/logout/oidc)]
-    C --> D[🔢 Priority 805: Protected Pages (/hello-secure)]
-    D --> E[🔢 Priority 800: Domain Catch-All (Basic Auth)]
-    E --> F[🔢 Priority 700: Admin Domain (IP Whitelist)]
+    A[Priority 820: QR Redirects] --> B[Priority 815: OAuth2 Endpoints]
+    B --> C[Priority 810: OIDC Logout]
+    C --> D[Priority 805: Protected Pages]
+    D --> E[Priority 800: Domain Catch-All]
+    E --> F[Priority 700: Admin Domain]
     
     style A fill:#e8f5e8
     style B fill:#fff3e0
@@ -362,7 +362,7 @@ All services communicate through a dedicated Docker network with **service disco
 graph TB
     subgraph "🐳 qr_generator_network"
         subgraph "🚦 Edge Services"
-            TRAEFIK[traefik<br/>:80, :443, :8080]
+            TRAEFIK[traefik<br/>:80, :443]
             OAUTH2[oauth2-proxy-qr-dashboard<br/>:4180]
         end
         
@@ -439,7 +439,7 @@ Our network infrastructure includes **comprehensive monitoring** that provides v
 ```mermaid
 graph TB
     subgraph "📈 Metrics Collection Layer"
-        PROM[📊 Prometheus<br/>🔍 Service Discovery<br/>⏱️ Real-time Metrics]
+        PROM[📊 Prometheus<br/>🔍 Service Discovery<br/>⏱️ Real-time Metrics<br/>https://webhost.hccc.edu/prometheus/]
         
         subgraph "📝 Log Collection Layer"
             LOKI[📝 Loki<br/>📚 Log Aggregation]
@@ -448,7 +448,7 @@ graph TB
     end
     
     subgraph "🎨 Visualization Layer"
-        GRAFANA[📊 Grafana<br/>10 Specialized Dashboards<br/>🚨 Alert Management]
+        GRAFANA[📊 Grafana<br/>10 Specialized Dashboards<br/>🚨 Alert Management<br/>https://webhost.hccc.edu/grafana/]
     end
     
     subgraph "🎯 Monitored Components"
@@ -556,24 +556,24 @@ web-hccc-oauth2-callback-secure-router:
 
 ```mermaid
 flowchart TD
-    A[🚨 Network Issue Detected] --> B{What's the symptom?}
+    A[Network Issue Detected] --> B{What is the symptom?}
     
-    B -->|Can't access website| C[🌐 DNS & Domain Issues]
-    B -->|Authentication failing| D[🔐 Auth Flow Issues]
-    B -->|Slow responses| E[⏱️ Performance Issues]
-    B -->|Service errors| F[🐳 Container Issues]
+    B -->|Cannot access website| C[DNS and Domain Issues]
+    B -->|Authentication failing| D[Auth Flow Issues]
+    B -->|Slow responses| E[Performance Issues]
+    B -->|Service errors| F[Container Issues]
     
-    C --> C1[🔍 Check DNS Resolution<br/>nslookup domain.hccc.edu]
-    C --> C2[🚦 Check Traefik Dashboard<br/>:8080 for routing]
+    C --> C1[Check DNS Resolution]
+    C --> C2[Check Service Health]
     
-    D --> D1[🔑 Check Keycloak Status<br/>auth.hccc.edu/admin]
-    D --> D2[🔐 Check OAuth2-Proxy Logs<br/>docker logs oauth2-proxy]
+    D --> D1[Check Keycloak Status]
+    D --> D2[Check OAuth2-Proxy Logs]
     
-    E --> E1[📊 Check Grafana Dashboards<br/>Performance metrics]
-    E --> E2[🏗️ Check Container Resources<br/>Memory, CPU usage]
+    E --> E1[Check Grafana Dashboards]
+    E --> E2[Check Container Resources]
     
-    F --> F1[🐳 Check Container Status<br/>docker-compose ps]
-    F --> F2[📝 Check Service Logs<br/>docker logs [service]]
+    F --> F1[Check Container Status]
+    F --> F2[Check Service Logs]
     
     style A fill:#ffebee
     style C1 fill:#e3f2fd
@@ -630,9 +630,6 @@ curl -k -s -I https://auth.hccc.edu/
 
 **Diagnostic Steps**:
 ```bash
-# Check Traefik dashboard
-curl -s http://localhost:8080/api/rawdata | jq .
-
 # Check container connectivity
 docker network inspect qr_generator_network
 
@@ -704,12 +701,12 @@ curl -s http://localhost:9090/-/healthy
 
 ```mermaid
 graph LR
-    subgraph "⚡ Performance Optimization Layers"
-        A[🌐 DNS Caching<br/>Reduce lookup time]
-        B[🚦 Traefik Optimization<br/>Connection pooling]
-        C[🔐 TLS Optimization<br/>Session reuse]
-        D[📦 Container Resources<br/>CPU/Memory limits]
-        E[💾 Database Tuning<br/>Connection pooling]
+    subgraph "Performance Optimization Layers"
+        A[DNS Caching - Reduce lookup time]
+        B[Traefik Optimization - Connection pooling]
+        C[TLS Optimization - Session reuse]
+        D[Container Resources - CPU Memory limits]
+        E[Database Tuning - Connection pooling]
     end
     
     style A fill:#e3f2fd
@@ -764,12 +761,12 @@ timeline
 
 ```mermaid
 graph TB
-    subgraph "📈 Scaling Strategies"
-        A[🔄 Horizontal Scaling<br/>Multiple API instances]
-        B[⚡ Vertical Scaling<br/>Increased VM resources]
-        C[🌍 Geographic Distribution<br/>Multi-region deployment]
-        D[💾 Database Scaling<br/>Read replicas & sharding]
-        E[📦 Container Orchestration<br/>Kubernetes deployment]
+    subgraph "Scaling Strategies"
+        A[Horizontal Scaling - Multiple API instances]
+        B[Vertical Scaling - Increased VM resources]
+        C[Geographic Distribution - Multi-region deployment]
+        D[Database Scaling - Read replicas and sharding]
+        E[Container Orchestration - Kubernetes deployment]
     end
     
     style A fill:#e8f5e8
@@ -790,9 +787,8 @@ graph TB
 | **Public QR App** | https://web.hccc.edu | Main application access |
 | **Authentication** | https://auth.hccc.edu | User login & OIDC |
 | **Admin Dashboard** | https://webhost.hccc.edu | System administration |
-| **Traefik Dashboard** | http://localhost:8080 | Routing & middleware |
-| **Grafana Monitoring** | http://localhost:3000 | System dashboards |
-| **Prometheus Metrics** | http://localhost:9090 | Raw metrics data |
+| **Grafana Monitoring** | https://webhost.hccc.edu/grafana/ | System dashboards |
+| **Prometheus Metrics** | https://webhost.hccc.edu/prometheus/ | Raw metrics data |
 
 ### Critical Commands
 
@@ -838,10 +834,10 @@ This network infrastructure provides a **robust, scalable, and secure foundation
 
 ```mermaid
 graph LR
-    A[🏗️ Solid Foundation] --> B[🚀 High Performance]
-    B --> C[🔒 Enterprise Security]
-    C --> D[📊 Complete Visibility]
-    D --> E[🌟 Excellent User Experience]
+    A[Solid Foundation] --> B[High Performance]
+    B --> C[Enterprise Security]
+    C --> D[Complete Visibility]
+    D --> E[Excellent User Experience]
     
     style A fill:#e1f5fe
     style E fill:#e8f5e8
@@ -851,5 +847,5 @@ graph LR
 
 ---
 
-*This network infrastructure guide is automatically maintained from the main repository. Last updated: 2025-05-28 14:00:00 UTC*  
-*For the latest updates, see the [project repository](https://github.com/gsinghjay/mvp_qr_gen)* 
+*This network infrastructure guide is automatically maintained from the main repository. Last updated: 2025-05-28 19:30:00 UTC*  
+*For the latest updates, see the [project repository](https://github.com/gsinghjay/mvp_qr_gen)*
