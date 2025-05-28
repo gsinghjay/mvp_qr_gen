@@ -36,6 +36,9 @@ services:
       - KC_PROXY=edge
       - KC_HTTP_ENABLED=true
       - KC_HTTP_PORT=8080
+      - KC_HOSTNAME=auth.hccc.edu
+      - KC_HOSTNAME_URL=https://auth.hccc.edu
+      - KC_HOSTNAME_STRICT=false
       - TZ=America/New_York
     ports:
       - "8180:8080"
