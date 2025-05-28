@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Logged Out - QR Code Generator{% endblock %}
+
+{% block description %}Successfully logged out from the QR Code Generator{% endblock %}
+
+{% block content %}
+<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">
+            <i class="bi bi-box-arrow-left me-2"></i>
+            Logged Out
+        </h1>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">Successfully Logged Out</h5>
+                    <p class="card-text">
+                        You have been successfully logged out from the QR Code Generator.
+                    </p>
+                    <p class="text-muted">
+                        Your session has been terminated and all authentication cookies have been cleared.
+                    </p>
+                    <div class="mt-4">
+                        <a href="/hello-secure" class="btn btn-primary">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>
+                            Login Again
+                        </a>
+                        <a href="/" class="btn btn-outline-secondary ms-2">
+                            <i class="bi bi-house me-2"></i>
+                            Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %} 
