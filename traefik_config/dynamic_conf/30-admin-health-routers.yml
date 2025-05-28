@@ -1,6 +1,6 @@
 http:
   routers:
-    # --- Health Check (Public) - Higher priority than dashboard ---
+    # --- Health Check (Public) - RESTORED to old working priority ---
     health-router:
       rule: "PathPrefix(`/health`)" # Could be Host-specific if needed, but generally public
       service: api-service
@@ -10,7 +10,7 @@ http:
         - redirect-to-https@file
         - public-endpoints@file # Allow all IPs
         - security-headers@file
-      priority: 800 # Higher than dashboard to catch health paths first
+      priority: 400 # RESTORED to match old working config
 
     health-secure-router:
       rule: "PathPrefix(`/health`)"
@@ -21,9 +21,9 @@ http:
       middlewares:
         - public-endpoints@file
         - security-headers@file
-      priority: 800 # Higher than dashboard
+      priority: 400 # RESTORED to match old working config
 
-    # --- Admin Endpoints (Internal Only) ---
+    # --- Admin Endpoints (Internal Only) - RESTORED to old working priority ---
     admin-api-router:
       rule: "PathPrefix(`/api/v1/admin/`)"
       service: api-service
@@ -34,7 +34,7 @@ http:
         - ip-whitelist@file      # Internal IPs only
         - dashboard-auth@file    # Basic Auth  
         - security-headers@file
-      priority: 750 # Higher than dashboard but lower than health
+      priority: 450 # RESTORED to match old working config
 
     admin-api-secure-router:
       rule: "PathPrefix(`/api/v1/admin/`)"
@@ -46,4 +46,4 @@ http:
         - ip-whitelist@file      # Internal IPs only
         - dashboard-auth@file    # Basic Auth
         - security-headers@file
-      priority: 750 
+      priority: 450 # RESTORED to match old working config 
