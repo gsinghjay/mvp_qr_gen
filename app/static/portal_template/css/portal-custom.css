@@ -1,0 +1,294 @@
+/* Custom fixes for portal template layout */
+
+/* Main content spacing fix */
+.main {
+  padding-top: 120px; /* Increase space to account for the fixed header */
+}
+
+/* Container layout fixes */
+.container--cols {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.container__left {
+  width: 250px;
+  padding-right: 30px;
+}
+
+.container__right {
+  flex: 1;
+  min-width: 300px;
+}
+
+@media (max-width: 768px) {
+  .container--cols {
+    flex-direction: column;
+  }
+  
+  .container__left {
+    width: 100%;
+    padding-right: 0;
+    margin-bottom: 20px;
+  }
+  
+  .container__right {
+    width: 100%;
+  }
+}
+
+/* Dashboard navigation styling */
+.dashboard-nav {
+  background-color: #00857a;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.dashboard-nav__header {
+  background-color: #006d63;
+  color: white;
+  padding: 15px;
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.dashboard-nav__links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dashboard-nav__links li {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-nav__links li:last-child {
+  border-bottom: none;
+}
+
+.dashboard-nav__links a {
+  display: block;
+  padding: 10px 15px;
+  color: white;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.dashboard-nav__links a:hover,
+.dashboard-nav__links a:focus {
+  background-color: rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+}
+
+/* Quick links styling */
+.quick-links {
+  background-color: #00857a;
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.quick-links__header {
+  color: white;
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 8px;
+}
+
+.quick-links ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.quick-links li {
+  margin-bottom: 8px;
+}
+
+.quick-links li:last-child {
+  margin-bottom: 0;
+}
+
+.quick-links a {
+  color: white;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+
+.quick-links a:hover,
+.quick-links a:focus {
+  text-decoration: underline;
+}
+
+/* Social media icons fix */
+.footer__social .social {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer__social .social li {
+  margin-right: 10px;
+}
+
+.footer__social .social li:last-child {
+  margin-right: 0;
+}
+
+.footer__social .social li a {
+  display: block;
+  width: 40px;
+  height: 40px;
+  background-size: 20px;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: 50%;
+  background-color: #fff;
+}
+
+.footer__social .social li a.facebook {
+  background-image: url('../assets/icons/facebook.svg');
+}
+
+.footer__social .social li a.instagram {
+  background-image: url('../assets/icons/instagram.svg');
+}
+
+.footer__social .social li a.tweet {
+  background-image: url('../assets/icons/twitter.svg');
+}
+
+/* Fix for main menu button */
+.main-menu__button__icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 20px;
+  height: 15px;
+  margin-right: 10px;
+}
+
+.main-menu__button__icon span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background-color: #fff;
+}
+
+/* Fix for search button */
+.header__search .search__button .close-icon {
+  position: relative;
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.header__search .search__button .close-icon span {
+  position: absolute;
+  display: block;
+  height: 2px;
+  width: 100%;
+  background-color: #fff;
+  transform-origin: center;
+}
+
+.header__search .search__button .close-icon span:first-child {
+  transform: rotate(45deg);
+}
+
+.header__search .search__button .close-icon span:last-child {
+  transform: rotate(-45deg);
+}
+
+/* Fix for plus-minus button in nav */
+.plus-minus {
+  position: relative;
+  display: block;
+  width: 12px;
+  height: 12px;
+}
+
+.plus-minus span {
+  position: absolute;
+  display: block;
+  background-color: #fff;
+}
+
+.plus-minus span:first-child {
+  width: 100%;
+  height: 2px;
+  top: 5px;
+  left: 0;
+}
+
+.plus-minus span:last-child {
+  width: 2px;
+  height: 100%;
+  top: 0;
+  left: 5px;
+}
+
+/* Fix for the secure card on hello-secure page */
+.secure-card {
+  background-color: #fff;
+  border-radius: 5px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.secure-card-title {
+  color: #00857a;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.secure-card-title i {
+  margin-right: 10px;
+  color: #00857a;
+  font-size: 1.5rem;
+}
+
+.secure-card-actions {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+}
+
+.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  margin-right: 10px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white !important;
+}
+
+.btn-primary {
+  background-color: #00857a;
+  color: white !important;
+}
+
+.btn i {
+  margin-right: 5px;
+} 

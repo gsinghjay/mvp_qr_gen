@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Shape</title>
+    <g id="Symbols" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="footer/small" transform="translate(-257.000000, -268.000000)" fill="#00857A" fill-rule="nonzero">
+            <g id="footer" transform="translate(-3.000000, 0.000000)">
+                <g id="bar">
+                    <g id="social" transform="translate(19.000000, 267.000000)">
+                        <path d="M241.8,1.95 L241.8,24.375 L264.225,24.375 L264.225,1.95 L241.8,1.95 Z M248.136735,16.575 C246.252148,16.575 244.725,15.048476 244.725,13.1630099 C244.725,11.2770338 246.252148,9.75 248.136735,9.75 C250.021322,9.75 251.55,11.2770338 251.55,13.1630099 C251.55,15.048476 250.021322,16.575 248.136735,16.575 Z M257.8875,16.575 C256.003335,16.575 254.475,15.048476 254.475,13.1630099 C254.475,11.2770338 256.003335,9.75 257.8875,9.75 C259.771665,9.75 261.3,11.2770338 261.3,13.1630099 C261.3,15.048476 259.771665,16.575 257.8875,16.575 Z" id="Shape"></path>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
