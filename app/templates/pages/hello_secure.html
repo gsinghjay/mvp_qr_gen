@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Secure Hello - QR Code Generator{% endblock %}
+
+{% block description %}Protected page displaying authenticated user information{% endblock %}
+
+{% block content %}
+<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">
+            <i class="bi bi-shield-lock me-2"></i>
+            Secure Page
+        </h1>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Authentication Success</h5>
+                    <p class="card-text">
+                        <strong>Hello, {{ preferred_username|default('User') }} ({{ email|default('No email provided') }})!</strong>
+                    </p>
+                    <p class="card-text">
+                        You have successfully accessed a protected page through OIDC authentication.
+                    </p>
+                    <div class="mt-4">
+                        <a href="/oauth2/sign_out?rd=https://10.1.6.12/" class="btn btn-outline-danger">
+                            <i class="bi bi-box-arrow-right me-2"></i>
+                            Logout
+                        </a>
+                        <a href="/" class="btn btn-outline-primary ms-2">
+                            <i class="bi bi-house me-2"></i>
+                            Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %} 
