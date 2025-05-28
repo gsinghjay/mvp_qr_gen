@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="40px" height="40px" viewBox="0 0 40 40" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>programs/legend-aa</title>
+    <g id="Pathway-Template-(Nursing)" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Pathway-Template" transform="translate(-375.000000, -663.000000)">
+            <g id="legend" transform="translate(375.000000, 663.000000)">
+                <g id="Group-5">
+                    <g id="programs/legend-aa">
+                        <g id="Group-3">
+                            <circle id="Oval-Copy-8" fill="#000000" cx="20" cy="20" r="20"></circle>
+                            <text id="AA" font-family="Helvetica" font-size="11.5384615" font-weight="normal" fill="#FFFFFF">
+                                <tspan x="12.6885517" y="23.6923077">AA</tspan>
+                            </text>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

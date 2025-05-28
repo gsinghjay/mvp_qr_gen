@@ -1,0 +1,16 @@
+<svg width="93" height="95" viewBox="0 0 93 95" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Frame 462">
+<g id="Group 314">
+<g id="Rectangle 185" opacity="0.5">
+<mask id="path-1-inside-1_41_2319" fill="white">
+<rect x="12" y="30.9102" width="68.5" height="57.7969" rx="5"/>
+</mask>
+<rect x="12" y="30.9102" width="68.5" height="57.7969" rx="5" stroke="#FFF200" stroke-width="12" mask="url(#path-1-inside-1_41_2319)"/>
+</g>
+<g id="Group 313">
+<path id="Ellipse 9" d="M64.4453 20.207C63.4362 12.2561 54.5203 6.29297 46.7852 6.29297C39.05 6.29297 29.125 12.7148 29.125 22.3477C29.125 31.9805 29.125 34.1211 29.125 34.1211" stroke="white" stroke-opacity="0.4" stroke-width="6" stroke-linecap="round"/>
+<path id="Vector 24" d="M64.4453 20.207V34.1211" stroke="#F47000" stroke-opacity="0.7" stroke-width="6" stroke-linecap="round"/>
+</g>
+</g>
+</g>
+</svg>

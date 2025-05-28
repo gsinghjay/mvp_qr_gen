@@ -1,0 +1,13 @@
+<svg width="93" height="96" viewBox="0 0 93 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Frame 457">
+<g id="Rectangle 185" opacity="0.5">
+<mask id="path-1-inside-1_795_5645" fill="white">
+<rect x="6.75" y="15.0229" width="80" height="74" rx="5"/>
+</mask>
+<rect x="6.75" y="15.0229" width="80" height="74" rx="5" stroke="#FFF200" stroke-width="12" mask="url(#path-1-inside-1_795_5645)"/>
+</g>
+<path id="Line 39" opacity="0.4" d="M28.75 28.0229V9.02295" stroke="#2B3990" stroke-width="6" stroke-linecap="round"/>
+<path id="Line 40" opacity="0.4" d="M64.75 27.0229V8.02295" stroke="#2B3990" stroke-width="6" stroke-linecap="round"/>
+<path id="Line 41" opacity="0.4" d="M9.75 45.0229L83.75 45.0229" stroke="white" stroke-width="6" stroke-linecap="round"/>
+</g>
+</svg>
