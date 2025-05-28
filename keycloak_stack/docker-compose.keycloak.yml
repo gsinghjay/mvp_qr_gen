@@ -25,7 +25,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:24.0.1
     container_name: keycloak_service
-    command: start-dev
+    command: start
     environment:
       - KC_DB=postgres
       - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/keycloak
@@ -33,12 +33,18 @@ services:
       - KC_DB_PASSWORD=${KC_DB_PASSWORD:-keycloak_password}
       - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
       - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-admin_password}
+      - KC_PRODUCTION=true
       - KC_PROXY=edge
       - KC_HTTP_ENABLED=true
       - KC_HTTP_PORT=8080
-      - KC_HOSTNAME=auth.hccc.edu
       - KC_HOSTNAME_URL=https://auth.hccc.edu
+      - KC_HOSTNAME_ADMIN_URL=https://auth.hccc.edu
       - KC_HOSTNAME_STRICT=false
+      - KC_HOSTNAME_STRICT_HTTPS=false
+      - KC_HOSTNAME_STRICT_BACKCHANNEL=false
+      - KC_HOSTNAME_DEBUG=true
+      - KC_SPI_LOGIN_PROTOCOL_OPENID_CONNECT_LEGACY_LOGOUT_REDIRECT_URI=true
+      - KC_LOG_LEVEL=INFO
       - TZ=America/New_York
     ports:
       - "8180:8080"
@@ -48,10 +54,11 @@ services:
       keycloak-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/admin/"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
     restart: unless-stopped
     networks:
       - shared-services-network
