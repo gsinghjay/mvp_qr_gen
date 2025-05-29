@@ -21,7 +21,7 @@ from .services.new_analytics_service import NewAnalyticsService
 from .services.new_validation_service import NewValidationService
 
 # Circuit breaker imports
-import pybreaker
+import aiobreaker
 from .core.circuit_breaker import get_new_qr_generation_breaker
 
 
@@ -104,7 +104,7 @@ def get_qr_service(
     qr_code_repo: Annotated[QRCodeRepository, Depends(get_qr_code_repository)],
     scan_log_repo: Annotated[ScanLogRepository, Depends(get_scan_log_repository)],
     new_qr_generation_service: Annotated[NewQRGenerationService, Depends(get_new_qr_generation_service)],
-    new_qr_generation_breaker: Annotated[pybreaker.CircuitBreaker, Depends(get_new_qr_generation_breaker)]
+    new_qr_generation_breaker: Annotated[aiobreaker.CircuitBreaker, Depends(get_new_qr_generation_breaker)]
 ) -> QRCodeService:
     """
     Dependency for getting a QRCodeService instance.
