@@ -292,8 +292,9 @@ async def redirect_qr_to_qr_list():
 @router.get("/hello-secure", response_class=HTMLResponse)
 async def hello_secure(
     request: Request,
-    x_auth_request_email: Optional[str] = Header(None, alias="X-Auth-Request-Email"),
-    x_auth_request_preferred_username: Optional[str] = Header(None, alias="X-Auth-Request-Preferred-Username")
+    x_forwarded_email: Optional[str] = Header(None, alias="X-Forwarded-Email"),
+    x_forwarded_preferred_username: Optional[str] = Header(None, alias="X-Forwarded-Preferred-Username"),
+    x_forwarded_groups: Optional[str] = Header(None, alias="X-Forwarded-Groups")
 ):
     """
     Protected page that displays authenticated user information.
@@ -303,22 +304,33 @@ async def hello_secure(
     
     Args:
         request: The FastAPI request object.
-        x_auth_request_email: Email address of the authenticated user (from oauth2-proxy).
-        x_auth_request_preferred_username: Preferred username of the authenticated user (from oauth2-proxy).
+        x_forwarded_email: Email address of the authenticated user (from oauth2-proxy).
+        x_forwarded_preferred_username: Preferred username of the authenticated user (from oauth2-proxy).
+        x_forwarded_groups: Group memberships of the authenticated user (from oauth2-proxy).
         
     Returns:
         HTMLResponse: The rendered secure hello page with user information.
     """
     try:
-        logger.info(f"Secure page accessed with auth headers: email={x_auth_request_email}, username={x_auth_request_preferred_username}")
+        # DEBUG: Log ALL headers to see what oauth2-proxy is sending
+        all_headers = dict(request.headers)
+        auth_headers = {k: v for k, v in all_headers.items() if k.lower().startswith('x-forwarded') or k.lower().startswith('x-auth')}
+        logger.info(f"AUTH HEADERS: {auth_headers}")
+        
+        # Parse groups from comma-separated string
+        groups_list = x_forwarded_groups.split(',') if x_forwarded_groups else []
+        
+        logger.info(f"Secure page accessed with auth headers: email={x_forwarded_email}, username={x_forwarded_preferred_username}, groups={groups_list}")
         
         return templates.TemplateResponse(
             name="pages/hello_secure.html",
             context={
                 "request": request,
-                "email": x_auth_request_email,
-                "preferred_username": x_auth_request_preferred_username,
+                "email": x_forwarded_email,
+                "preferred_username": x_forwarded_preferred_username,
+                "groups": groups_list,
                 "page_title": "Secure Hello Page",
+                "all_headers": auth_headers,  # Pass auth headers to template for debugging
             },
         )
     except Exception as e:
@@ -330,7 +342,7 @@ async def hello_secure(
                 "error": "An error occurred while loading the secure page",
             },
             status_code=500,
-        ) 
+        )
 
 
 @router.get("/logout", response_class=HTMLResponse)
@@ -364,9 +376,9 @@ async def logout_success(request: Request):
 @router.get("/logout/oidc", response_class=RedirectResponse)
 async def oidc_logout(
     request: Request,
-    x_auth_request_access_token: Optional[str] = Header(None, alias="X-Auth-Request-Access-Token"),
-    x_auth_request_user: Optional[str] = Header(None, alias="X-Auth-Request-User"),
-    x_auth_request_email: Optional[str] = Header(None, alias="X-Auth-Request-Email"),
+    x_forwarded_access_token: Optional[str] = Header(None, alias="X-Forwarded-Access-Token"),
+    x_forwarded_user: Optional[str] = Header(None, alias="X-Forwarded-User"),
+    x_forwarded_email: Optional[str] = Header(None, alias="X-Forwarded-Email"),
     authorization: Optional[str] = Header(None)
 ):
     """
@@ -379,9 +391,9 @@ async def oidc_logout(
     
     Args:
         request: The FastAPI request object.
-        x_auth_request_access_token: Access token from OAuth2-Proxy headers.
-        x_auth_request_user: User ID from OAuth2-Proxy headers.
-        x_auth_request_email: Email from OAuth2-Proxy headers.
+        x_forwarded_access_token: Access token from OAuth2-Proxy headers.
+        x_forwarded_user: User ID from OAuth2-Proxy headers.
+        x_forwarded_email: Email from OAuth2-Proxy headers.
         authorization: Authorization header containing Bearer token.
         
     Returns:
@@ -394,78 +406,76 @@ async def oidc_logout(
         
         # Log all available headers for debugging
         all_headers = dict(request.headers)
-        logger.info(f"OIDC logout - Available headers: {list(all_headers.keys())}")
-        logger.info(f"OIDC logout - Auth headers: access_token={bool(x_auth_request_access_token)}, user={x_auth_request_user}, email={x_auth_request_email}")
+        auth_headers = {k: v for k, v in all_headers.items() if k.lower().startswith('x-forwarded') or k.lower().startswith('x-auth')}
+        logger.info(f"OIDC logout - Auth headers: {auth_headers}")
+        logger.info(f"OIDC logout - Token info: access_token={bool(x_forwarded_access_token)}, user={x_forwarded_user}, email={x_forwarded_email}")
         
         # Try to extract ID token from various sources
         id_token = None
         
-        # Method 1: Check Authorization header
-        if authorization and authorization.startswith("Bearer "):
-            potential_token = authorization[7:]  # Remove "Bearer " prefix
-            logger.info(f"Found Authorization Bearer token: {potential_token[:50]}...")
-            
-            # Try to decode and check if it's an ID token (has 'aud' claim)
-            try:
-                # JWT tokens have 3 parts separated by dots
-                if potential_token.count('.') == 2:
-                    # Decode the payload (middle part) without verification for inspection
-                    header, payload, signature = potential_token.split('.')
-                    # Add padding if needed
-                    payload += '=' * (4 - len(payload) % 4)
-                    decoded_payload = base64.urlsafe_b64decode(payload)
-                    token_data = json.loads(decoded_payload)
-                    
-                    logger.info(f"Token claims: {list(token_data.keys())}")
-                    
-                    # Check if this looks like an ID token (has 'aud', 'iss', 'sub' claims)
-                    if all(claim in token_data for claim in ['aud', 'iss', 'sub']):
-                        id_token = potential_token
-                        logger.info("Using Authorization header token as ID token")
-                    else:
-                        logger.info("Authorization token doesn't appear to be an ID token")
+        # Method 1: Check Authorization header for ID token
+        if authorization and "," in authorization:
+            # OAuth2-proxy sometimes sends: "Basic ..., Bearer <id_token>"
+            auth_parts = authorization.split(", Bearer ")
+            if len(auth_parts) > 1:
+                potential_id_token = auth_parts[1]
+                logger.info(f"Found potential ID token from Authorization header: {potential_id_token[:50]}...")
+                
+                try:
+                    # Decode and check if it's an ID token
+                    if potential_id_token.count('.') == 2:
+                        header, payload, signature = potential_id_token.split('.')
+                        payload += '=' * (4 - len(payload) % 4)
+                        decoded_payload = base64.urlsafe_b64decode(payload)
+                        token_data = json.loads(decoded_payload)
                         
-            except Exception as e:
-                logger.warning(f"Could not decode Authorization token: {e}")
+                        # ID tokens have typ: "ID" while access tokens have typ: "Bearer"
+                        if token_data.get('typ') == 'ID':
+                            id_token = potential_id_token
+                            logger.info("Found valid ID token in Authorization header")
+                        else:
+                            logger.info(f"Token in Authorization header is type: {token_data.get('typ')}, not ID token")
+                            
+                except Exception as e:
+                    logger.warning(f"Could not decode Authorization token: {e}")
         
-        # Method 2: Check X-Auth-Request-Access-Token header  
-        if not id_token and x_auth_request_access_token:
-            logger.info(f"Found X-Auth-Request-Access-Token: {x_auth_request_access_token[:50]}...")
-            # This might actually be the ID token depending on OAuth2-Proxy config
-            id_token = x_auth_request_access_token
+        # Method 2: Skip access token as it's not an ID token
+        # OAuth2-proxy access tokens are Bearer tokens, not ID tokens
+        if x_forwarded_access_token:
+            logger.info("Found X-Forwarded-Access-Token but skipping as it's an access token, not ID token")
+        
+        # If no ID token found, proceed without id_token_hint
+        if not id_token:
+            logger.info("No ID token found - proceeding with logout without id_token_hint")
         
         # Construct the base logout URL
         base_logout_url = "https://auth.hccc.edu/realms/hccc-apps-realm/protocol/openid-connect/logout"
-        # Use public domain for post-logout redirect
         post_logout_redirect_uri = "https://web.hccc.edu/logout"
         
-        # Build logout parameters
-        logout_params = {
-            "post_logout_redirect_uri": post_logout_redirect_uri
-        }
+        # Build logout URL manually without encoding individual parameters
+        # Include client_id so Keycloak knows which client is requesting logout
+        keycloak_logout_url = f"{base_logout_url}?client_id=oauth2-proxy-client&post_logout_redirect_uri={post_logout_redirect_uri}"
         
         # Add id_token_hint if we have an ID token
         if id_token:
-            logout_params["id_token_hint"] = id_token
+            keycloak_logout_url += f"&id_token_hint={id_token}"
             logger.info("OIDC logout with id_token_hint")
         else:
             logger.warning("OIDC logout without id_token_hint - may show confirmation page")
             # Add a hint about the user for better UX
-            if x_auth_request_email:
-                logout_params["login_hint"] = x_auth_request_email
+            if x_forwarded_email:
+                keycloak_logout_url += f"&login_hint={x_forwarded_email}"
         
-        # Construct the full Keycloak logout URL
-        keycloak_logout_url = f"{base_logout_url}?{urlencode(logout_params)}"
-        
-        # URL encode the Keycloak logout URL for OAuth2-Proxy redirect
+        # Only URL encode the entire keycloak logout URL for OAuth2-Proxy redirect
         oauth2_proxy_logout_url = f"/oauth2/sign_out?rd={quote(keycloak_logout_url)}"
         
-        logger.info(f"Redirecting to OAuth2-Proxy logout: {oauth2_proxy_logout_url}")
+        logger.info(f"Keycloak logout URL: {keycloak_logout_url}")
+        logger.info(f"OAuth2-Proxy logout URL: {oauth2_proxy_logout_url}")
         
         return RedirectResponse(url=oauth2_proxy_logout_url, status_code=status.HTTP_302_FOUND)
         
     except Exception as e:
         logger.error(f"Error in OIDC logout endpoint", extra={"error": str(e)})
         # Fallback to simple OAuth2-Proxy logout
-        fallback_logout_url = f"/oauth2/sign_out?rd={quote('https://10.1.6.12/logout')}"
+        fallback_logout_url = f"/oauth2/sign_out?rd={quote('https://web.hccc.edu/logout')}"
         return RedirectResponse(url=fallback_logout_url, status_code=status.HTTP_302_FOUND) 
