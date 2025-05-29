@@ -8,7 +8,6 @@ prometheus-client==0.22.0  # Metrics client
 segno==1.6.6  # QR code generation
 qrcode-artistic==3.0.2  # Artistic QR codes with to_pil() support
 Pillow==11.2.1  # Image processing
-pybreaker==1.3.0  # Circuit breaker pattern for service resilience
 aiobreaker==1.2.0  # Async circuit breaker for asyncio compatibility
 cairosvg==2.8.2  # SVG to PNG conversion for logo support
 psutil==7.0.0  # System metrics for health checks
