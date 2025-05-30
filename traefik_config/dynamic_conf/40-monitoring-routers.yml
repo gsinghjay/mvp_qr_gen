@@ -1,0 +1,58 @@
+http:
+  routers:
+    # --- Direct Access (Simplified) ---
+    # Traefik Dashboard: https://webhost.hccc.edu:8443/dashboard/
+    # Prometheus:       https://webhost.hccc.edu/prometheus/
+    # Grafana:          https://webhost.hccc.edu/grafana/
+    
+    # --- Grafana on webhost.hccc.edu (subpath working) ---
+    grafana-webhost-router:
+      rule: "Host(`webhost.hccc.edu`) && PathPrefix(`/grafana`)"
+      service: grafana-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file
+        - dashboard-auth@file
+        - security-headers@file
+      priority: 830
+
+    grafana-webhost-secure-router:
+      rule: "Host(`webhost.hccc.edu`) && PathPrefix(`/grafana`)"
+      service: grafana-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - ip-whitelist@file
+        - dashboard-auth@file
+        - security-headers@file
+      priority: 830
+
+    # --- Prometheus via HTTPS subpath ---
+    prometheus-dashboard-router:
+      rule: "Host(`webhost.hccc.edu`) && PathPrefix(`/prometheus/`)"
+      service: prometheus-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file
+        - dashboard-auth@file
+        - strip-prometheus-prefix@file
+        - security-headers@file
+      priority: 840
+
+    prometheus-dashboard-secure-router:
+      rule: "Host(`webhost.hccc.edu`) && PathPrefix(`/prometheus/`)"
+      service: prometheus-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - ip-whitelist@file
+        - dashboard-auth@file
+        - strip-prometheus-prefix@file
+        - security-headers@file
+      priority: 840

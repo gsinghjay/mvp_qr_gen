@@ -48,6 +48,7 @@ services:
       - ./tests:/app/tests # Mount the top-level tests directory for E2E tests
       - ./app/scripts:/app/scripts # Mount scripts for immediate availability without rebuild (includes init.sh)
       - test_advanced_qr_images:/app/test_advanced_qr_images # Use a named volume to avoid permission issues
+      - qr_codes_data:/app/app/static/assets/images/qr_codes # Use a named volume for QR codes
       - /var/run/docker.sock:/var/run/docker.sock:ro # Allow container to control Docker (for backup/restore API management)
       - ./.env:/app/.env:ro # Mount .env file for init.sh script
     healthcheck:
@@ -125,14 +126,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro # So Traefik can listen to Docker events
       - ./certs:/etc/certs:ro                         # Mount your certificates
       - ./traefik.yml:/etc/traefik/traefik.yml:ro     # Static configuration
-      - ./dynamic_conf.yml:/etc/traefik/dynamic_conf.yml:ro # Dynamic configuration
+      - ./traefik_config/dynamic_conf:/etc/traefik/conf.d:ro # Dynamic configuration directory
       - ./users.htpasswd:/etc/traefik/users.htpasswd:ro # Basic Auth users file
       - traefik_logs:/logs/traefik # For Traefik's own logs, if configured in traefik.yml
     ports:
       - "80:80"       # HTTP
       - "443:443"     # HTTPS
-      - "8080:8080"   # Traefik Dashboard (if entryPoint 'traefik' is on :8080)
-      - "8082:8082"   # Metrics endpoint (if entryPoint 'metrics' is on :8082)
+      - "8082:8082"   # Metrics endpoint
     restart: unless-stopped
     extra_hosts:
       - "10.1.6.12:host-gateway" # Maps the host IP to this hostname inside the container
@@ -150,12 +150,12 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=30d'
       - '--web.enable-lifecycle'
+      - '--web.external-url=https://webhost.hccc.edu/prometheus/'
+      - '--web.route-prefix=/prometheus/'
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
@@ -228,6 +228,19 @@ services:
     depends_on:
       - loki
 
+  # OAuth2 Proxy for authentication
+  oauth2-proxy-qr-dashboard:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+    container_name: qr_generator_oauth2_proxy
+    command: --config=/etc/oauth2-proxy/oauth2-proxy.cfg
+    volumes:
+      - ./oauth2-proxy:/etc/oauth2-proxy
+    restart: unless-stopped
+    ports:
+      - "4180:4180"
+    depends_on:
+      - api
+
 networks:
   default:
     name: qr_generator_network
@@ -251,4 +264,6 @@ volumes:
   loki_data:
     driver: local
   test_advanced_qr_images:
+    driver: local
+  qr_codes_data:
     driver: local

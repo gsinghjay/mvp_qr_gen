@@ -1,0 +1,107 @@
+http:
+  middlewares:
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+    access-restricted-redirect:
+      redirectRegex:
+        regex: "^.*$" # Matches any path
+        replacement: "/static/access-restricted.html"
+        permanent: false # Important: false, so direct access to the page itself works
+
+    rate-limit:
+      rateLimit:
+        average: 60
+        burst: 10
+        period: 1m
+
+    qr-redirect-rate-limit:
+      rateLimit:
+        average: 300  # 5 requests per second (300/minute) - handles classroom scenarios
+        burst: 50     # Allow 50 rapid scans (entire classroom can scan within 10 seconds)
+        period: 1m
+
+    ip-whitelist: # For internal dashboard and management
+      ipWhiteList:
+        sourceRange:
+          - "10.1.6.0/23"
+          - "127.0.0.1/32"
+          - "172.16.0.0/12" # Docker default bridge
+          - "192.168.0.0/16" # Common private
+          - "10.0.0.0/8" # Common private
+          - "69.114.94.0/24" # Your specified external network for admin
+          # Add other trusted IPs/ranges for admin access
+
+    public-endpoints: # For truly public paths like /r/ and /health
+      ipWhiteList:
+        sourceRange:
+          - "0.0.0.0/0" # Allow all
+
+    oidc-auth-hello-secure:
+      forwardAuth:
+        address: "http://oauth2-proxy-qr-dashboard:4180/oauth2/auth"
+        authResponseHeaders:
+          - "X-Auth-Request-User"
+          - "X-Auth-Request-Email"
+          - "X-Auth-Request-Preferred-Username"
+          - "X-Auth-Request-Access-Token"
+        trustForwardHeader: true
+
+    keycloak-headers:
+      headers:
+        customResponseHeaders:
+          X-Content-Type-Options: "nosniff"
+          X-XSS-Protection: "1; mode=block"
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        forceSTSHeader: true
+        # UPDATED: Enhanced CSP for Keycloak with proper iframe support using hostname
+        contentSecurityPolicy: "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; font-src 'self'; frame-src 'self' https://webhost.hccc.edu:8180 https://auth.hccc.edu; frame-ancestors 'self'; object-src 'none'; connect-src 'self' https: wss:;"
+        # Allow Keycloak to be embedded in iframes from the same origin
+        customFrameOptionsValue: "SAMEORIGIN"
+
+    security-headers:
+      headers:
+        customResponseHeaders:
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "DENY"
+          X-XSS-Protection: "1; mode=block"
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        forceSTSHeader: true
+        contentSecurityPolicy: "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://www.youtube.com https://traefik.github.io; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; frame-ancestors 'self'; object-src 'none'; frame-src https://www.youtube.com;"
+        customFrameOptionsValue: "DENY"
+
+    grafana-cors-headers:
+      headers:
+        customResponseHeaders:
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "SAMEORIGIN"  # Allow Grafana to frame itself
+          X-XSS-Protection: "1; mode=block"
+          Access-Control-Allow-Origin: "*"  # Allow all origins for RSS feeds
+          Access-Control-Allow-Methods: "GET,POST,OPTIONS,PUT,DELETE,PATCH"
+          Access-Control-Allow-Headers: "Accept,Authorization,Cache-Control,Content-Type,DNT,If-Modified-Since,Keep-Alive,Origin,User-Agent,X-Requested-With,X-Grafana-Org-Id,X-Panel-Id,X-Dashboard-Id"
+          Access-Control-Allow-Credentials: "true"
+          Access-Control-Max-Age: "86400"
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        forceSTSHeader: true
+        contentSecurityPolicy: "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com; frame-ancestors 'self'; object-src 'none'; connect-src 'self' https: wss: https://webhost.hccc.edu https://webhost.hccc.edu https://grafana.com https://grafana.net;"
+
+    dashboard-auth: # Basic Auth for dashboard/internal routes (keeping for non-OIDC protected routes)
+      basicAuth:
+        usersFile: "/etc/traefik/users.htpasswd"
+        realm: "QR System - Authorized Access Only"
+        # headerField: "X-WebAuth-User" # Optional: if you want to pass user to backend
+
+    strip-traefik-prefix:
+      stripPrefix:
+        prefixes:
+          - "/traefik"
+
+    strip-prometheus-prefix:
+      stripPrefix:
+        prefixes:
+          - "/prometheus" 

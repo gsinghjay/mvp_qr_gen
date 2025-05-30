@@ -1,0 +1,49 @@
+http:
+  routers:
+    # --- Health Check (Public) - RESTORED to old working priority ---
+    health-router:
+      rule: "PathPrefix(`/health`)" # Could be Host-specific if needed, but generally public
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file # Allow all IPs
+        - security-headers@file
+      priority: 400 # RESTORED to match old working config
+
+    health-secure-router:
+      rule: "PathPrefix(`/health`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - public-endpoints@file
+        - security-headers@file
+      priority: 400 # RESTORED to match old working config
+
+    # --- Admin Endpoints (Internal Only) - RESTORED to old working priority ---
+    admin-api-router:
+      rule: "PathPrefix(`/api/v1/admin/`)"
+      service: api-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - ip-whitelist@file      # Internal IPs only
+        - dashboard-auth@file    # Basic Auth  
+        - security-headers@file
+      priority: 450 # RESTORED to match old working config
+
+    admin-api-secure-router:
+      rule: "PathPrefix(`/api/v1/admin/`)"
+      service: api-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - ip-whitelist@file      # Internal IPs only
+        - dashboard-auth@file    # Basic Auth
+        - security-headers@file
+      priority: 450 # RESTORED to match old working config 

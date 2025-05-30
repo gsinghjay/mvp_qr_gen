@@ -1,0 +1,124 @@
+{% extends "base_portal.html" %}
+
+{% block head_extra %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+  .logout-card {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 2rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  
+  .logout-icon {
+    font-size: 4rem;
+    color: #28a745;
+    margin-bottom: 1rem;
+  }
+  
+  .logout-title {
+    color: #495057;
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+  
+  .logout-message {
+    color: #6c757d;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+  
+  .logout-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .btn-home {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 5px;
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-home:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+    color: white;
+    text-decoration: none;
+  }
+  
+  .btn-login {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 5px;
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-login:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(40,167,69,0.3);
+    color: white;
+    text-decoration: none;
+  }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="logout-card">
+  <div class="logout-icon">
+    <i class="bi bi-check-circle-fill"></i>
+  </div>
+  
+  <h2 class="logout-title">
+    Successfully Logged Out
+  </h2>
+  
+  <p class="logout-message">
+    You have been securely logged out of the QR Code Generator application and all associated services. 
+    Your session has been terminated at all authentication levels.
+  </p>
+  
+  <div class="logout-actions">
+    <a href="https://web.hccc.edu/" class="btn-home">
+      <i class="bi bi-house-door"></i>
+      Return Home
+    </a>
+    <a href="https://web.hccc.edu/hello-secure" class="btn-login">
+      <i class="bi bi-box-arrow-in-right"></i>
+      Sign In Again
+    </a>
+  </div>
+</div>
+
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <h5 class="card-title text-muted">
+            <i class="bi bi-shield-check"></i>
+            Security Information
+          </h5>
+          <p class="card-text text-muted small">
+            For your security, we recommend closing your browser window if you're using a public computer.
+            You can access the QR Code Generator public features without authentication, or sign in again to access protected features.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} 

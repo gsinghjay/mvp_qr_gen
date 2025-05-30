@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="22px" height="22px" viewBox="0 0 22 22" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>button/yellow-arrow</title>
+    <g id="Symbols" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="button/teal-arrow-22px" stroke-width="2">
+            <g id="button/yellow-arrow">
+                <g id="button">
+                    <rect id="Rectangle-Copy-2" stroke="#00857A" fill="#00857A" x="1" y="1" width="20" height="20" rx="10"></rect>
+                    <polyline id="Rectangle" stroke="#FFFFFF" stroke-linecap="square" transform="translate(10.035534, 10.914214) rotate(-45.000000) translate(-10.035534, -10.914214) " points="12.5355339 8.41421356 12.5355339 13.4142136 7.53553391 13.4142136"></polyline>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

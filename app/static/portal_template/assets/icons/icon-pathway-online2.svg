@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="35px" height="29px" viewBox="0 0 35 29" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>programs/legend-afa</title>
+    <g id="Pathway-Template-(Nursing)" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Pathway-Template---Mobile" transform="translate(-77.000000, -1474.000000)" fill="#A3AAD9">
+            <g id="programs/legend-online" transform="translate(68.000000, 1462.000000)">
+                <g id="noun_wifi_2123917" transform="translate(9.000000, 12.000000)">
+                    <g id="Group" fill-rule="nonzero">
+                        <path d="M11.2170732,19.14 L13.7780488,21.9872727 C16.0258418,19.8468737 19.4948899,19.8468737 21.7426829,21.9872727 L24.3036585,19.1663636 C20.5900634,15.7132537 14.9437684,15.7018789 11.2170732,19.14 Z" id="Path"></path>
+                        <path d="M5.94146341,13.3927273 L8.50243902,16.2663636 C13.6927028,11.1475222 21.8792485,11.1475222 27.0695122,16.2663636 L29.6304878,13.4190909 C22.9562636,6.84398908 12.4364193,6.84398908 5.76219512,13.4190909 L5.94146341,13.3927273 Z" id="Path"></path>
+                        <path d="M17.9268293,0.58 C11.489699,0.548970568 5.2922123,3.09148824 0.640243902,7.67181818 L3.30365854,10.5454545 C11.4393152,2.5071772 24.2862945,2.5071772 32.4219512,10.5454545 L34.9829268,7.69818182 C30.3925606,3.16493339 24.2878048,0.617178151 17.9268293,0.58 Z" id="Path"></path>
+                        <ellipse id="Oval" cx="17.8756098" cy="26.3109091" rx="2.56097561" ry="2.63636364"></ellipse>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

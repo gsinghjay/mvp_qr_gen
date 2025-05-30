@@ -1,0 +1,16 @@
+<svg width="70" height="73" viewBox="0 0 70 73" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Frame 431">
+<g id="Group 307">
+<path id="Vector 9" opacity="0.7" d="M18.2609 32.1H36.5217" stroke="#F47000" stroke-width="4.56522" stroke-linecap="round"/>
+<path id="Vector 10" opacity="0.7" d="M18.2609 41.2305H36.5217" stroke="#F47000" stroke-width="4.56522" stroke-linecap="round"/>
+<path id="Vector 11" opacity="0.7" d="M18.2609 50.3608H36.5217" stroke="#F47000" stroke-width="4.56522" stroke-linecap="round"/>
+</g>
+<path id="Vector 12" opacity="0.4" d="M18.6414 19.926V10.4152C18.6414 9.57474 19.3227 8.89343 20.1631 8.89343H55.924C56.7644 8.89343 57.4457 9.57474 57.4457 10.4152V51.1217C57.4457 51.9621 56.7644 52.6434 55.924 52.6434H46.4131" stroke="white" stroke-width="4.56522" stroke-linecap="round"/>
+<g id="Rectangle 185" opacity="0.5">
+<mask id="path-5-inside-1_746_4809" fill="white">
+<rect x="5.32605" y="17.6434" width="43.3696" height="47.9348" rx="3.80435"/>
+</mask>
+<rect x="5.32605" y="17.6434" width="43.3696" height="47.9348" rx="3.80435" stroke="#FFF200" stroke-width="9.13043" mask="url(#path-5-inside-1_746_4809)"/>
+</g>
+</g>
+</svg>

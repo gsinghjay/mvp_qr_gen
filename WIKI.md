@@ -17,6 +17,7 @@ The GitHub Wiki serves as the **public documentation** for the QR Code Generator
 | **[Home](https://github.com/gsinghjay/mvp_qr_gen/wiki/Home)** | Main navigation and overview | All users | Manual |
 | **[Getting Started](https://github.com/gsinghjay/mvp_qr_gen/wiki/Getting-Started)** | Quick setup guide | New users | Manual |
 | **[System Architecture](https://github.com/gsinghjay/mvp_qr_gen/wiki/System-Architecture)** | Technical overview | Developers | Auto (from README.md) |
+| **[Network Infrastructure Guide](https://github.com/gsinghjay/mvp_qr_gen/wiki/Network-Infrastructure-Guide)** | Complete network architecture | IT Staff, DevOps | Auto (from NETWORK_INFRASTRUCTURE.md) |
 | **[Observatory Overview](https://github.com/gsinghjay/mvp_qr_gen/wiki/Observatory-Overview)** | Monitoring overview | DevOps | Auto (from GRAFANA.md) |
 | **[Wiki Maintenance Guide](https://github.com/gsinghjay/mvp_qr_gen/wiki/Wiki-Maintenance-Guide)** | Wiki maintenance | Maintainers | Auto (from WIKI.md) |
 
@@ -24,6 +25,11 @@ The GitHub Wiki serves as the **public documentation** for the QR Code Generator
 
 | Page | Source | Update Method |
 |------|--------|---------------|
+| **System Architecture** | README.md (Infrastructure Architecture section) | Auto-sync |
+| **Network Infrastructure Guide** | NETWORK_INFRASTRUCTURE.md | Auto-sync |
+| **Observatory Overview** | GRAFANA.md | Auto-sync |
+| **Backup & Recovery Guide** | BACKUP-RESTORE.md | Auto-sync |
+| **Wiki Maintenance Guide** | WIKI.md | Auto-sync |
 | **Alert System** | Manual creation in wiki | Manual editing |
 | **Dashboard Suite** | Manual creation in wiki | Manual editing |
 | **Key Prometheus Queries for Developers** | Manual creation in wiki | Manual editing |
@@ -173,6 +179,7 @@ git push origin master
 
 #### **Configuration** (DevOps)
 - Docker Deployment
+- Network Infrastructure Guide
 - Traefik Configuration
 - Environment Configuration
 
@@ -198,6 +205,7 @@ git push origin master
 | Content Type | Source Location | Update Method |
 |--------------|-----------------|---------------|
 | **Architecture Docs** | `docs/` directory | Auto-sync |
+| **Network Infrastructure** | `NETWORK_INFRASTRUCTURE.md` | Auto-sync |
 | **Setup Guides** | Manual creation | Manual editing |
 | **API Reference** | Generated from code | Manual/Auto hybrid |
 | **Configuration** | Config files + docs | Auto-sync |
@@ -283,6 +291,8 @@ git log --oneline -5
 
 - **Wiki Home**: https://github.com/gsinghjay/mvp_qr_gen/wiki
 - **Main Repository**: https://github.com/gsinghjay/mvp_qr_gen
+- **Network Infrastructure Guide**: https://github.com/gsinghjay/mvp_qr_gen/wiki/Network-Infrastructure-Guide
+- **Observatory Overview**: https://github.com/gsinghjay/mvp_qr_gen/wiki/Observatory-Overview
 - **Update Script**: `scripts/update_wiki.sh`
 - **GitHub Actions**: `.github/workflows/update-wiki.yml`
 

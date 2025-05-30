@@ -60,6 +60,7 @@ RUN adduser --disabled-password --gecos '' appuser \
                 /logs/database \
                 /logs/traefik \
                 /app/app/static/assets/images \
+                /app/app/static/assets/images/qr_codes \
                 /app/app/static/qr_codes \
                 /app/app/templates \
                 /app/test_advanced_qr_images \
@@ -69,6 +70,8 @@ RUN adduser --disabled-password --gecos '' appuser \
     && chmod -R 775 /logs \
     && chmod -R 777 /app/data \
     && chmod 777 /app/test_advanced_qr_images \
+    && chmod -R 777 /app/app/static/assets/images/qr_codes \
+    && chmod -R 777 /app/app/static/qr_codes \
     && chmod -R 755 /app/tests  # Ensure tests directory is readable and executable
 
 # Copy virtual environment from builder

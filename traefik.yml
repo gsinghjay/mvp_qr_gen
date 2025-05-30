@@ -47,10 +47,6 @@ entryPoints:
     http:
       tls: {}  # Empty TLS config, actual certificates in dynamic_conf.yml
   
-  traefik:
-    address: ":8080"  # Consider changing or restricting
-    # NEEDED: Should this be exposed? If yes, how to secure?
-  
   metrics:
     address: ":8082"
     # NEEDED: Should this be restricted to specific IPs?
@@ -61,12 +57,11 @@ providers:
     exposedByDefault: false
     network: qr_generator_network            # Confirm network name
   file:
-    filename: /etc/traefik/dynamic_conf.yml
+    directory: /etc/traefik/conf.d/
     watch: true
 
 api:
-  dashboard: true  # NEEDED: Should this be enabled in production?
-  # NEEDED: How to secure the dashboard?
-  insecure: false  # Changed from true for production
+  dashboard: false
+  insecure: true
 
 # Remove certificatesResolvers since we're using provided certificates 
