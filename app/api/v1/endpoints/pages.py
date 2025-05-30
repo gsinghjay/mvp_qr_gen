@@ -294,7 +294,9 @@ async def hello_secure(
     request: Request,
     x_forwarded_email: Optional[str] = Header(None, alias="X-Forwarded-Email"),
     x_forwarded_preferred_username: Optional[str] = Header(None, alias="X-Forwarded-Preferred-Username"),
-    x_forwarded_groups: Optional[str] = Header(None, alias="X-Forwarded-Groups")
+    x_forwarded_groups: Optional[str] = Header(None, alias="X-Forwarded-Groups"),
+    x_forwarded_roles: Optional[str] = Header(None, alias="X-Forwarded-Roles"),
+    x_forwarded_access_token: Optional[str] = Header(None, alias="X-Forwarded-Access-Token")
 ):
     """
     Protected page that displays authenticated user information.
@@ -307,6 +309,8 @@ async def hello_secure(
         x_forwarded_email: Email address of the authenticated user (from oauth2-proxy).
         x_forwarded_preferred_username: Preferred username of the authenticated user (from oauth2-proxy).
         x_forwarded_groups: Group memberships of the authenticated user (from oauth2-proxy).
+        x_forwarded_roles: Role memberships of the authenticated user (from oauth2-proxy).
+        x_forwarded_access_token: Access token for additional debugging.
         
     Returns:
         HTMLResponse: The rendered secure hello page with user information.
@@ -317,10 +321,57 @@ async def hello_secure(
         auth_headers = {k: v for k, v in all_headers.items() if k.lower().startswith('x-forwarded') or k.lower().startswith('x-auth')}
         logger.info(f"AUTH HEADERS: {auth_headers}")
         
-        # Parse groups from comma-separated string
-        groups_list = x_forwarded_groups.split(',') if x_forwarded_groups else []
+        # Parse groups from both possible headers (sAMAccountName can come through either)
+        groups_list = []
+        if x_forwarded_groups:
+            groups_list.extend(x_forwarded_groups.split(','))
+        if x_forwarded_roles:
+            groups_list.extend(x_forwarded_roles.split(','))
         
+        # Remove duplicates and empty strings
+        groups_list = list(filter(None, list(set(groups_list))))
+        
+        # Enhanced debugging for Azure AD groups with sAMAccountName
+        debug_info = {
+            "groups_header_raw": x_forwarded_groups,
+            "roles_header_raw": x_forwarded_roles,
+            "groups_parsed": groups_list,
+            "groups_count": len(groups_list),
+            "has_access_token": bool(x_forwarded_access_token),
+            "token_preview": x_forwarded_access_token[:50] + "..." if x_forwarded_access_token else None,
+            "samaccountname_mode": "Expected sAMAccountName group format"
+        }
+        
+        logger.info(f"AZURE AD sAMAccountName GROUP DEBUG: {debug_info}")
         logger.info(f"Secure page accessed with auth headers: email={x_forwarded_email}, username={x_forwarded_preferred_username}, groups={groups_list}")
+        
+        # Try to decode access token for additional group information
+        token_groups = []
+        if x_forwarded_access_token:
+            try:
+                import base64
+                import json
+                # Simple JWT decode (not validating signature for debugging)
+                parts = x_forwarded_access_token.split('.')
+                if len(parts) == 3:
+                    payload = parts[1]
+                    # Add padding if needed
+                    payload += '=' * (4 - len(payload) % 4)
+                    decoded = base64.urlsafe_b64decode(payload)
+                    token_data = json.loads(decoded)
+                    
+                    # Check various possible group claim locations for sAMAccountName
+                    token_groups = (
+                        token_data.get('groups', []) or 
+                        token_data.get('roles', []) or 
+                        token_data.get('realm_access', {}).get('roles', []) or
+                        token_data.get('resource_access', {}).get('oauth2-proxy-client', {}).get('roles', []) or
+                        []
+                    )
+                    logger.info(f"TOKEN GROUPS (sAMAccountName) FOUND: {token_groups}")
+                    logger.info(f"Full token payload for debugging: {json.dumps(token_data, indent=2)}")
+            except Exception as e:
+                logger.warning(f"Could not decode access token for group debugging: {e}")
         
         return templates.TemplateResponse(
             name="pages/hello_secure.html",
@@ -329,6 +380,8 @@ async def hello_secure(
                 "email": x_forwarded_email,
                 "preferred_username": x_forwarded_preferred_username,
                 "groups": groups_list,
+                "token_groups": token_groups,
+                "debug_info": debug_info,
                 "page_title": "Secure Hello Page",
                 "all_headers": auth_headers,  # Pass auth headers to template for debugging
             },
