@@ -331,7 +331,7 @@ async def hello_secure(
         # Remove duplicates and empty strings
         groups_list = list(filter(None, list(set(groups_list))))
         
-        # Enhanced debugging for Azure AD groups with sAMAccountName
+        # Enhanced debugging for Azure AD groups with role mapping
         debug_info = {
             "groups_header_raw": x_forwarded_groups,
             "roles_header_raw": x_forwarded_roles,
@@ -339,7 +339,7 @@ async def hello_secure(
             "groups_count": len(groups_list),
             "has_access_token": bool(x_forwarded_access_token),
             "token_preview": x_forwarded_access_token[:50] + "..." if x_forwarded_access_token else None,
-            "samaccountname_mode": "Expected sAMAccountName group format"
+            "azure_ad_status": "Checking for Azure AD groups and mapped roles"
         }
         
         logger.info(f"AZURE AD sAMAccountName GROUP DEBUG: {debug_info}")
@@ -361,14 +361,19 @@ async def hello_secure(
                     token_data = json.loads(decoded)
                     
                     # Check various possible group claim locations for sAMAccountName
-                    token_groups = (
-                        token_data.get('groups', []) or 
-                        token_data.get('roles', []) or 
-                        token_data.get('realm_access', {}).get('roles', []) or
-                        token_data.get('resource_access', {}).get('oauth2-proxy-client', {}).get('roles', []) or
-                        []
-                    )
-                    logger.info(f"TOKEN GROUPS (sAMAccountName) FOUND: {token_groups}")
+                    # Priority: client roles first, then realm roles, then direct groups/roles claims
+                    client_roles = token_data.get('resource_access', {}).get('oauth2-proxy-client', {}).get('roles', [])
+                    realm_roles = token_data.get('realm_access', {}).get('roles', [])
+                    direct_groups = token_data.get('groups', [])
+                    direct_roles = token_data.get('roles', [])
+                    
+                    # Combine all roles with client roles first (most important)
+                    token_groups = client_roles + realm_roles + direct_groups + direct_roles
+                    
+                    logger.info(f"TOKEN GROUPS (Client Roles): {client_roles}")
+                    logger.info(f"TOKEN GROUPS (Realm Roles): {realm_roles}")
+                    logger.info(f"TOKEN GROUPS (Direct Groups): {direct_groups}")
+                    logger.info(f"TOKEN GROUPS (All Combined): {token_groups}")
                     logger.info(f"Full token payload for debugging: {json.dumps(token_data, indent=2)}")
             except Exception as e:
                 logger.warning(f"Could not decode access token for group debugging: {e}")
@@ -393,6 +398,269 @@ async def hello_secure(
             context={
                 "request": request,
                 "error": "An error occurred while loading the secure page",
+            },
+            status_code=500,
+        )
+
+
+@router.get("/portal-demo", response_class=HTMLResponse)
+async def portal_demo(request: Request):
+    """
+    Portal navigation demo page.
+    
+    This endpoint demonstrates the new HCCC portal template with full navigation
+    structure based on the iFactory design.
+    
+    Args:
+        request: The FastAPI request object.
+        
+    Returns:
+        HTMLResponse: The portal demo page with navigation.
+    """
+    try:
+        return templates.TemplateResponse(
+            "pages/portal_demo.html",
+            {
+                "request": request,
+                "page_title": "Portal Navigation Demo",
+                "page_description": "Demonstration of the new HCCC portal template with ifactory navigation",
+                "user_name": "Demo User",
+                "user_role": "Faculty",
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error rendering portal demo page: {e}")
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error": "An error occurred while loading the portal demo page",
+            },
+            status_code=500,
+        )
+
+
+@router.get("/hccc-portal", response_class=HTMLResponse)
+async def hccc_portal(request: Request):
+    """
+    HCCC Portal homepage based on the actual iFactory design.
+    
+    This endpoint serves the proper HCCC faculty and staff portal with
+    the institutional design that was paid for, including proper navigation,
+    announcements, deadlines, and faculty toolkit.
+    
+    Args:
+        request: The FastAPI request object.
+        
+    Returns:
+        HTMLResponse: The HCCC portal homepage.
+    """
+    try:
+        return templates.TemplateResponse(
+            "pages/hccc_portal.html",
+            {
+                "request": request,
+                "page_title": "My HCCC Portal - Faculty & Staff",
+                "page_description": "Hudson County Community College Faculty and Staff Portal",
+                "page_header": "My HCCC Portal",
+                "show_alert": True,
+                "alert_title": "Portal Launch",
+                "alert_message": "Welcome to the new HCCC Faculty & Staff Portal with enhanced navigation and resources.",
+                "alert_link": "#",
+                "current_year": datetime.now().year,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error rendering HCCC portal page: {e}")
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error": "An error occurred while loading the HCCC portal",
+            },
+            status_code=500,
+        )
+
+
+@router.get("/student-portal", response_class=HTMLResponse)
+async def student_homepage(
+    request: Request,
+    x_forwarded_email: Optional[str] = Header(None, alias="X-Forwarded-Email"),
+    x_forwarded_preferred_username: Optional[str] = Header(None, alias="X-Forwarded-Preferred-Username"),
+):
+    """
+    HCCC Student Portal homepage based on the iFactory design.
+    
+    This endpoint serves the student-specific portal with student-focused
+    content including student toolkit, announcements, important dates,
+    and student support resources.
+    
+    Args:
+        request: The FastAPI request object.
+        x_forwarded_email: User email from OAuth2-Proxy headers (optional).
+        x_forwarded_preferred_username: Username from OAuth2-Proxy headers (optional).
+        
+    Returns:
+        HTMLResponse: The HCCC student portal homepage.
+    """
+    try:
+        # Extract user name from email or username for personalization
+        user_name = None
+        if x_forwarded_email:
+            # Extract first name from email (e.g., john.doe@hccc.edu -> John)
+            user_part = x_forwarded_email.split('@')[0]
+            if '.' in user_part:
+                user_name = user_part.split('.')[0].title()
+        elif x_forwarded_preferred_username:
+            # Extract first name from username
+            user_part = x_forwarded_preferred_username.split('@')[0]
+            if '.' in user_part:
+                user_name = user_part.split('.')[0].title()
+        
+        return templates.TemplateResponse(
+            "pages/student_homepage.html",
+            {
+                "request": request,
+                "page_title": "My HCCC Portal - Student",
+                "page_description": "Hudson County Community College Student Portal",
+                "page_header": "My HCCC Student Portal", 
+                "user_name": user_name,
+                "email": x_forwarded_email,
+                "preferred_username": x_forwarded_preferred_username,
+                "show_alert": True,
+                "alert_title": "Important Reminder",
+                "alert_message": "Finals week is approaching! Don't forget to check your final exam schedule and visit the tutoring center for help.",
+                "alert_link": "#",
+                "current_year": datetime.now().year,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error rendering student portal page: {e}")
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error": "An error occurred while loading the student portal",
+            },
+            status_code=500,
+        )
+
+
+@router.get("/faculty-hr", response_class=HTMLResponse)
+async def faculty_hr_portal(
+    request: Request,
+    x_forwarded_email: Optional[str] = Header(None, alias="X-Forwarded-Email"),
+    x_forwarded_preferred_username: Optional[str] = Header(None, alias="X-Forwarded-Preferred-Username"),
+):
+    """
+    HCCC Faculty & Staff HR Portal based on the iFactory design.
+    
+    This endpoint serves the HR-specific portal for faculty and staff with
+    HR-focused content including onboarding toolkit, HR forms, contact
+    information, and employee resources.
+    
+    Args:
+        request: The FastAPI request object.
+        x_forwarded_email: User email from OAuth2-Proxy headers (optional).
+        x_forwarded_preferred_username: Username from OAuth2-Proxy headers (optional).
+        
+    Returns:
+        HTMLResponse: The HCCC Faculty & Staff HR portal.
+    """
+    try:
+        # Extract user name from email or username for personalization
+        user_name = None
+        if x_forwarded_email:
+            # Extract first name from email (e.g., john.doe@hccc.edu -> John)
+            user_part = x_forwarded_email.split('@')[0]
+            if '.' in user_part:
+                user_name = user_part.split('.')[0].title()
+        elif x_forwarded_preferred_username:
+            # Extract first name from username
+            user_part = x_forwarded_preferred_username.split('@')[0]
+            if '.' in user_part:
+                user_name = user_part.split('.')[0].title()
+        
+        return templates.TemplateResponse(
+            "pages/faculty_hr.html",
+            {
+                "request": request,
+                "page_title": "Human Resources - Faculty & Staff Portal",
+                "page_description": "Hudson County Community College Faculty & Staff HR Portal",
+                "page_header": "Human Resources Portal", 
+                "user_name": user_name,
+                "email": x_forwarded_email,
+                "preferred_username": x_forwarded_preferred_username,
+                "current_year": datetime.now().year,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error rendering faculty HR portal page: {e}")
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error": "An error occurred while loading the HR portal",
+            },
+            status_code=500,
+        )
+
+
+@router.get("/student-academics", response_class=HTMLResponse)
+async def student_academics_portal(
+    request: Request,
+    x_forwarded_email: Optional[str] = Header(None, alias="X-Forwarded-Email"),
+    x_forwarded_preferred_username: Optional[str] = Header(None, alias="X-Forwarded-Preferred-Username"),
+):
+    """
+    HCCC Student Academics Portal based on the iFactory design.
+    
+    This endpoint serves the academics-focused portal for students with
+    academic resources including enrollment toolkit, support services,
+    on-campus resources, and academic contact information.
+    
+    Args:
+        request: The FastAPI request object.
+        x_forwarded_email: User email from OAuth2-Proxy headers (optional).
+        x_forwarded_preferred_username: Username from OAuth2-Proxy headers (optional).
+        
+    Returns:
+        HTMLResponse: The HCCC Student Academics portal.
+    """
+    try:
+        # Extract user name from email or username for personalization
+        user_name = None
+        if x_forwarded_email:
+            # Extract first name from email (e.g., john.doe@hccc.edu -> John)
+            user_part = x_forwarded_email.split('@')[0]
+            if '.' in user_part:
+                user_name = user_part.split('.')[0].title()
+        elif x_forwarded_preferred_username:
+            # Extract first name from username
+            user_part = x_forwarded_preferred_username.split('@')[0]
+            if '.' in user_part:
+                user_name = user_part.split('.')[0].title()
+        
+        return templates.TemplateResponse(
+            "pages/student_academics.html",
+            {
+                "request": request,
+                "page_title": "Student Academics - Student Portal",
+                "page_description": "Hudson County Community College Student Academics Portal",
+                "page_header": "Student Academics Portal", 
+                "user_name": user_name,
+                "email": x_forwarded_email,
+                "preferred_username": x_forwarded_preferred_username,
+                "current_year": datetime.now().year,
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error rendering student academics portal page: {e}")
+        return templates.TemplateResponse(
+            "error.html",
+            {
+                "request": request,
+                "error": "An error occurred while loading the student academics portal",
             },
             status_code=500,
         )
