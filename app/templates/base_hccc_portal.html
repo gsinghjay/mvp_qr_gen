@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>{{ page_title|default("My HCCC Portal") }}</title>
+  <meta name="description" content="{{ page_description|default("HCCC Faculty and Staff Portal") }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,200;1,300;1,400;1,600;1,700;1,800&display=swap" rel="stylesheet">
+  
+  <!-- External CSS -->
+  <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css"/>
+  
+  <!-- Main institutional CSS (what the institution paid for) -->
+  <link rel="stylesheet" href="{{ url_for('static', path='portal_template/css/main-ifactory.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='portal_template/css/main-intranet.css') }}">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="{{ url_for('static', path='portal_template/assets/favicon/favicon.ico') }}">
+  
+  {% block head_extra %}{% endblock %}
+</head>
+
+<body class="intranet">
+  <div class="wrapper">
+
+    <!-- Campus Alert (conditional) -->
+    {% if show_alert %}
+    <div class="container alert-display">
+      <div class="alert alert--intranet">
+        <div class="alert__content">
+          <div class="alert__message">
+            <div class="alert__description">
+              <strong>{{ alert_title|default("Campus Alert") }}</strong> 
+              {{ alert_message|default("Important campus information") }}
+            </div>
+          </div>
+          {% if alert_link %}
+          <a href="{{ alert_link }}" class="alert__cta">Learn More</a>
+          {% endif %}
+          <button class="alert__close"><span class="visually-hidden">close alert</span></button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Header with Navigation -->
+    <header role="banner" class="header--intranet">
+      <a href="#main" class="skip-link visually-hidden">Skip to content</a>
+
+      <div class="header__inner">
+        <div class="header__logo">
+          <a href="/">
+            <img src="{{ url_for('static', path='portal_template/assets/icons/intranet-logo.png') }}" alt="my hudson logo" />
+          </a>
+        </div>
+
+        <div class="header__ancillary">
+          <a href="#" class="header__language">Select Language</a>
+          <a href="https://www.hccc.edu" class="header__hccc">HCCC Site 
+            <svg class="icon-external" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M12 4L4 12M12 4H8M12 4V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+        </div>
+
+        <div class="header__search" role="search">
+          <button class="search__button" aria-expanded="false">
+            <span class="visually-hidden">search</span>
+            <span class="close-icon">
+              <span></span>
+              <span></span>
+            </span>
+          </button>
+          <form action="#" aria-hidden="true" class="search-form">
+            <label class="visually-hidden" for="nav-search">search</label>
+            <input type="search" name="nav-search" id="nav-search" placeholder="Search">
+            <button type="submit" class="search__button"><span class="visually-hidden">submit</span></button>
+          </form>
+        </div>
+
+        <div class="header__menu">
+          <button class="main-menu__button" aria-expanded="false">
+            <span class="main-menu__button__icon">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+            <span>Menu</span>
+          </button>
+          <div class="main-menu__dropdown" aria-hidden="true">
+            <div class="main-menu__inner">
+
+              <a href="#" class="header__language header__language--mobile">Select Language</a>
+
+              <nav aria-label="main">
+                <ul class="inner-nav">
+                  <li>
+                    <a href="#">Academics</a>
+                    <button class="inner-nav__button" aria-expanded="false">
+                      <span class="visually-hidden">expand inner nav</span>
+                      <span class="plus-minus">
+                        <span></span>
+                        <span></span>
+                      </span>
+                    </button>
+                    <ul class="inner-nav__dropdown" aria-hidden="true">
+                      <li><a href="#">Enrollment/Registrar</a></li>
+                      <li class="ext"><a href="#">Directory</a></li>
+                      <li class="ext"><a href="#">LibertyLink</a></li>
+                      <li class="ext"><a href="#">Elevate</a></li>
+                      <li class="ext"><a href="#">Navigate App</a></li>
+                      <li class="ext"><a href="#">Canvas</a></li>
+                      <li class="ext"><a href="#">Course Dog</a></li>
+                      <li><a href="#">Career Services</a></li>
+                      <li class="ext"><a href="#">Transfer Pathways</a></li>
+                    </ul>
+                  </li>
+
+                  <li>
+                    <a href="#">HR</a>
+                    <button class="inner-nav__button" aria-expanded="false">
+                      <span class="visually-hidden">expand inner nav</span>
+                      <span class="plus-minus">
+                        <span></span>
+                        <span></span>
+                      </span>
+                    </button>
+                    <ul class="inner-nav__dropdown" aria-hidden="true">
+                      <li><a href="#">Employee Services</a></li>
+                      <li><a href="#">Benefits</a></li>
+                      <li><a href="#">Professional Development</a></li>
+                      <li><a href="#">Policies</a></li>
+                      <li><a href="#">Timesheets</a></li>
+                      <li><a href="#">Directory</a></li>
+                    </ul>
+                  </li>
+
+                  <li>
+                    <a href="#">Financial Services</a>
+                    <button class="inner-nav__button" aria-expanded="false">
+                      <span class="visually-hidden">expand inner nav</span>
+                      <span class="plus-minus">
+                        <span></span>
+                        <span></span>
+                      </span>
+                    </button>
+                    <ul class="inner-nav__dropdown" aria-hidden="true">
+                      <li><a href="#">Budget & Finance</a></li>
+                      <li><a href="#">Purchasing</a></li>
+                      <li><a href="#">Accounts Payable</a></li>
+                      <li><a href="#">Financial Aid</a></li>
+                    </ul>
+                  </li>
+
+                  <li>
+                    <a href="#">Faculty + Staff Services</a>
+                    <button class="inner-nav__button" aria-expanded="false">
+                      <span class="visually-hidden">expand inner nav</span>
+                      <span class="plus-minus">
+                        <span></span>
+                        <span></span>
+                      </span>
+                    </button>
+                    <ul class="inner-nav__dropdown" aria-hidden="true">
+                      <li><a href="#">QR Code Generator</a></li>
+                      <li><a href="#">IT Services</a></li>
+                      <li><a href="#">Facilities</a></li>
+                      <li><a href="#">Safety & Security</a></li>
+                      <li><a href="#">Marketing Resources</a></li>
+                    </ul>
+                  </li>
+
+                  <li>
+                    <a href="#">Tools + Resources</a>
+                    <button class="inner-nav__button" aria-expanded="false">
+                      <span class="visually-hidden">expand inner nav</span>
+                      <span class="plus-minus">
+                        <span></span>
+                        <span></span>
+                      </span>
+                    </button>
+                    <ul class="inner-nav__dropdown" aria-hidden="true">
+                      <li><a href="/">QR Code Generator</a></li>
+                      <li><a href="#">Campus Calendar</a></li>
+                      <li><a href="#">Forms & Documents</a></li>
+                      <li><a href="#">Technology Support</a></li>
+                    </ul>
+                  </li>
+                </ul>
+              </nav>
+              
+              <!-- Quick Links in Mobile Menu -->
+              <div class="main-menu__quick-links quick-links">
+                <p class="quick-links__header">Quick Links</p>
+                <nav aria-label="quick links">
+                  <ul>
+                    <li class="ext"><a href="#">Canvas 
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                        <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                      </svg>
+                    </a></li>
+                    <li class="ext"><a href="#">LibertyBank 
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                        <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                      </svg>
+                    </a></li>
+                    <li class="ext"><a href="#">Navigate App 
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                        <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                      </svg>
+                    </a></li>
+                    <li class="ext"><a href="#">Self Service 
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                        <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                      </svg>
+                    </a></li>
+                    <li class="ext"><a href="#">WebEx 
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                        <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                      </svg>
+                    </a></li>
+                    <li class="ext"><a href="#">Get Involved 
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                        <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                      </svg>
+                    </a></li>
+                  </ul>
+                </nav>
+
+                <div class="dropdown quicklinks-dropdown">
+                  <button class="dropdown__button" aria-expanded="false">
+                    <span>All college Council</span>
+                  </button>
+                  <ul class="dropdown__dropdown" aria-hidden="true" style="display: none;">
+                    <li><a href="#">placeholder</a></li>
+                  </ul>
+                </div>
+
+                <div class="dropdown quicklinks-dropdown">
+                  <button class="dropdown__button" aria-expanded="false">
+                    <span>Microsoft 365</span>
+                  </button>
+                  <ul class="dropdown__dropdown" aria-hidden="true" style="display: none;">
+                    <li><a href="#">placeholder</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main role="main" id="main" class="main">
+      <div class="container container--cols container--cols-intranet">
+        <div class="container__left">
+          <!-- Sidebar Quick Links -->
+          <div class="quick-links">
+            <p class="quick-links__header">Quick Links</p>
+            <ul role="navigation" aria-label="quick links">
+              <li class="ext"><a href="#">Canvas 
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                  <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                </svg>
+              </a></li>
+              <li class="ext"><a href="#">LibertyBank 
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                  <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                </svg>
+              </a></li>
+              <li class="ext"><a href="#">Navigate App 
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                  <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                </svg>
+              </a></li>
+              <li class="ext"><a href="#">Self Service 
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                  <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                </svg>
+              </a></li>
+              <li class="ext"><a href="#">WebEx 
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                  <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                </svg>
+              </a></li>
+              <li class="ext"><a href="#">Get Involved 
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14.2394 0.744263H9.84936C9.42255 0.744263 9.07196 1.09485 9.07196 1.52166C9.07196 1.94847 9.42255 2.29906 9.84936 2.29906H12.3492L5.07826 9.58528C4.77339 9.89014 4.77339 10.3779 5.07826 10.6828C5.23069 10.8352 5.42885 10.9114 5.62701 10.9114C5.82517 10.9114 6.02333 10.8352 6.17576 10.6828L13.462 3.41181V5.91168C13.462 6.33849 13.8126 6.68908 14.2394 6.68908C14.6662 6.68908 15.0168 6.33849 15.0168 5.91168V1.52166C15.0168 1.09485 14.6662 0.744263 14.2394 0.744263Z" fill="white"/>
+                  <path d="M12.2271 7.95427C11.8003 7.95427 11.4497 8.30486 11.4497 8.73167V11.8565C11.4497 12.8626 10.6266 13.6704 9.63579 13.6704H3.91962C2.91357 13.6704 2.10569 12.8473 2.10569 11.8565V6.14034C2.10569 5.13429 2.92882 4.32641 3.91962 4.32641H7.04446C7.47127 4.32641 7.82186 3.97581 7.82186 3.54901C7.82186 3.1222 7.47127 2.77161 7.04446 2.77161H3.91962C2.05996 2.77161 0.535645 4.28068 0.535645 6.15558V11.8718C0.535645 13.7314 2.04471 15.2557 3.91962 15.2557H9.63579C11.4955 15.2557 13.0198 13.7467 13.0198 11.8718V8.73167C13.0045 8.30486 12.6539 7.95427 12.2271 7.95427Z" fill="white"/>
+                </svg>
+              </a></li>
+            </ul>
+
+            <div class="dropdown quicklinks-dropdown">
+              <button class="dropdown__button" aria-expanded="false">
+                <span>All college Council</span>
+              </button>
+              <ul class="dropdown__dropdown" aria-hidden="true" style="display: none;">
+                <li><a href="#">placeholder</a></li>
+              </ul>
+            </div>
+            
+            <div class="dropdown quicklinks-dropdown">
+              <button class="dropdown__button" aria-expanded="false">
+                <span>Microsoft 365</span>
+              </button>
+              <ul class="dropdown__dropdown" aria-hidden="true" style="display: none;">
+                <li><a href="#">placeholder</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div class="container__right">
+          <!-- Page Header -->
+          <section class="page-intro">
+            <h1>{{ page_header|default("My HCCC Portal") }}</h1>
+          </section>
+          <hr>
+          
+          <!-- Main Content Area -->
+          {% block content %}{% endblock %}
+        </div>
+      </div>
+    </main>
+
+    <!-- Back to Top -->
+    <button class="intranet-back-to-top">
+      <span class="visually-hidden">back to top</span>
+    </button>
+
+    <!-- Footer -->
+    <footer role="contentinfo" class="footer footer--intranet">
+      <div class="footer__inner">
+        <div class="footer__top">
+          <a class="footer__hccc" href="https://www.hccc.edu">HCCC Site 
+            <svg class="icon-external" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M12 4L4 12M12 4H8M12 4V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+
+          <div class="footer__top__col">
+            <div class="footer__logo">
+              <a href="/">
+                <img src="{{ url_for('static', path='portal_template/assets/icons/logo-teal.svg') }}" alt="Hudson county community college logo">
+              </a>
+            </div>
+
+            <div class="footer__location">
+              <div class="address">
+                70 Sip Avenue<br>
+                Jersey City, New Jersey 07306
+              </div>
+              <div class="contact">
+                <span>201-714-7100</span>
+                <span>
+                  <a href="https://www.hccc.edu/contact">Contact Us</a>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer__social">
+            <ul class="social">
+              <li>
+                <a href="#" class="facebook"><span class="visually-hidden">facebook</span></a>
+              </li>
+              <li>
+                <a href="#" class="instagram"><span class="visually-hidden">instagram</span></a>
+              </li>
+              <li>
+                <a href="#" class="tweet"><span class="visually-hidden">twitter</span></a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer__bottom">
+          <div class="footer__bottom__col">
+            <div class="footer__ancillary">
+              <ul>
+                <li><a href="#">Privacy</a></li>
+                <li><a href="#">FERPA</a></li>
+                <li><a href="#">Terms of Use</a></li>
+                <li><a href="#">Legal Notice</a></li>
+                <li><a href="#">Title IX</a></li>
+                <li><a href="#">Directory</a></li>
+                <li><a href="#">Careers</a></li>
+                <li><a href="#">MyHudson</a></li>
+              </ul>
+            </div>
+
+            <div class="footer__copyright">&copy; {{ current_year }} Hudson County Community College. All rights reserved.</div>
+          </div>
+
+          <div class="footer__ifactory">Site design by <a href="https://www.ifactory.com/">iFactory</a></div>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- JavaScript - ifactory way (compiled bundle includes jQuery and everything) -->
+  <script src="{{ url_for('static', path='portal_template/js/main-intranet.min.js') }}"></script>
+  
+
+  {% block scripts %}{% endblock %}
+</body>
+
+</html> 
