@@ -1,0 +1,268 @@
+{% extends "base_hccc_portal.html" %}
+
+{% block head_extra %}
+<!-- Student-specific meta or styles can go here -->
+{% endblock %}
+
+{% block content %}
+<!-- Student Welcome Section -->
+<section class="page-intro">
+  <h1>Welcome, {{ preferred_username|default('Student') }}!</h1>
+  {% if email %}
+  <p class="text-muted">{{ email }}</p>
+  {% endif %}
+</section>
+
+<!-- Student Campus Alert Banner -->
+<section class="banner section">
+  <div class="banner__inner">
+    <div class="banner__content">
+      <div class="banner__content__col">
+        <h2 class="banner__header section__header">Reminder!</h2>
+        <div class="section__intro banner__intro">
+          <p>As finals approach, make sure to meet with a <a href="#" target="_blank">tutor</a> or <a href="#" target="_blank">academic advisor</a> to help you prepare! Don't let the stress get you down. Stay focused and remember the holidays are just around the corner!</p>
+        </div>
+      </div>
+      <div class="banner__content__col">
+        <a class="cta cta--button" href="#" target="_blank">Learn More</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Announcements Section -->
+<section class="announcements section">
+  <div class="announcements__inner">
+    <div class="announcements__top">
+      <h2 class="announcements__header section__header">Announcements</h2>
+    </div>
+
+    <div class="announcements__cards">
+      <div class="announce-card">
+        <h3 class="announce-card__header">Spring 2025 Registration Now Open</h3>
+        <div class="announce-card__date">DEC 10</div>
+        <div class="announce-card__body">
+          <p>Register for spring semester classes now. <a href="#" target="_blank">Advisors are available</a> to help you plan your schedule and ensure you're on track for graduation.</p>
+        </div>
+      </div>
+
+      <div class="announce-card">
+        <h3 class="announce-card__header">Final Exam Schedule Available</h3>
+        <div class="announce-card__date">DEC 08</div>
+        <div class="announce-card__body">
+          <p><a href="#" target="_blank">Check your final exam schedule</a> in Self Service. Remember that final exams are worth a significant portion of your grade.</p>
+        </div>
+      </div>
+
+      <div class="announce-card">
+        <h3 class="announce-card__header">Winter Break Campus Hours</h3>
+        <div class="announce-card__date">DEC 05</div>
+        <div class="announce-card__body">
+          <p>Campus services will operate on reduced hours during winter break. Check the academic calendar for specific dates and times.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Important Dates Section -->
+<section class="deadlines section">
+  <div class="deadlines__inner">
+    <div class="deadlines__top">
+      <h2 class="deadlines__header section__header">Important Dates</h2>
+    </div>
+
+    <ul class="deadlines__list">
+      <li class="deadline">
+        <span class="deadline__date">DEC 16</span>
+        <span class="deadline__title">Fall Semester Ends</span>
+      </li>
+      <li class="deadline">
+        <span class="deadline__date">DEC 17-23</span>
+        <span class="deadline__title">Final Examinations</span>
+      </li>
+      <li class="deadline">
+        <span class="deadline__date">JAN 21</span>
+        <span class="deadline__title"><a href="#" target="_blank">Spring Semester Begins</a></span>
+      </li>
+      <li class="deadline">
+        <span class="deadline__date">JAN 27</span>
+        <span class="deadline__title">Add/Drop Deadline</span>
+      </li>
+      <li class="deadline">
+        <span class="deadline__date">FEB 01</span>
+        <span class="deadline__title"><a href="#" target="_blank">FAFSA & Financial Aid Applications Open</a></span>
+      </li>
+    </ul>
+
+    <a class="cta cta--button" href="#" target="_blank">Full Academic Calendar</a>
+  </div>
+</section>
+
+<!-- Student Toolkit -->
+<section class="i-link-list section">
+  <div class="i-link-list__inner">
+    <div class="i-link-list__top">
+      <h2 class="i-link-list__header section__header">Student Toolkit</h2>
+      <div class="section__intro i-link-list__intro">Use these resources to prepare for the semester and succeed in your classes.</div>
+    </div>
+
+    <div class="i-link-list__icons">
+      <a href="#" class="icon" target="_blank">
+        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-1.svg') }}" alt="">
+        <h3 class="icon__header">
+          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="12" fill="#FFC72C"/>
+            <path d="M10.5 8.5L14 12L10.5 15.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          My Financial Aid
+        </h3>
+      </a>
+
+      <a href="#" class="icon" target="_blank">
+        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-2.svg') }}" alt="">
+        <h3 class="icon__header">
+          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="12" fill="#FFC72C"/>
+            <path d="M10.5 8.5L14 12L10.5 15.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Register For Classes
+        </h3>
+      </a>
+
+      <a href="#" class="icon" target="_blank">
+        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-3.svg') }}" alt="">
+        <h3 class="icon__header">
+          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="12" fill="#FFC72C"/>
+            <path d="M10.5 8.5L14 12L10.5 15.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          My Grades
+        </h3>
+      </a>
+
+      <a href="#" class="icon" target="_blank">
+        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-4.svg') }}" alt="">
+        <h3 class="icon__header">
+          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="12" fill="#FFC72C"/>
+            <path d="M10.5 8.5L14 12L10.5 15.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          My Transcripts
+        </h3>
+      </a>
+
+      <a href="#" class="icon" target="_blank">
+        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-5.svg') }}" alt="">
+        <h3 class="icon__header">
+          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="12" fill="#FFC72C"/>
+            <path d="M10.5 8.5L14 12L10.5 15.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Getting to Campus
+        </h3>
+      </a>
+
+      <a href="#" class="icon" target="_blank">
+        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-6.svg') }}" alt="">
+        <h3 class="icon__header">
+          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="12" fill="#FFC72C"/>
+            <path d="M10.5 8.5L14 12L10.5 15.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Academic Calendar
+        </h3>
+      </a>
+
+      <a href="#" class="icon" target="_blank">
+        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-7.svg') }}" alt="">
+        <h3 class="icon__header">
+          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="12" fill="#FFC72C"/>
+            <path d="M10.5 8.5L14 12L10.5 15.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Academic Advising
+        </h3>
+      </a>
+
+      <a href="#" class="icon" target="_blank">
+        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-8.svg') }}" alt="">
+        <h3 class="icon__header">
+          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="12" fill="#FFC72C"/>
+            <path d="M10.5 8.5L14 12L10.5 15.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Library
+        </h3>
+      </a>
+    </div>
+
+    <div class="i-link-list__bottom">
+      Can't find what you are looking for? Go to <a href="#" target="_blank">I Am a Current Student</a>
+    </div>
+  </div>
+</section>
+
+<!-- Career Journey Section -->
+<section class="fifty-fifty section">
+  <div class="fifty-fifty__inner">
+    <div class="fifty-fifty__image">
+      <picture>
+        <source media='(min-width: 700px)' srcset='{{ url_for("static", path="portal_template/assets/img/fifty-fifty-01.png") }}' />
+        <source media='(min-width: 1024px)' srcset='{{ url_for("static", path="portal_template/assets/img/fifty-fifty-01.png") }}' />
+        <img src='{{ url_for("static", path="portal_template/assets/img/fifty-fifty-01.png") }}' alt='Students working on career planning' />
+      </picture>
+    </div>
+    <div class="fifty-fifty__content">
+      <h2 class="fifty-fifty__title">Let's Work on Your Career Journey</h2>
+      <div class="fifty-fifty__body">
+        <p>Meet with a career coach to discuss your future goals and your plan for reaching them. Then, join us at the career fair to talk to your future employer!</p>
+      </div>
+      <a href="#" class="cta cta--button" target="_blank">Career Fair</a>
+      <a href="#" class="cta cta--button" target="_blank">Career Services</a>
+    </div>
+  </div>
+</section>
+
+<!-- Student Support Resources -->
+<section class="link-and-summary-list section">
+  <div class="link-and-summary-list__inner">
+    <div class="link-and-summary-list__top">
+      <h2 class="link-and-summary-list__header section__header">Student Support</h2>
+      <div class="link-and-summary-list__intro">We're here to help you succeed. Access resources and tools to support your academic journey.</div>
+      <a class="cta cta--button cta--desktop" href="#" target="_blank">All Student Services</a>
+    </div>
+
+    <div class="link-and-summary-list__content">
+      <ul>
+        <li>
+          <h3 class="summary-list__header"><a href="#" target="_blank">Tutoring Center</a></h3>
+          <p class="summary-list__body">Get free tutoring in math, writing, science, and more. Both online and in-person options available.</p>
+        </li>
+        <li>
+          <h3 class="summary-list__header"><a href="#" target="_blank">Academic Advising</a></h3>
+          <p class="summary-list__body">Meet with an advisor to plan your course schedule and stay on track for graduation.</p>
+        </li>
+        <li>
+          <h3 class="summary-list__header"><a href="#" target="_blank">Financial Aid Office</a></h3>
+          <p class="summary-list__body">Get help with FAFSA, scholarships, payment plans, and understanding your financial aid package.</p>
+        </li>
+        <li>
+          <h3 class="summary-list__header"><a href="#" target="_blank">Student Life</a></h3>
+          <p class="summary-list__body">Join clubs, attend events, and connect with other students. Make the most of your college experience.</p>
+        </li>
+        <li>
+          <h3 class="summary-list__header"><a href="#" target="_blank">Accessibility Services</a></h3>
+          <p class="summary-list__body">Get accommodations and support services if you have a documented disability.</p>
+        </li>
+        <li>
+          <h3 class="summary-list__header"><a href="#" target="_blank">Mental Health & Counseling</a></h3>
+          <p class="summary-list__body">Access confidential counseling services and mental health resources on campus.</p>
+        </li>
+      </ul>
+    </div>
+
+    <a class="cta cta--button cta--mobile" href="#" target="_blank">All Student Services</a>
+  </div>
+</section>
+{% endblock %} 
