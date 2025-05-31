@@ -4,7 +4,7 @@ Repository for scan log database operations.
 
 import logging
 from typing import Dict, List, Optional, Tuple, Any
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from sqlalchemy import func, desc, extract, cast, Date
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -303,17 +303,17 @@ class ScanLogRepository(BaseRepository[ScanLog]):
             from datetime import timedelta
             
             # Calculate date ranges based on time_range
-            now = datetime.now(UTC)
+            now = datetime.now(timezone.utc)
             
             if time_range == "today":
-                start_date = datetime(now.year, now.month, now.day, tzinfo=UTC)
+                start_date = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
                 end_date = now
                 interval = "hour"
                 format_str = "%H:00"  # Hour format
             elif time_range == "yesterday":
                 yesterday = now - timedelta(days=1)
-                start_date = datetime(yesterday.year, yesterday.month, yesterday.day, tzinfo=UTC)
-                end_date = datetime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59, tzinfo=UTC)
+                start_date = datetime(yesterday.year, yesterday.month, yesterday.day, tzinfo=timezone.utc)
+                end_date = datetime(yesterday.year, yesterday.month, yesterday.day, 23, 59, 59, tzinfo=timezone.utc)
                 interval = "hour"
                 format_str = "%H:00"  # Hour format
             elif time_range == "last7days":
@@ -327,19 +327,19 @@ class ScanLogRepository(BaseRepository[ScanLog]):
                 interval = "day"
                 format_str = "%m-%d"  # Month-day format
             elif time_range == "thisMonth":
-                start_date = datetime(now.year, now.month, 1, tzinfo=UTC)
+                start_date = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
                 end_date = now
                 interval = "day"
                 format_str = "%d"  # Day format
             elif time_range == "lastMonth":
                 last_month = now.month - 1 if now.month > 1 else 12
                 last_month_year = now.year if now.month > 1 else now.year - 1
-                start_date = datetime(last_month_year, last_month, 1, tzinfo=UTC)
+                start_date = datetime(last_month_year, last_month, 1, tzinfo=timezone.utc)
                 # Last day of last month
                 if last_month == 12:
-                    end_date = datetime(last_month_year, 12, 31, 23, 59, 59, tzinfo=UTC)
+                    end_date = datetime(last_month_year, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
                 else:
-                    end_date = datetime(now.year, now.month, 1, tzinfo=UTC) - timedelta(seconds=1)
+                    end_date = datetime(now.year, now.month, 1, tzinfo=timezone.utc) - timedelta(seconds=1)
                 interval = "day"
                 format_str = "%d"  # Day format
             else:  # allTime or default
@@ -471,15 +471,15 @@ class ScanLogRepository(BaseRepository[ScanLog]):
                 
                 # Generate month labels
                 months_diff = (end_date.year - start_date.year) * 12 + end_date.month - start_date.month + 1
-                current_date = datetime(start_date.year, start_date.month, 1, tzinfo=UTC)
+                current_date = datetime(start_date.year, start_date.month, 1, tzinfo=timezone.utc)
                 labels = []
                 for _ in range(months_diff):
                     labels.append(current_date.strftime("%b %Y"))
                     # Move to next month
                     if current_date.month == 12:
-                        current_date = datetime(current_date.year + 1, 1, 1, tzinfo=UTC)
+                        current_date = datetime(current_date.year + 1, 1, 1, tzinfo=timezone.utc)
                     else:
-                        current_date = datetime(current_date.year, current_date.month + 1, 1, tzinfo=UTC)
+                        current_date = datetime(current_date.year, current_date.month + 1, 1, tzinfo=timezone.utc)
             
             # Execute queries
             all_scans_results = all_scans_query.all()

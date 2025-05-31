@@ -3,7 +3,7 @@ Scan log database models for enhanced QR code tracking.
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 
 from sqlalchemy import Column, String, Integer, Boolean, Text, ForeignKey
 from sqlalchemy.sql import func
@@ -41,7 +41,7 @@ class ScanLog(Base):
     scanned_at: datetime = Column(
         UTCDateTime,
         nullable=False,
-        default=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
         index=True,
     )
@@ -64,9 +64,9 @@ class ScanLog(Base):
         """Initialize a scan log with timezone-aware datetime fields."""
         # Ensure scanned_at is timezone-aware
         if "scanned_at" not in kwargs:
-            kwargs["scanned_at"] = datetime.now(UTC)
+            kwargs["scanned_at"] = datetime.now(timezone.utc)
         elif kwargs["scanned_at"].tzinfo is None:
             # Convert naive datetime to UTC
-            kwargs["scanned_at"] = kwargs["scanned_at"].replace(tzinfo=UTC)
+            kwargs["scanned_at"] = kwargs["scanned_at"].replace(tzinfo=timezone.utc)
 
         super().__init__(**kwargs) 

@@ -1,1137 +1,232 @@
 """
-QR code service layer for the QR code generator application.
+Main QR code service layer for the QR code generator application.
+This service now acts as a facade, orchestrating operations via specialized services.
 """
 
 import logging
-import time
-import uuid
-from datetime import UTC, datetime
 from io import BytesIO
-from zoneinfo import ZoneInfo
 from typing import Optional, Union, List, Tuple, Dict, Any
-from urllib.parse import urlparse
+from datetime import datetime, timezone # Added timezone
+
 
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import ValidationError
-from sqlalchemy.exc import SQLAlchemyError
-from user_agents import parse as parse_user_agent
 
+
+from ..core.config import settings, Settings
 from ..core.exceptions import (
-    DatabaseError,
-    InvalidQRTypeError,
     QRCodeNotFoundError,
+    InvalidQRTypeError,
     QRCodeValidationError,
-    RedirectURLError,
+    RedirectURLError
 )
-from ..core.config import settings, should_use_new_service
 from ..models.qr import QRCode
-from ..models.scan_log import ScanLog
-from ..repositories import QRCodeRepository, ScanLogRepository
 from ..schemas.common import QRType, ErrorCorrectionLevel
-from ..schemas.qr.models import QRCodeCreate
 from ..schemas.qr.parameters import (
     DynamicQRCreateParameters,
     QRUpdateParameters,
     StaticQRCreateParameters,
+    QRImageParameters
 )
-from ..utils.qr_imaging import generate_qr_image as qr_imaging_util, generate_qr_response
-from ..core.metrics_logger import MetricsLogger
 
-# Circuit breaker and new service imports
+# Import the new specialized services
+from .qr_management_service import QRManagementService
+from .qr_image_service import QRImageService, IMAGE_FORMATS # IMAGE_FORMATS might be useful here
+from .qr_analytics_service import QRAnalyticsService
+from .qr_validation_service import QRValidationService
+
+# For constructor type hinting, if NewQRGenerationService is passed directly to QRImageService
+from .new_qr_generation_service import NewQRGenerationService
 import aiobreaker
-from ..services.new_qr_generation_service import NewQRGenerationService
 
-# Configure UTC timezone
-UTC = ZoneInfo("UTC")
-
-# Configure logger
 logger = logging.getLogger(__name__)
 
-# Define supported image formats and their media types
-IMAGE_FORMATS = {
-    "png": "image/png",
-    "jpeg": "image/jpeg",
-    "jpg": "image/jpeg",
-    "svg": "image/svg+xml",
-    "webp": "image/webp",
-}
-
-
 class QRCodeService:
-    """Service class for QR code operations."""
+    """
+    Facade service for QR code operations.
+    Delegates calls to specialized services for management, image generation, analytics, and validation.
+    """
 
     def __init__(
-        self, 
-        qr_code_repo: QRCodeRepository,
-        scan_log_repo: ScanLogRepository,
-        new_qr_generation_service: Optional[NewQRGenerationService] = None,
-        new_qr_generation_breaker: Optional[aiobreaker.CircuitBreaker] = None
+        self,
+        qr_management_service: QRManagementService,
+        qr_image_service: QRImageService,
+        qr_analytics_service: QRAnalyticsService,
+        qr_validation_service: QRValidationService,
+        app_settings: Settings = settings # Allow settings injection for testability
     ):
-        """
-        Initialize the QR code service with repositories and optional new services.
+        self.qr_management_service = qr_management_service
+        self.qr_image_service = qr_image_service
+        self.qr_analytics_service = qr_analytics_service
+        self.qr_validation_service = qr_validation_service
+        self.settings = app_settings # If any direct settings access is still needed
 
-        Args:
-            qr_code_repo: Specialized QRCodeRepository for QR code operations
-            scan_log_repo: ScanLogRepository for scan log operations
-            new_qr_generation_service: Optional NewQRGenerationService for enhanced QR generation
-            new_qr_generation_breaker: Optional circuit breaker for NewQRGenerationService protection
-        """
-        self.qr_code_repo = qr_code_repo
-        self.scan_log_repo = scan_log_repo
-        self.new_qr_generation_service = new_qr_generation_service
-        self.new_qr_generation_breaker = new_qr_generation_breaker
-
-    @MetricsLogger.time_service_call("QRCodeService", "_is_safe_redirect_url")
+    # --- Validation Methods (Delegated) ---
     def _is_safe_redirect_url(self, url: str) -> bool:
-        """
-        Validate if a redirect URL is safe based on scheme and domain allowlist.
-        
-        Args:
-            url: The URL to validate
-            
-        Returns:
-            bool: True if the URL is safe, False otherwise
-        """
-        try:
-            parsed_url = urlparse(url)
-            
-            # Check if scheme is http or https
-            if parsed_url.scheme not in ("http", "https"):
-                logger.warning(f"Unsafe URL scheme: {parsed_url.scheme}")
-                return False
-            
-            # Get the domain (netloc)
-            domain = parsed_url.netloc.lower()
-            if not domain:
-                logger.warning("URL has no domain")
-                return False
-            
-            # Check against allowed domains (exact match or subdomain)
-            for allowed_domain in settings.ALLOWED_REDIRECT_DOMAINS:
-                allowed_domain = allowed_domain.lower()
-                # Exact match
-                if domain == allowed_domain:
-                    return True
-                # Subdomain match (domain ends with .allowed_domain)
-                if domain.endswith(f".{allowed_domain}"):
-                    return True
-            
-            logger.warning(f"Domain not in allowlist: {domain}")
-            return False
-            
-        except Exception as e:
-            logger.error(f"Error parsing URL {url}: {str(e)}")
-            return False
+        # This method was originally in QRCodeService, now delegated.
+        # It's kept here if other methods in this facade still use it directly,
+        # otherwise calls should go to qr_validation_service directly from consumer.
+        return self.qr_validation_service.is_safe_redirect_url(url)
 
-    @MetricsLogger.time_service_call("QRCodeService", "get_qr_by_id")
+    def validate_qr_code(self, qr_data: Any) -> None: # qr_data is QRCodeCreate
+        # Similarly, kept for facade pattern if needed, else direct call.
+        self.qr_validation_service.validate_qr_creation_data(qr_data)
+
+    # --- QR Management Methods (Delegated) ---
     def get_qr_by_id(self, qr_id: str) -> QRCode:
-        """
-        Get a QR code by its ID.
+        return self.qr_management_service.get_qr_by_id(qr_id)
 
-        Args:
-            qr_id: The ID of the QR code to retrieve
-
-        Returns:
-            The QR code object
-
-        Raises:
-            QRCodeNotFoundError: If the QR code is not found
-            DatabaseError: If a database error occurs
-        """
-        qr = self.qr_code_repo.get_by_id(qr_id)
-            
-        if not qr:
-            raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
-        return qr
-
-    @MetricsLogger.time_service_call("QRCodeService", "get_qr_by_short_id")
     def get_qr_by_short_id(self, short_id: str) -> QRCode:
-        """
-        Get a QR code by its short ID (used for redirects).
+        return self.qr_management_service.get_qr_by_short_id(short_id)
 
-        Args:
-            short_id: The short ID of the QR code to retrieve
-
-        Returns:
-            The QR code object
-
-        Raises:
-            QRCodeNotFoundError: If the QR code is not found
-            InvalidQRTypeError: If the QR code is not of type 'dynamic'
-            DatabaseError: If a database error occurs
-        """
-        # Look up QR code directly by short_id
-        qr = self.qr_code_repo.get_by_short_id(short_id)
-
-        if not qr:
-            logger.warning(f"QR code with short ID {short_id} not found")
-            raise QRCodeNotFoundError(f"QR code with short ID {short_id} not found")
-
-        # Ensure the QR code is of type 'dynamic' for redirects
-        if qr.qr_type != 'dynamic':
-            logger.warning(f"QR code with short ID {short_id} is not dynamic (type: {qr.qr_type})")
-            raise InvalidQRTypeError(f"QR code with short ID {short_id} is not dynamic")
-
-        return qr
-
-    @MetricsLogger.time_service_call("QRCodeService", "list_qr_codes")
     def list_qr_codes(
         self,
         skip: int = 0,
         limit: int = 100,
-        qr_type: Union[QRType, str, None] = None,
+        qr_type: Optional[Union[QRType, str]] = None,
         search: Optional[str] = None,
         sort_by: Optional[str] = None,
         sort_desc: bool = False,
     ) -> Tuple[List[QRCode], int]:
-        """
-        List QR codes with optional filtering and sorting.
-
-        Args:
-            skip: Number of records to skip (for pagination)
-            limit: Maximum number of records to return
-            qr_type: QR code type to filter by
-            search: Search term for filtering
-            sort_by: Field to sort by
-            sort_desc: Sort in descending order if true
-
-        Returns:
-            Tuple of (list of QR codes, total count)
-
-        Raises:
-            DatabaseError: If a database error occurs
-        """
-        # Convert enum to value if it's an enum
-        qr_type_str = None
-        if qr_type is not None:
-            if isinstance(qr_type, QRType):
-                qr_type_str = qr_type.value
-            else:
-                qr_type_str = qr_type
-
-        return self.qr_code_repo.list_qr_codes(
-            skip=skip,
-            limit=limit,
-            qr_type=qr_type_str,
-            search=search,
-            sort_by=sort_by,
-            sort_desc=sort_desc,
+        return self.qr_management_service.list_qr_codes(
+            skip=skip, limit=limit, qr_type=qr_type, search=search, sort_by=sort_by, sort_desc=sort_desc
         )
 
-    @MetricsLogger.time_service_call("QRCodeService", "create_static_qr")
     async def create_static_qr(self, data: StaticQRCreateParameters) -> QRCode:
-        """
-        Create a static QR code with the provided content.
+        return await self.qr_management_service.create_static_qr(data)
 
-        Args:
-            data: Parameters for creating a static QR code
-
-        Returns:
-            The created QR code object
-
-        Raises:
-            QRCodeValidationError: If the QR code data is invalid
-            DatabaseError: If a database error occurs
-        """
-        try:
-            # Create QR code data
-            qr_data = QRCodeCreate(
-                content=data.content,
-                qr_type=QRType.STATIC,
-                title=data.title,
-                description=data.description,
-                fill_color=data.fill_color,
-                back_color=data.back_color,
-                size=data.size,
-                border=data.border,
-                error_level=data.error_level.value,
-            )
-
-            # Validate QR code data
-            self.validate_qr_code(qr_data)
-
-            # Check if we should use the new QR generation service with circuit breaker protection
-            if (self.new_qr_generation_service is not None and 
-                self.new_qr_generation_breaker is not None and
-                settings.USE_NEW_QR_GENERATION_SERVICE and
-                should_use_new_service(settings, user_identifier=qr_data.content)):
-                
-                # Time the new service path
-                new_path_start_time = time.perf_counter()
-                try:
-                    # Use circuit breaker as an async context manager for calls to new service
-                    from ..schemas.qr.parameters import QRImageParameters
-                    image_params = QRImageParameters(
-                        fill_color=data.fill_color,
-                        back_color=data.back_color,
-                        size=data.size,
-                        border=data.border,
-                        include_logo=False  # Static QRs typically don't include logos
-                    )
-                    
-                    # Use the circuit breaker decorator pattern with await on the service method
-                    @self.new_qr_generation_breaker
-                    async def protected_create_static_qr():
-                        return await self.new_qr_generation_service.create_and_format_qr(
-                            content=data.content,
-                            image_params=image_params,
-                            output_format="png",
-                            error_correction=data.error_level
-                        )
-                    
-                    image_bytes = await protected_create_static_qr()
-                    
-                    # New service succeeded - create QR code record and return
-                    qr = self.qr_code_repo.create(qr_data.model_dump())
-                    
-                    # Calculate duration and log success metrics for new path
-                    new_path_duration = time.perf_counter() - new_path_start_time
-                    MetricsLogger.log_qr_generation_path("new", "create_static_qr", True, new_path_duration)
-                    
-                    logger.info(f"Created static QR code with ID {qr.id} using new service")
-                    MetricsLogger.log_qr_created('static', True)
-                    return qr
-                    
-                except aiobreaker.CircuitBreakerError as e:
-                    # Circuit is open - fall back to legacy implementation
-                    new_path_duration = time.perf_counter() - new_path_start_time
-                    MetricsLogger.log_qr_generation_path("new", "create_static_qr", False, new_path_duration)
-                    
-                    logger.warning(f"Circuit breaker open for NewQRGenerationService: {e}")
-                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_static_qr", "circuit_open")
-                    # Continue to legacy implementation below
-                    
-                except Exception as e:
-                    # Other errors - fall back to legacy implementation
-                    new_path_duration = time.perf_counter() - new_path_start_time
-                    MetricsLogger.log_qr_generation_path("new", "create_static_qr", False, new_path_duration)
-                    
-                    logger.error(f"Error with NewQRGenerationService: {e}")
-                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_static_qr", "exception")
-                    # Continue to legacy implementation below
-
-            # Legacy implementation (fallback or when new service is disabled)
-            old_path_start_time = time.perf_counter()
-            try:
-                qr = self.qr_code_repo.create(qr_data.model_dump())
-                
-                # Calculate duration and log success metrics for old path
-                old_path_duration = time.perf_counter() - old_path_start_time
-                MetricsLogger.log_qr_generation_path("old", "create_static_qr", True, old_path_duration)
-                
-                logger.info(f"Created static QR code with ID {qr.id} using legacy service")
-            except Exception as e:
-                # Legacy path failed
-                old_path_duration = time.perf_counter() - old_path_start_time
-                MetricsLogger.log_qr_generation_path("old", "create_static_qr", False, old_path_duration)
-                raise
-            
-            # Log metrics for successful creation
-            MetricsLogger.log_qr_created('static', True)
-            
-            return qr
-        except ValidationError as e:
-            # Handle validation errors
-            logger.error(f"Validation error creating static QR code: {str(e)}")
-            MetricsLogger.log_qr_created('static', False)
-            raise QRCodeValidationError(detail=e.errors())
-        except ValueError as e:
-            # Handle value errors like color validation
-            logger.error(f"Validation error creating static QR code: {str(e)}")
-            MetricsLogger.log_qr_created('static', False)
-            raise QRCodeValidationError(str(e))
-
-    @MetricsLogger.time_service_call("QRCodeService", "create_dynamic_qr")
     async def create_dynamic_qr(self, data: DynamicQRCreateParameters) -> QRCode:
-        """
-        Create a dynamic QR code with the provided data.
+        return await self.qr_management_service.create_dynamic_qr(data)
 
-        Args:
-            data: Parameters for creating a dynamic QR code
-
-        Returns:
-            The created QR code object
-
-        Raises:
-            QRCodeValidationError: If the QR code data is invalid
-            RedirectURLError: If the redirect URL is invalid
-            DatabaseError: If a database error occurs
-        """
-        try:
-            # Validate redirect URL safety
-            redirect_url_str = str(data.redirect_url)
-            if not self._is_safe_redirect_url(redirect_url_str):
-                raise RedirectURLError(f"Redirect URL not allowed: {redirect_url_str}")
-
-            # Generate a short unique identifier for the redirect path
-            short_id = str(uuid.uuid4())[:8]
-            
-            # Create full URL with BASE_URL and tracking parameter
-            full_url = f"{settings.BASE_URL}/r/{short_id}?scan_ref=qr"
-
-            # Create QR code data
-            qr_data = QRCodeCreate(
-                content=full_url,
-                qr_type=QRType.DYNAMIC,
-                redirect_url=redirect_url_str,  # Use validated string
-                title=data.title,
-                description=data.description,
-                fill_color=data.fill_color,
-                back_color=data.back_color,
-                size=data.size,
-                border=data.border,
-                error_level=data.error_level.value,
-                short_id=short_id,  # Store the short_id in the database
-            )
-
-            # Validate QR code data
-            self.validate_qr_code(qr_data)
-
-            # Check if we should use the new QR generation service with circuit breaker protection
-            if (self.new_qr_generation_service is not None and 
-                self.new_qr_generation_breaker is not None and
-                settings.USE_NEW_QR_GENERATION_SERVICE and
-                should_use_new_service(settings, user_identifier=qr_data.content)):
-                
-                # Time the new service path
-                new_path_start_time = time.perf_counter()
-                try:
-                    # Use circuit breaker as an async context manager for calls to new service
-                    from ..schemas.qr.parameters import QRImageParameters
-                    image_params = QRImageParameters(
-                        fill_color=data.fill_color,
-                        back_color=data.back_color,
-                        size=data.size,  # Already correct, using the scale factor
-                        border=data.border,
-                        include_logo=False  # Dynamic QRs typically don't include logos
-                    )
-                    
-                    # Use the circuit breaker decorator pattern with await on the service method
-                    @self.new_qr_generation_breaker
-                    async def protected_create_dynamic_qr():
-                        return await self.new_qr_generation_service.create_and_format_qr(
-                            content=full_url,  # Use the full URL for dynamic QRs
-                            image_params=image_params,
-                            output_format="png",
-                            error_correction=data.error_level
-                        )
-                    
-                    image_bytes = await protected_create_dynamic_qr()
-                    
-                    # New service succeeded - create QR code record and return
-                    model_data = qr_data.model_dump()
-                    # Double check that redirect_url is a string
-                    if "redirect_url" in model_data and not isinstance(model_data["redirect_url"], str):
-                        model_data["redirect_url"] = str(model_data["redirect_url"])
-                    
-                    qr = self.qr_code_repo.create(model_data)
-                    
-                    # Calculate duration and log success metrics for new path
-                    new_path_duration = time.perf_counter() - new_path_start_time
-                    MetricsLogger.log_qr_generation_path("new", "create_dynamic_qr", True, new_path_duration)
-                    
-                    logger.info(f"Created dynamic QR code with ID {qr.id} using new service, short_id: {short_id}")
-                    MetricsLogger.log_qr_created('dynamic', True)
-                    return qr
-                    
-                except aiobreaker.CircuitBreakerError as e:
-                    # Circuit is open - fall back to legacy implementation
-                    new_path_duration = time.perf_counter() - new_path_start_time
-                    MetricsLogger.log_qr_generation_path("new", "create_dynamic_qr", False, new_path_duration)
-                    
-                    logger.warning(f"Circuit breaker open for NewQRGenerationService: {e}")
-                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_dynamic_qr", "circuit_open")
-                    # Continue to legacy implementation below
-                    
-                except Exception as e:
-                    # Other errors - fall back to legacy implementation
-                    new_path_duration = time.perf_counter() - new_path_start_time
-                    MetricsLogger.log_qr_generation_path("new", "create_dynamic_qr", False, new_path_duration)
-                    
-                    logger.error(f"Error with NewQRGenerationService: {e}")
-                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "create_dynamic_qr", "exception")
-                    # Continue to legacy implementation below
-
-            # Legacy implementation (fallback or when new service is disabled)
-            old_path_start_time = time.perf_counter()
-            try:
-                # Create QR code using repository - ensure model_dump() converts HttpUrl to string
-                model_data = qr_data.model_dump()
-                # Double check that redirect_url is a string
-                if "redirect_url" in model_data and not isinstance(model_data["redirect_url"], str):
-                    model_data["redirect_url"] = str(model_data["redirect_url"])
-
-                qr = self.qr_code_repo.create(model_data)
-                
-                # Calculate duration and log success metrics for old path
-                old_path_duration = time.perf_counter() - old_path_start_time
-                MetricsLogger.log_qr_generation_path("old", "create_dynamic_qr", True, old_path_duration)
-                
-                logger.info(f"Created dynamic QR code with ID {qr.id} using legacy service, redirect path {qr.content}, short_id: {short_id}")
-            except Exception as e:
-                # Legacy path failed
-                old_path_duration = time.perf_counter() - old_path_start_time
-                MetricsLogger.log_qr_generation_path("old", "create_dynamic_qr", False, old_path_duration)
-                raise
-            
-            # Log metrics for successful creation
-            MetricsLogger.log_qr_created('dynamic', True)
-            
-            return qr
-        except ValidationError as e:
-            # Only catch and translate validation errors
-            logger.error(f"Validation error creating dynamic QR code: {str(e)}")
-            MetricsLogger.log_qr_created('dynamic', False)
-            raise QRCodeValidationError(detail=e.errors())
-        except ValueError as e:
-            # Handle URL validation errors
-            if "URL" in str(e):
-                logger.error(f"Invalid redirect URL: {str(e)}")
-                MetricsLogger.log_qr_created('dynamic', False)
-                raise RedirectURLError(f"Invalid redirect URL: {str(e)}")
-            # Other value errors are validation errors
-            logger.error(f"Validation error creating dynamic QR code: {str(e)}")
-            MetricsLogger.log_qr_created('dynamic', False)
-            raise QRCodeValidationError(str(e))
-
-    @MetricsLogger.time_service_call("QRCodeService", "_parse_user_agent_data")
-    def _parse_user_agent_data(self, ua_string: str | None) -> Dict[str, any]:
-        """
-        Parse a user agent string into structured data for scan log entries.
-        
-        Args:
-            ua_string: Raw user agent string to parse
-            
-        Returns:
-            Dictionary with parsed user agent data
-        """
-        if not ua_string:
-            return {
-                "device_family": "Unknown",
-                "os_family": "Unknown",
-                "os_version": "Unknown",
-                "browser_family": "Unknown",
-                "browser_version": "Unknown",
-                "is_mobile": False,
-                "is_tablet": False,
-                "is_pc": True,  # Default to PC if unknown
-                "is_bot": False
-            }
-        
-        try:
-            # Parse the user agent string
-            user_agent = parse_user_agent(ua_string)
-            
-            # Extract device information
-            is_mobile = user_agent.is_mobile
-            is_tablet = user_agent.is_tablet
-            is_pc = not (is_mobile or is_tablet)
-            is_bot = user_agent.is_bot
-            
-            # Create structured data dictionary
-            return {
-                "device_family": user_agent.device.family or "Unknown",
-                "os_family": user_agent.os.family or "Unknown",
-                "os_version": f"{user_agent.os.version_string}" if user_agent.os.version_string else "Unknown",
-                "browser_family": user_agent.browser.family or "Unknown",
-                "browser_version": f"{user_agent.browser.version_string}" if user_agent.browser.version_string else "Unknown",
-                "is_mobile": is_mobile,
-                "is_tablet": is_tablet,
-                "is_pc": is_pc,
-                "is_bot": is_bot
-            }
-        except Exception as e:
-            # Log the error but return default values rather than failing
-            logger.error(f"Error parsing user agent string: {str(e)}")
-            return {
-                "device_family": "Parse Error",
-                "os_family": "Unknown",
-                "os_version": "Unknown",
-                "browser_family": "Unknown",
-                "browser_version": "Unknown",
-                "is_mobile": False,
-                "is_tablet": False,
-                "is_pc": False,
-                "is_bot": False
-            }
-
-    @MetricsLogger.time_service_call("QRCodeService", "update_qr")
     async def update_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
-        """
-        Update a QR code with the provided data.
+        return await self.qr_management_service.update_qr(qr_id, data)
 
-        Args:
-            qr_id: The ID of the QR code to update
-            data: Parameters for updating the QR code
-
-        Returns:
-            The updated QR code object
-
-        Raises:
-            QRCodeNotFoundError: If the QR code is not found
-            QRCodeValidationError: If the QR code data is invalid
-            RedirectURLError: If the redirect URL is invalid
-            DatabaseError: If a database error occurs
-        """
-        try:
-            # Get the QR code
-            qr = self.get_qr_by_id(qr_id)
-
-            # Build update data dictionary
-            update_data = {}
-            
-            # Handle title update
-            if data.title is not None:
-                update_data["title"] = data.title
-                
-            # Handle description update
-            if data.description is not None:
-                update_data["description"] = data.description
-                
-            # Handle redirect_url update (only for dynamic QR codes)
-            if data.redirect_url is not None:
-                # Verify it's a dynamic QR code
-                if qr.qr_type != QRType.DYNAMIC.value:
-                    raise QRCodeValidationError(f"Cannot update redirect URL for non-dynamic QR code: {qr_id}")
-                
-                # Validate redirect URL safety
-                redirect_url_str = str(data.redirect_url)
-                if not self._is_safe_redirect_url(redirect_url_str):
-                    raise RedirectURLError(f"Redirect URL not allowed: {redirect_url_str}")
-                
-                # Ensure redirect_url is a string
-                update_data["redirect_url"] = redirect_url_str
-            
-            # Only set updated_at if we're actually updating something
-            if update_data:
-                update_data["updated_at"] = datetime.now(UTC)
-            else:
-                # No fields to update - return the existing QR code
-                return qr
-
-            # Update the QR code in the database using repository
-            updated_qr = self.qr_code_repo.update_qr(qr_id, update_data)
-            if not updated_qr:
-                raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
-
-            logger.info(f"Updated QR code with ID {updated_qr.id}")
-            return updated_qr
-        except ValidationError as e:
-            # Only catch and translate validation errors
-            logger.error(f"Validation error updating QR code {qr_id}: {str(e)}")
-            raise QRCodeValidationError(detail=e.errors())
-        except ValueError as e:
-            # Handle URL validation errors
-            if "URL" in str(e):
-                logger.error(f"Invalid redirect URL: {str(e)}")
-                raise RedirectURLError(f"Invalid redirect URL: {str(e)}")
-            # Other value errors are validation errors
-            logger.error(f"Validation error updating QR code {qr_id}: {str(e)}")
-            raise QRCodeValidationError(str(e))
-    
-    # Keep the update_dynamic_qr method for backwards compatibility
     async def update_dynamic_qr(self, qr_id: str, data: QRUpdateParameters) -> QRCode:
-        """
-        Update a dynamic QR code.
+        # Maintained for backward compatibility if API directly called this variant
+        return await self.qr_management_service.update_dynamic_qr(qr_id, data)
 
-        This method is maintained for backwards compatibility and delegates to update_qr.
+    def delete_qr(self, qr_id: str) -> None:
+        self.qr_management_service.delete_qr(qr_id)
 
-        Args:
-            qr_id: The ID of the QR code to update
-            data: Parameters for updating the QR code
-
-        Returns:
-            The updated QR code object
-
-        Raises:
-            QRCodeNotFoundError: If the QR code is not found
-            QRCodeValidationError: If the QR code data is invalid
-            RedirectURLError: If the redirect URL is invalid
-            DatabaseError: If a database error occurs
-        """
-        return await self.update_qr(qr_id, data)
-
-    def update_scan_count(self, qr_id: str, timestamp: datetime | None = None) -> None:
-        """
-        Update the scan count for a QR code.
-
-        Args:
-            qr_id: The ID of the QR code to update
-            timestamp: The timestamp of the scan, defaults to current time
-
-        Raises:
-            QRCodeNotFoundError: If the QR code is not found
-            DatabaseError: If a database error occurs
-        """
-        if timestamp is None:
-            timestamp = datetime.now(UTC)
-            
-        # Delegate to repository
-        self.qr_code_repo.update_scan_count(qr_id, timestamp, is_genuine_scan_signal=False)
-
-    @MetricsLogger.time_service_call("QRCodeService", "update_scan_statistics")
-    def update_scan_statistics(
+    # --- QR Image Generation Methods (Delegated) ---
+    async def generate_qr(
         self,
-        qr_id: str,
-        timestamp: datetime | None = None,
-        client_ip: str | None = None,
-        user_agent: str | None = None,
-        is_genuine_scan_signal: bool = False,
-    ) -> None:
-        """
-        Update scan statistics for a QR code.
+        data: str, # Content to encode
+        size: int = 10, # This is 'scale factor' for image_params
+        border: int = 4,
+        fill_color: str = "black",
+        back_color: str = "white",
+        error_level: Optional[str] = "M", # String error level
+        image_format: str = "png",
+        image_quality: Optional[int] = 90, # Legacy support for quality
+        include_logo: bool = False,
+        svg_title: Optional[str] = None,
+        svg_description: Optional[str] = None,
+        physical_size: Optional[float] = None,
+        physical_unit: Optional[str] = None,
+        dpi: Optional[int] = None,
+    ) -> StreamingResponse:
         
-        This method updates the scan count, last scan timestamp, and other
-        statistics for a QR code. It is designed to be run as a background
-        task to avoid blocking the redirect response.
-        
-        This implementation orchestrates between QRCodeRepository and ScanLogRepository
-        to update QR code statistics and create scan log entries, respectively.
-        
-        Args:
-            qr_id: The ID of the QR code to update
-            timestamp: The timestamp of the scan, defaults to current time
-            client_ip: The IP address of the client that scanned the QR code
-            user_agent: The user agent of the client that scanned the QR code
-            is_genuine_scan_signal: Whether this is a genuine QR scan (vs. direct URL access)
-            
-        Raises:
-            QRCodeNotFoundError: If the QR code is not found
-            DatabaseError: If a database error occurs
-        """
-        try:
-            if timestamp is None:
-                timestamp = datetime.now(UTC)
+        image_params = QRImageParameters(
+            size=size, # Scale factor
+            border=border,
+            fill_color=fill_color,
+            back_color=back_color,
+            include_logo=include_logo,
+            svg_title=svg_title,
+            svg_description=svg_description,
+            physical_size=physical_size,
+            physical_unit=physical_unit,
+            dpi=dpi
+        )
+        return await self.qr_image_service.generate_qr_for_streaming(
+            data=data,
+            image_params=image_params,
+            error_level_str=error_level,
+            image_format=image_format,
+            image_quality=image_quality
+        )
 
-            # Parse user agent data
-            parsed_ua_data = self._parse_user_agent_data(user_agent)
-            
-            # 1. Update QR code scan statistics (scan_count, genuine_scan_count, etc.)
-            updated_qr = self.qr_code_repo.update_scan_count(qr_id, timestamp, is_genuine_scan_signal)
-            if not updated_qr:
-                logger.warning(f"Background task: Failed to update scan count for QR ID {qr_id}.")
-                return  # Or raise appropriate error
-                
-            # 2. Create scan log entry
-            self.scan_log_repo.create_scan_log(
-                qr_id=qr_id,
-                timestamp=timestamp,
-                ip_address=client_ip,
-                raw_user_agent=user_agent,
-                parsed_ua_data=parsed_ua_data,
-                is_genuine_scan_signal=is_genuine_scan_signal
-            )
-            logger.info(f"Background task: Scan statistics and log updated for QR ID {qr_id}")
-            
-        except Exception as e:
-            # Log all errors comprehensively but do not re-raise to prevent background task crashes
-            logger.exception(f"Background task: Error updating scan statistics for QR ID {qr_id}: {str(e)}")
-            # Do not re-raise - allow background task to terminate gracefully
-
-    @MetricsLogger.time_service_call("QRCodeService", "validate_qr_code")
-    def validate_qr_code(self, qr_data: QRCodeCreate) -> None:
-        """
-        Validate QR code data.
-
-        Args:
-            qr_data: The QR code data to validate
-
-        Raises:
-            QRCodeValidationError: If the QR code data is invalid
-            RedirectURLError: If the redirect URL is invalid
-        """
-        # Check for required content in static QR codes
-        if qr_data.qr_type == QRType.STATIC and not qr_data.content:
-            raise QRCodeValidationError("Static QR codes must have content")
-
-        # Check for required redirect_url in dynamic QR codes
-        if qr_data.qr_type == QRType.DYNAMIC and not qr_data.redirect_url:
-            raise RedirectURLError("Dynamic QR codes must have a redirect URL")
-
-        # Color format validation is handled by Pydantic schemas
-
-    @MetricsLogger.time_service_call("QRCodeService", "generate_qr_image_service")
-    def generate_qr_image(
+    def generate_qr_image_service( # Old name, maps to generate_qr_image_bytes
         self,
         content: str,
         fill_color: str = "#000000",
         back_color: str = "#FFFFFF",
-        box_size: int = 10,
+        box_size: int = 10, # This is 'scale factor' for image_params
         border: int = 4,
         image_format: str = "PNG",
-        logo_path: Optional[Union[str, bool]] = None,
+        logo_path: Optional[Union[str, bool]] = None, # Maps to include_logo
     ) -> BytesIO:
-        """
-        Generate a QR code image.
 
-        Args:
-            content: The content to encode in the QR code
-            fill_color: The color of the QR code (foreground)
-            back_color: The background color of the QR code
-            box_size: The size of each box/module in the QR code
-            border: The size of the border around the QR code
-            image_format: The format of the image (PNG, JPEG, etc.)
-            logo_path: Optional path to a logo image to embed in the QR code
-                - If None, no logo is added
-                - If True, the default logo is used
-                - If a string, it's used as the path to the logo
-
-        Returns:
-            A BytesIO object containing the image data
-
-        Raises:
-            QRCodeValidationError: If there is an validation error with the QR parameters
-            ValueError: If there are issues with the QR generation parameters
-            IOError: If there are problems with file operations
-        """
-        try:
-            # Calculate the approximate size based on box_size
-            size = box_size * 25  # Rough estimate based on typical QR code size
-            
-            # Generate the QR code using the utility function
-            img_bytes = qr_imaging_util(
-                content=content,
-                image_format=image_format.lower(),
-                size=size,
-                fill_color=fill_color,
-                back_color=back_color,
-                border=border,
-                logo_path=logo_path
-            )
-            
-            # Create a BytesIO object from the bytes
-            img_buffer = BytesIO(img_bytes)
-            img_buffer.seek(0)
-            
-            return img_buffer
-        except ValueError as e:
-            # Handle parameter validation errors
-            logger.error(f"Parameter validation error generating QR code image: {e}")
-            raise QRCodeValidationError(f"Invalid parameters for QR generation: {str(e)}")
-        except IOError as e:
-            # Handle file/IO errors (e.g., logo file not found)
-            logger.error(f"IO error generating QR code image: {e}")
-            raise QRCodeValidationError(f"Error processing QR code image: {str(e)}")
-
-    @MetricsLogger.time_service_call("QRCodeService", "generate_qr_streaming")
-    async def generate_qr(
-        self,
-        data: str,
-        size: int = 10,
-        border: int = 4,
-        fill_color: str = "black",
-        back_color: str = "white",
-        error_level: str | None = None,
-        image_format: str = "png",
-        image_quality: int | None = None,
-        include_logo: bool = False,
-        svg_title: str | None = None,
-        svg_description: str | None = None,
-        physical_size: float | None = None,
-        physical_unit: str | None = None,
-        dpi: int | None = None,
-    ) -> StreamingResponse:
-        """
-        Generate a QR code with the given parameters.
-
-        Args:
-            data: Content to encode in the QR code
-            size: Size of the QR code image in pixels (approximate)
-            border: Border size around the QR code
-            fill_color: Color of the QR code pattern
-            back_color: Background color
-            error_level: Error correction level (l, m, q, h)
-            image_format: Output image format (png, jpeg, svg, webp)
-            image_quality: Quality for lossy formats (1-100)
-            include_logo: Whether to include the default logo
-            svg_title: Optional title for SVG format (improves accessibility)
-            svg_description: Optional description for SVG format (improves accessibility)
-            physical_size: Physical size of the QR code in the specified unit
-            physical_unit: Physical unit for size (in, cm, mm)
-            dpi: DPI (dots per inch) for physical output
-
-        Returns:
-            StreamingResponse: FastAPI response containing the QR code image
-
-        Raises:
-            HTTPException: If the image format is not supported or conversion fails
-        """
-        # If physical dimensions are specified, use them directly
-        if physical_size is not None and physical_unit is not None and dpi is not None:
-            # Calculate pixel size from physical dimensions and DPI to set final output size
-            if physical_unit == "in":
-                pixel_size = int(physical_size * dpi)
-            elif physical_unit == "cm":
-                pixel_size = int(physical_size * dpi / 2.54)  # 1 inch = 2.54 cm
-            elif physical_unit == "mm":
-                pixel_size = int(physical_size * dpi / 25.4)  # 1 inch = 25.4 mm
-            else:
-                # Default to size parameter if physical unit is not recognized
-                pixel_size = size * 25  # Rough estimate based on typical QR code size
-        else:
-            # Calculate the approximate size based on size parameter
-            # For segno, we use the total image size rather than box_size
-            pixel_size = size * 25  # Rough estimate based on typical QR code size
-        
-        try:
-            # Check if we should use the new QR generation service with circuit breaker protection
-            if (self.new_qr_generation_service is not None and 
-                self.new_qr_generation_breaker is not None and
-                settings.USE_NEW_QR_GENERATION_SERVICE and
-                should_use_new_service(settings, user_identifier=data)):
-                
-                # Time the new service path
-                new_path_start_time = time.perf_counter()
-                try:
-                    # Use circuit breaker as an async context manager for calls to new service
-                    from ..schemas.qr.parameters import QRImageParameters
-                    from ..schemas.common import ErrorCorrectionLevel
-                    
-                    # Convert error level string to enum
-                    error_correction = ErrorCorrectionLevel.M  # Default
-                    if error_level:
-                        error_level_map = {
-                            'l': ErrorCorrectionLevel.L,
-                            'm': ErrorCorrectionLevel.M,
-                            'q': ErrorCorrectionLevel.Q,
-                            'h': ErrorCorrectionLevel.H
-                        }
-                        error_correction = error_level_map.get(error_level.lower(), ErrorCorrectionLevel.M)
-                    
-                    image_params = QRImageParameters(
-                        fill_color=fill_color,
-                        back_color=back_color,
-                        size=size,  # Pass the original scale factor, not pixel_size
-                        border=border,
-                        include_logo=include_logo,
-                        svg_title=svg_title,
-                        svg_description=svg_description,
-                        physical_size=physical_size,
-                        physical_unit=physical_unit,
-                        dpi=dpi
-                    )
-                    
-                    # Use the circuit breaker decorator pattern with await on the service method
-                    @self.new_qr_generation_breaker
-                    async def protected_generate_qr():
-                        return await self.new_qr_generation_service.create_and_format_qr(
-                            content=data,
-                            image_params=image_params,
-                            output_format=image_format,
-                            error_correction=error_correction
-                        )
-                    
-                    image_bytes = await protected_generate_qr()
-                    
-                    # Calculate duration and log success metrics for new path
-                    new_path_duration = time.perf_counter() - new_path_start_time
-                    MetricsLogger.log_qr_generation_path("new", "generate_qr", True, new_path_duration)
-                    
-                    logger.info(f"Generated QR code with new service (format: {image_format})")
-                    MetricsLogger.log_image_generated(image_format, True)
-                    
-                    # Create streaming response from bytes
-                    from io import BytesIO
-                    media_type = IMAGE_FORMATS.get(image_format.lower(), "application/octet-stream")
-                    return StreamingResponse(
-                        BytesIO(image_bytes),
-                        media_type=media_type,
-                        headers={"Content-Disposition": f"inline; filename=qr_code.{image_format.lower()}"}
-                    )
-                    
-                except aiobreaker.CircuitBreakerError as e:
-                    # Circuit is open - fall back to legacy implementation
-                    new_path_duration = time.perf_counter() - new_path_start_time
-                    MetricsLogger.log_qr_generation_path("new", "generate_qr", False, new_path_duration)
-                    
-                    logger.warning(f"Circuit breaker open for NewQRGenerationService: {e}")
-                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "generate_qr", "circuit_open")
-                    # Continue to legacy implementation below
-                    
-                except Exception as e:
-                    # Other errors - fall back to legacy implementation
-                    new_path_duration = time.perf_counter() - new_path_start_time
-                    MetricsLogger.log_qr_generation_path("new", "generate_qr", False, new_path_duration)
-                    
-                    logger.error(f"Error with NewQRGenerationService: {e}")
-                    MetricsLogger.log_circuit_breaker_fallback("NewQRGenerationService", "generate_qr", "exception")
-                    # Continue to legacy implementation below
-
-            # Legacy implementation (fallback or when new service is disabled)
-            old_path_start_time = time.perf_counter()
-            try:
-                response = generate_qr_response(
-                    content=data,
-                    image_format=image_format,
-                    size=pixel_size,
-                    fill_color=fill_color,
-                    back_color=back_color,
-                    border=border,
-                    image_quality=image_quality,
-                    logo_path=True if include_logo else None,  # Pass logo_path based on include_logo
-                    error_level=error_level,
-                    svg_title=svg_title,
-                    svg_description=svg_description,
-                    physical_size=physical_size,
-                    physical_unit=physical_unit,
-                    dpi=dpi
-                )
-                
-                # Calculate duration and log success metrics for old path
-                old_path_duration = time.perf_counter() - old_path_start_time
-                MetricsLogger.log_qr_generation_path("old", "generate_qr", True, old_path_duration)
-                
-                logger.info(f"Generated QR code with legacy service (format: {image_format})")
-                
-                # Log metrics for successful image generation
-                MetricsLogger.log_image_generated(image_format, True)
-                
-                return response
-            except Exception as e:
-                # Legacy path failed
-                old_path_duration = time.perf_counter() - old_path_start_time
-                MetricsLogger.log_qr_generation_path("old", "generate_qr", False, old_path_duration)
-                
-                # Log metrics for failed image generation
-                MetricsLogger.log_image_generated(image_format, False)
-                raise
-        except Exception as e:
-            # Log metrics for failed image generation
-            MetricsLogger.log_image_generated(image_format, False)
-            raise
-
-    @MetricsLogger.time_service_call("QRCodeService", "delete_qr")
-    def delete_qr(self, qr_id: str) -> None:
-        """
-        Delete a QR code by ID.
-
-        Args:
-            qr_id: The ID of the QR code to delete
-
-        Raises:
-            QRCodeNotFoundError: If the QR code is not found
-            DatabaseError: If a database error occurs
-        """
-        # Delete QR code using repository
-        deleted = self.qr_code_repo.delete(qr_id)
-        if not deleted:
-            raise QRCodeNotFoundError(f"QR code with ID {qr_id} not found")
-        logger.info(f"Deleted QR code with ID {qr_id}")
-
-    @MetricsLogger.time_service_call("QRCodeService", "get_dashboard_data")
-    def get_dashboard_data(self) -> Dict[str, Union[int, List[QRCode]]]:
-        """
-        Get data for the dashboard, including total QR code count and recent QR codes.
-        
-        Returns:
-            Dictionary containing total_qr_codes and recent_qr_codes
-            
-        Raises:
-            DatabaseError: If a database error occurs
-        """
-        # Get count of all QR codes
-        total_qr_codes = self.qr_code_repo.count()
-        
-        # Get recent QR codes
-        recent_qr_codes, _ = self.qr_code_repo.list_qr_codes(
-            skip=0,
-            limit=5,
-            sort_by="created_at",
-            sort_desc=True
+        image_params = QRImageParameters(
+            size=box_size, # Scale factor
+            border=border,
+            fill_color=fill_color,
+            back_color=back_color,
+            include_logo=bool(logo_path), # Convert logo_path to boolean include_logo
+            # Other params like svg_title, physical_size are not available in this old signature
         )
-        
-        return {
-            "total_qr_codes": total_qr_codes,
-            "recent_qr_codes": recent_qr_codes
-        }
+        # Error level is also missing from old signature, QRImageService will use default
+        return self.qr_image_service.generate_qr_image_bytes(
+            content=content,
+            image_params=image_params,
+            image_format=image_format
+            # error_level_str will use default in generate_qr_image_bytes
+        )
 
-    @MetricsLogger.time_service_call("QRCodeService", "get_scan_analytics_data")
+    # --- Analytics Methods (Delegated) ---
+    def update_scan_count(self, qr_id: str, timestamp: Optional[datetime] = None) -> None:
+        # This specific method only updated scan count via qr_code_repo.update_scan_count
+        # The new QRAnalyticsService.update_qr_scan_count_stats is the direct equivalent.
+        self.qr_analytics_service.update_qr_scan_count_stats(qr_id, timestamp, is_genuine_scan_signal=False)
+
+
+    def update_scan_statistics(
+        self,
+        qr_id: str,
+        timestamp: Optional[datetime] = None,
+        client_ip: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        is_genuine_scan_signal: bool = False,
+    ) -> None:
+        # This method is now record_scan_event in QRAnalyticsService
+        self.qr_analytics_service.record_scan_event(
+            qr_id=qr_id,
+            timestamp=timestamp,
+            client_ip=client_ip,
+            user_agent=user_agent,
+            is_genuine_scan_signal=is_genuine_scan_signal
+        )
+
+    def get_dashboard_data(self) -> Dict[str, Any]:
+        return self.qr_analytics_service.get_dashboard_summary()
+
     def get_scan_analytics_data(self, qr_id: str) -> Dict[str, Any]:
-        """
-        Get detailed scan analytics data for a QR code.
-        
-        Args:
-            qr_id: ID of the QR code to get analytics for
-            
-        Returns:
-            Dictionary containing detailed analytics data
-            
-        Raises:
-            QRCodeNotFoundError: If the QR code is not found
-            DatabaseError: If a database error occurs
-        """
-        # Get the QR code to verify it exists and get basic info
-        qr = self.get_qr_by_id(qr_id)
-        
-        # Get scan logs for the QR code
-        scan_logs, total_logs = self.scan_log_repo.get_scan_logs_for_qr(qr_id, limit=100)
-        
-        # Get device statistics
-        device_stats = self.scan_log_repo.get_device_statistics(qr_id)
-        
-        # Get browser statistics
-        browser_stats = self.scan_log_repo.get_browser_statistics(qr_id)
-        
-        # Get OS statistics
-        os_stats = self.scan_log_repo.get_os_statistics(qr_id)
-        
-        # Calculate percentage of genuine scans
-        genuine_scan_pct = 0
-        if qr.scan_count > 0:
-            genuine_scan_pct = round((qr.genuine_scan_count / qr.scan_count) * 100)
-        
-        # Prepare timestamps for display
-        created_at_formatted = qr.created_at.strftime("%B %d, %Y at %H:%M")
-        last_scan_formatted = qr.last_scan_at.strftime("%B %d, %Y at %H:%M") if qr.last_scan_at else "Not yet scanned"
-        first_genuine_scan_formatted = qr.first_genuine_scan_at.strftime("%B %d, %Y at %H:%M") if qr.first_genuine_scan_at else None
-        last_genuine_scan_formatted = qr.last_genuine_scan_at.strftime("%B %d, %Y at %H:%M") if qr.last_genuine_scan_at else None
-        
-        # Prepare scan log data for table display
-        scan_log_data = []
-        for log in scan_logs:
-            scan_log_data.append({
-                "id": log.id,
-                "scanned_at": log.scanned_at.strftime("%Y-%m-%d %H:%M:%S"),
-                "is_genuine_scan": log.is_genuine_scan,
-                "device_family": log.device_family,
-                "os_family": log.os_family,
-                "browser_family": log.browser_family,
-                "is_mobile": log.is_mobile,
-                "is_tablet": log.is_tablet,
-                "is_pc": log.is_pc,
-                "is_bot": log.is_bot
-            })
-        
-        # Get time series data for chart (last 7 days)
-        time_series_data = self._get_time_series_data(qr_id)
-        
-        return {
-            "qr": qr,
-            "created_at_formatted": created_at_formatted,
-            "last_scan_formatted": last_scan_formatted,
-            "first_genuine_scan_formatted": first_genuine_scan_formatted,
-            "last_genuine_scan_formatted": last_genuine_scan_formatted,
-            "genuine_scan_pct": genuine_scan_pct,
-            "total_logs": total_logs,
-            "scan_logs": scan_log_data,
-            "device_stats": device_stats,
-            "browser_stats": browser_stats,
-            "os_stats": os_stats,
-            "time_series_data": time_series_data
-        }
-        
-    @MetricsLogger.time_service_call("QRCodeService", "_get_time_series_data")
-    def _get_time_series_data(self, qr_id: str) -> Dict[str, List]:
-        """
-        Get time series scan data for charts (last 7 days).
-        
-        Args:
-            qr_id: ID of the QR code to get time series data for
-            
-        Returns:
-            Dictionary with dates and scan counts
-        """
-        # Get scan timeseries data
-        timeseries_data = self.scan_log_repo.get_scan_timeseries(qr_id, time_range="last7days")
-        return timeseries_data
+        return self.qr_analytics_service.get_detailed_scan_analytics(qr_id)
+
+    # _parse_user_agent_data and _get_time_series_data were helper methods
+    # and are now internal to QRAnalyticsService. They are not exposed on this facade.
+
+    # Note: The original QRCodeService __init__ took qr_code_repo, scan_log_repo,
+    # new_qr_generation_service, and new_qr_generation_breaker.
+    # These are now encapsulated within the specialized services.
+    # The dependency injection mechanism (e.g., in app/dependencies.py) will need to be
+    # updated to construct these specialized services and then pass them to this facade.
+    # For this step, we assume this facade's __init__ signature is what we'll adapt to.
+
+    # Any methods that were purely helpers for moved logic (like _parse_user_agent_data)
+    # are no longer present here as they live within their respective new services.
+
+    # The circuit breaker logic and new/legacy path decision for QR generation
+    # are now fully encapsulated within QRImageService.create_and_format_qr_from_service
+    # and QRImageService.generate_qr_for_streaming.
+    # QRManagementService calls create_and_format_qr_from_service for pre-generation checks.
+    # API endpoints will call QRCodeService.generate_qr which in turn calls
+    # QRImageService.generate_qr_for_streaming.
+
+    # The original `create_static_qr` and `create_dynamic_qr` in QRCodeService
+    # had the new/legacy path logic directly within them. This logic has now been
+    # centralized into how QRImageService.create_and_format_qr_from_service is called
+    # by QRManagementService.
+
+    logger.info("QRCodeService (Facade) initialized, delegating to specialized services.")

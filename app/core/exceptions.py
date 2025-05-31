@@ -221,3 +221,22 @@ class ServiceUnavailableError(AppBaseException):
             headers: Optional HTTP headers to include in the response
         """
         super().__init__(detail=detail, headers=headers)
+
+class QRCodeGenerationError(AppBaseException):
+    """
+    Exception raised when QR code image generation fails.
+
+    This exception is raised when there's an error during the process
+    of generating the actual QR code image (e.g., from the imaging library).
+    """
+    status_code = 500 # Internal Server Error, as it's usually a server-side issue
+
+    def __init__(self, detail: str = "QR code image generation failed", headers: dict[str, str] | None = None):
+        """
+        Initialize the exception with a detail message and headers.
+
+        Args:
+            detail: Error message
+            headers: Optional HTTP headers to include in the response
+        """
+        super().__init__(detail=detail, headers=headers)

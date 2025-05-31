@@ -3,7 +3,7 @@ QR code database models.
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import timezone, datetime # Changed UTC import
 
 from sqlalchemy import Column, Integer, String, Text
 from sqlalchemy.sql import func
@@ -49,7 +49,7 @@ class QRCode(Base):
     created_at: datetime = Column(
         UTCDateTime,
         nullable=False,
-        default=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(timezone.utc), # Changed UTC
         server_default=func.now(),  # Use PostgreSQL's now() function
         index=True,
     )
@@ -75,10 +75,10 @@ class QRCode(Base):
         """Initialize a QR code with timezone-aware datetime fields."""
         # Ensure created_at is timezone-aware
         if "created_at" not in kwargs:
-            kwargs["created_at"] = datetime.now(UTC)
+            kwargs["created_at"] = datetime.now(timezone.utc) # Changed UTC
         elif kwargs["created_at"].tzinfo is None:
             # Convert naive datetime to UTC
-            kwargs["created_at"] = kwargs["created_at"].replace(tzinfo=UTC)
+            kwargs["created_at"] = kwargs["created_at"].replace(tzinfo=timezone.utc) # Changed UTC
 
         # Set default scan_count if not provided
         if "scan_count" not in kwargs:
@@ -91,17 +91,17 @@ class QRCode(Base):
         # Ensure last_scan_at is timezone-aware if provided
         if "last_scan_at" in kwargs and kwargs["last_scan_at"] is not None:
             if kwargs["last_scan_at"].tzinfo is None:
-                kwargs["last_scan_at"] = kwargs["last_scan_at"].replace(tzinfo=UTC)
+                kwargs["last_scan_at"] = kwargs["last_scan_at"].replace(tzinfo=timezone.utc) # Changed UTC
                 
         # Ensure last_genuine_scan_at is timezone-aware if provided
         if "last_genuine_scan_at" in kwargs and kwargs["last_genuine_scan_at"] is not None:
             if kwargs["last_genuine_scan_at"].tzinfo is None:
-                kwargs["last_genuine_scan_at"] = kwargs["last_genuine_scan_at"].replace(tzinfo=UTC)
+                kwargs["last_genuine_scan_at"] = kwargs["last_genuine_scan_at"].replace(tzinfo=timezone.utc) # Changed UTC
                 
         # Ensure first_genuine_scan_at is timezone-aware if provided
         if "first_genuine_scan_at" in kwargs and kwargs["first_genuine_scan_at"] is not None:
             if kwargs["first_genuine_scan_at"].tzinfo is None:
-                kwargs["first_genuine_scan_at"] = kwargs["first_genuine_scan_at"].replace(tzinfo=UTC)
+                kwargs["first_genuine_scan_at"] = kwargs["first_genuine_scan_at"].replace(tzinfo=timezone.utc) # Changed UTC
 
         super().__init__(**kwargs)
 

@@ -3,7 +3,7 @@ QR code repository module for QR code specific database operations.
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 from typing import List, Optional, Tuple, Dict, Any
 
 from sqlalchemy import update, or_

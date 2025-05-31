@@ -4,7 +4,7 @@ Health check service for monitoring system and service health.
 
 import os
 import time
-from datetime import UTC, datetime
+from datetime import timezone, datetime # Changed UTC import
 
 import psutil
 from sqlalchemy import text
@@ -102,7 +102,7 @@ class HealthService:
                 status=ServiceStatus.PASS,
                 latency_ms=latency,
                 message=message,
-                last_checked=datetime.now(UTC),
+                last_checked=datetime.now(timezone.utc), # Changed UTC
                 details=db_details,
             )
         except Exception as e:
@@ -110,7 +110,7 @@ class HealthService:
                 status=ServiceStatus.FAIL,
                 latency_ms=0.0,
                 message=f"Database connection failed: {str(e)}",
-                last_checked=datetime.now(UTC),
+                last_checked=datetime.now(timezone.utc), # Changed UTC
             )
 
     @staticmethod
@@ -139,7 +139,7 @@ class HealthService:
                 status=ServiceStatus.PASS,
                 latency_ms=latency,
                 message="New QR Generation Service operational",
-                last_checked=datetime.now(UTC),
+                last_checked=datetime.now(timezone.utc), # Changed UTC
                 details={"service_type": "NewQRGenerationService", "adapter": "Segno+Pillow"}
             )
             
@@ -148,7 +148,7 @@ class HealthService:
                 status=ServiceStatus.FAIL,
                 latency_ms=0.0,
                 message=f"New QR Generation Service check failed: {str(e)}",
-                last_checked=datetime.now(UTC),
+                last_checked=datetime.now(timezone.utc), # Changed UTC
             )
 
     @staticmethod  
@@ -172,7 +172,7 @@ class HealthService:
                     status=ServiceStatus.WARN,
                     latency_ms=0.0,
                     message="New Analytics Service not yet implemented (placeholder)",
-                    last_checked=datetime.now(UTC),
+                    last_checked=datetime.now(timezone.utc), # Changed UTC
                     details={"service_type": "NewAnalyticsService", "status": "placeholder"}
                 )
                 
@@ -182,7 +182,7 @@ class HealthService:
                 status=ServiceStatus.PASS,
                 latency_ms=latency,
                 message="New Analytics Service operational",
-                last_checked=datetime.now(UTC),
+                last_checked=datetime.now(timezone.utc), # Changed UTC
                 details={"service_type": "NewAnalyticsService"}
             )
             
@@ -191,7 +191,7 @@ class HealthService:
                 status=ServiceStatus.FAIL,
                 latency_ms=0.0,
                 message=f"New Analytics Service check failed: {str(e)}",
-                last_checked=datetime.now(UTC),
+                last_checked=datetime.now(timezone.utc), # Changed UTC
             )
 
     @staticmethod
@@ -215,7 +215,7 @@ class HealthService:
                     status=ServiceStatus.WARN,
                     latency_ms=0.0,
                     message="New Validation Service not yet implemented (placeholder)",
-                    last_checked=datetime.now(UTC),
+                    last_checked=datetime.now(timezone.utc), # Changed UTC
                     details={"service_type": "NewValidationService", "status": "placeholder"}
                 )
                 
@@ -225,7 +225,7 @@ class HealthService:
                 status=ServiceStatus.PASS,
                 latency_ms=latency,
                 message="New Validation Service operational",
-                last_checked=datetime.now(UTC),
+                last_checked=datetime.now(timezone.utc), # Changed UTC
                 details={"service_type": "NewValidationService"}
             )
             
@@ -234,7 +234,7 @@ class HealthService:
                 status=ServiceStatus.FAIL,
                 latency_ms=0.0,
                 message=f"New Validation Service check failed: {str(e)}",
-                last_checked=datetime.now(UTC),
+                last_checked=datetime.now(timezone.utc), # Changed UTC
             )
 
     @classmethod
