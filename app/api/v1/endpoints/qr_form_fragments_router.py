@@ -57,7 +57,7 @@ async def get_qr_form_fragment(request: Request, qr_type: str):
         raise HTTPException(status_code=400, detail="Invalid QR type")
     return templates.TemplateResponse(
         "qr_form.html", # Template path relative to 'fragments'
-        {"qr_type": qr_type, "error_levels": ["L", "M", "Q", "H"]}
+        {"request": request, "qr_type": qr_type, "error_levels": ["L", "M", "Q", "H"]}
     )
 
 @router.post("/qr-create", response_class=HTMLResponse)
@@ -102,6 +102,7 @@ async def create_qr_code_fragment( # Renamed from create_qr_code
         return templates.TemplateResponse(
             "qr_form.html",
             {
+                "request": request,
                 "qr_type": qr_type, "content": content, "title": title, "description": description,
                 "redirect_url": redirect_url, "error_level": error_level.upper(),
                 "error_messages": e.errors() if isinstance(e, ValidationError) else [{"msg": str(e), "loc": ["form"]}],
@@ -111,7 +112,7 @@ async def create_qr_code_fragment( # Renamed from create_qr_code
         )
     except Exception as e:
         logger.error(f"Error creating QR code fragment: {str(e)}")
-        return templates.TemplateResponse("error.html", {"error": str(e)}, status_code=500)
+        return templates.TemplateResponse("error.html", {"request": request, "error": str(e)}, status_code=500)
 
 
 @router.get("/qr-edit-form/{qr_id}", response_class=HTMLResponse)
@@ -123,12 +124,12 @@ async def get_qr_edit_form_fragment( # This was get_qr_edit_form_fragment in fra
     """ Get the QR code edit form fragment for the analytics page. (Moved from fragments.py) """
     try:
         qr = await qr_retrieval_service.get_qr_by_id(qr_id)
-        return templates.TemplateResponse("qr_edit_form.html", {"qr": qr})
+        return templates.TemplateResponse("qr_edit_form.html", {"request": request, "qr": qr})
     except QRCodeNotFoundError:
-        return templates.TemplateResponse("error.html", {"error": f"QR code with ID {qr_id} not found."}, status_code=404)
+        return templates.TemplateResponse("error.html", {"request": request, "error": f"QR code with ID {qr_id} not found."}, status_code=404)
     except Exception as e:
         logger.error(f"Error retrieving QR code for editing: {str(e)}")
-        return templates.TemplateResponse("error.html", {"error": f"An error occurred: {str(e)}"}, status_code=500)
+        return templates.TemplateResponse("error.html", {"request": request, "error": f"An error occurred: {str(e)}"}, status_code=500)
 
 @router.get("/qr-edit/{qr_id}", response_class=HTMLResponse) # As per subtask, this is distinct
 async def get_qr_edit_modal_fragment( # Renamed to differentiate
@@ -147,12 +148,12 @@ async def get_qr_edit_modal_fragment( # Renamed to differentiate
         # response.headers["HX-Redirect"] = f"/qr/{qr_id}/analytics" # Or another appropriate page
         # return response
         # For now, let's assume it's meant to return a form fragment, similar to qr_edit_form.html, maybe for a modal.
-        return templates.TemplateResponse("qr_edit.html", {"qr": qr}) # Assuming qr_edit.html exists
+        return templates.TemplateResponse("qr_edit.html", {"request": request, "qr": qr}) # Assuming qr_edit.html exists
     except QRCodeNotFoundError:
-        return templates.TemplateResponse("error.html", {"error": f"QR code with ID {qr_id} not found."}, status_code=404)
+        return templates.TemplateResponse("error.html", {"request": request, "error": f"QR code with ID {qr_id} not found."}, status_code=404)
     except Exception as e:
         logger.error(f"Error retrieving QR code for edit modal: {str(e)}")
-        return templates.TemplateResponse("error.html", {"error": f"An error occurred: {str(e)}"}, status_code=500)
+        return templates.TemplateResponse("error.html", {"request": request, "error": f"An error occurred: {str(e)}"}, status_code=500)
 
 
 @router.post("/qr-update/{qr_id}", response_class=HTMLResponse)
@@ -191,20 +192,21 @@ async def update_qr_code_fragment( # Renamed from update_qr_code
             return templates.TemplateResponse(
                 template_name,
                 {
+                    "request": request,
                     "qr": qr, "redirect_url": redirect_url, "title": title, "description": description,
                     "error_messages": e.errors() if isinstance(e, ValidationError) else [{"msg": str(e), "loc": ["form"]}]
                 },
                 status_code=422
             )
         except QRCodeNotFoundError: # If QR not found even for re-rendering form
-             return templates.TemplateResponse("error.html", {"error": f"QR code with ID {qr_id} not found."}, status_code=404)
+             return templates.TemplateResponse("error.html", {"request": request, "error": f"QR code with ID {qr_id} not found."}, status_code=404)
         except Exception as fetch_err: # Catch error during fetch for re-render
             logger.error(f"Error fetching QR for form re-render: {fetch_err}")
-            return templates.TemplateResponse("error.html", {"error": "Error processing update."}, status_code=500)
+            return templates.TemplateResponse("error.html", {"request": request, "error": "Error processing update."}, status_code=500)
 
     except Exception as e:
         logger.error(f"Error updating QR code fragment: {str(e)}")
-        return templates.TemplateResponse("error.html", {"error": f"An error occurred: {str(e)}"}, status_code=500)
+        return templates.TemplateResponse("error.html", {"request": request, "error": f"An error occurred: {str(e)}"}, status_code=500)
 
 @router.get("/qr-edit-form-cancel/{qr_id}", response_class=HTMLResponse)
 async def cancel_qr_edit_form_fragment( # Renamed from cancel_qr_edit_form
