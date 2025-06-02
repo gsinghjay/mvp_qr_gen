@@ -34,12 +34,14 @@ templates = Jinja2Templates(
     context_processors=[get_base_template_context],
 )
 
+from app.models import QRCode # For type hint if get_qr_by_id returns this directly
+
 logger = logging.getLogger("app.qr_analytics_fragments")
 router = APIRouter(
     prefix="/fragments", # Common prefix
     tags=["Fragments - QR Analytics & Options"],
     responses={404: {"description": "Not found"}},
-from app.models import QRCode # For type hint if get_qr_by_id returns this directly
+)
 
 @router.get("/qr/{qr_id}/analytics/scan-logs", response_class=HTMLResponse)
 async def get_scan_logs_fragment(
@@ -74,15 +76,16 @@ async def get_scan_logs_fragment(
         return templates.TemplateResponse(
             "scan_log_table.html",
             {
+                "request": request,
                 "qr_id": qr_id, "scan_logs": formatted_logs, "total_logs": total_logs,
                 "page": page, "limit": limit, "total_pages": total_pages, "genuine_only": genuine_only
             }
         )
     except QRCodeNotFoundError:
-        return templates.TemplateResponse("error.html", {"error": f"QR code with ID {qr_id} not found."}, status_code=404)
+        return templates.TemplateResponse("error.html", {"request": request, "error": f"QR code with ID {qr_id} not found."}, status_code=404)
     except DatabaseError as e:
         logger.error(f"Database error retrieving scan logs for QR {qr_id}: {str(e)}")
-        return templates.TemplateResponse("error.html", {"error": "An error occurred while retrieving scan logs."}, status_code=500)
+        return templates.TemplateResponse("error.html", {"request": request, "error": "An error occurred while retrieving scan logs."}, status_code=500)
 
 @router.get("/qr/{qr_id}/analytics/device-stats", response_class=HTMLResponse)
 async def get_device_stats_fragment(
@@ -108,13 +111,13 @@ async def get_device_stats_fragment(
 
         return templates.TemplateResponse(
             "device_os_browser_stats.html",
-            {"qr_id": qr_id, "stats": stats, "device_total": device_total, "genuine_only": genuine_only}
+            {"request": request, "qr_id": qr_id, "stats": stats, "device_total": device_total, "genuine_only": genuine_only}
         )
     except QRCodeNotFoundError:
-        return templates.TemplateResponse("error.html", {"error": f"QR code with ID {qr_id} not found."}, status_code=404)
+        return templates.TemplateResponse("error.html", {"request": request, "error": f"QR code with ID {qr_id} not found."}, status_code=404)
     except DatabaseError as e:
         logger.error(f"Database error retrieving device stats for QR {qr_id}: {str(e)}")
-        return templates.TemplateResponse("error.html", {"error": "An error occurred while retrieving device stats."}, status_code=500)
+        return templates.TemplateResponse("error.html", {"request": request, "error": "An error occurred while retrieving device stats."}, status_code=500)
 
 @router.get("/qr/{qr_id}/download-options", response_class=HTMLResponse)
 async def get_qr_download_options_fragment(
@@ -125,12 +128,12 @@ async def get_qr_download_options_fragment(
     """ Get download options fragment. (Moved from fragments.py) """
     try:
         qr = await qr_retrieval_service.get_qr_by_id(qr_id)
-        return templates.TemplateResponse("qr_download_options.html", {"qr": qr})
+        return templates.TemplateResponse("qr_download_options.html", {"request": request, "qr": qr})
     except QRCodeNotFoundError:
-        return templates.TemplateResponse("error.html", {"error": f"QR code with ID {qr_id} not found"}, status_code=404)
+        return templates.TemplateResponse("error.html", {"request": request, "error": f"QR code with ID {qr_id} not found"}, status_code=404)
     except Exception as e:
         logger.error(f"Error getting QR download options: {str(e)}")
-        return templates.TemplateResponse("error.html", {"error": "Unable to load QR download options"}, status_code=500)
+        return templates.TemplateResponse("error.html", {"request": request, "error": "Unable to load QR download options"}, status_code=500)
 
 @router.get("/qr/{qr_id}/analytics/scan-timeseries", response_class=JSONResponse) # Returns JSON
 async def get_scan_timeseries_data( # Renamed from get_scan_timeseries
