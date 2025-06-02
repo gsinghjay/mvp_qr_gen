@@ -45,32 +45,43 @@ async def get_qr_list_fragment(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
     search: Optional[str] = Query(None),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("desc"),
 ):
     """ Get QR code list fragment. (Moved from fragments.py) """
     try:
         skip = (page - 1) * limit
+        # Convert sort_order to sort_desc boolean
+        sort_desc = sort_order == "desc"
+        
         qr_codes, total_count = await qr_retrieval_service.list_qr_codes(
-            skip=skip, limit=limit, search=search
+            skip=skip, limit=limit, search=search, sort_by=sort_by, sort_desc=sort_desc
         )
 
         total_pages = math.ceil(total_count / limit) if total_count > 0 else 1
 
         return templates.TemplateResponse(
-            "qr_list_table.html",
+            "qr_list.html",
             {
                 "request": request,
-                "qr_codes": qr_codes, "total_count": total_count,
-                "page": page, "limit": limit, "total_pages": total_pages, "search": search
+                "qr_codes": qr_codes, 
+                "total_count": total_count,
+                "total": total_count,  # Template expects 'total'
+                "page": page, "limit": limit, "total_pages": total_pages, 
+                "search": search, "sort_by": sort_by, "sort_order": sort_order
             }
         )
     except DatabaseError as e:
         logger.error(f"Database error retrieving QR list: {str(e)}")
         return templates.TemplateResponse(
-            "qr_list_table.html",
+            "qr_list.html",
             {
                 "request": request,
-                "qr_codes": [], "total_count": 0,
-                "page": page, "limit": limit, "total_pages": 1, "search": search,
+                "qr_codes": [], 
+                "total_count": 0,
+                "total": 0,  # Template expects 'total'
+                "page": page, "limit": limit, "total_pages": 1, 
+                "search": search, "sort_by": sort_by, "sort_order": sort_order,
                 "error": "An error occurred while retrieving QR codes."
             },
             status_code=500
@@ -83,6 +94,8 @@ async def get_qr_list_pagination_fragment(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
     search: Optional[str] = Query(None),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("desc"),
 ):
     """ Get QR code list pagination fragment. (Moved from fragments.py) """
     try:
@@ -94,21 +107,23 @@ async def get_qr_list_pagination_fragment(
         total_pages = math.ceil(total_count / limit) if total_count > 0 else 1
 
         return templates.TemplateResponse(
-            "qr_list_pagination.html",
+            "pagination.html",
             {
                 "request": request,
                 "total_count": total_count,
-                "page": page, "limit": limit, "total_pages": total_pages, "search": search
+                "page": page, "limit": limit, "total_pages": total_pages, 
+                "search": search, "sort_by": sort_by, "sort_order": sort_order
             }
         )
     except DatabaseError as e:
         logger.error(f"Database error retrieving QR list pagination: {str(e)}")
         return templates.TemplateResponse(
-            "qr_list_pagination.html",
+            "pagination.html",
             {
                 "request": request,
                 "total_count": 0,
-                "page": page, "limit": limit, "total_pages": 1, "search": search,
+                "page": page, "limit": limit, "total_pages": 1, 
+                "search": search, "sort_by": sort_by, "sort_order": sort_order,
                 "error": "An error occurred while retrieving pagination data."
             },
             status_code=500

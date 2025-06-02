@@ -7,13 +7,15 @@ from fastapi.templating import Jinja2Templates
 from datetime import datetime # For current_year
 
 from app.core.config import settings
-from app.schemas.common import QRType # For path parameter
+from app.schemas.common import QRType, ErrorCorrectionLevel # For path parameter and error correction
 from app.schemas.qr import QRCodeResponse, StaticQRCreateParameters, DynamicQRCreateParameters, QRUpdateParameters # For request/response models
 from app.services.qr_creation_service import QRCreationService
 from app.services.qr_update_service import QRUpdateService
 from app.services.qr_retrieval_service import QRRetrievalService
 from app.dependencies import get_qr_creation_service, get_qr_update_service, get_qr_retrieval_service
 from app.core.exceptions import QRCodeNotFoundError, QRCodeValidationError, RedirectURLError, DatabaseError
+from app.models.qr import QRCode  # Import QRCode model
+from pydantic import ValidationError  # Import ValidationError for error handling
 
 
 # Dependency types
@@ -57,7 +59,7 @@ async def get_qr_form_fragment(request: Request, qr_type: str):
         raise HTTPException(status_code=400, detail="Invalid QR type")
     return templates.TemplateResponse(
         "qr_form.html", # Template path relative to 'fragments'
-        {"request": request, "qr_type": qr_type, "error_levels": ["L", "M", "Q", "H"]}
+        {"request": request, "qr_type": qr_type}
     )
 
 @router.post("/qr-create", response_class=HTMLResponse)
@@ -69,13 +71,13 @@ async def create_qr_code_fragment( # Renamed from create_qr_code
     title: str = Form(...),
     description: Optional[str] = Form(None), # Made Optional
     redirect_url: Optional[str] = Form(None), # Made Optional
-    error_level: str = Form("M"),
-    # Removed unused image generation params like svg_title, include_logo for create operation
+    # Removed error_level, svg_title, include_logo - these are now available during download
 ):
     """ Create a QR code from form submission. (Moved from fragments.py) """
     try:
         logger.info(f"Creating {qr_type} QR code fragment with title: {title}")
-        error_level_enum = ErrorCorrectionLevel(error_level.lower())
+        # Use High error correction by default for all QR codes
+        error_level_enum = ErrorCorrectionLevel.H
 
         qr_data: QRCode # To hold the created QR object
         if qr_type == "static":
@@ -104,9 +106,8 @@ async def create_qr_code_fragment( # Renamed from create_qr_code
             {
                 "request": request,
                 "qr_type": qr_type, "content": content, "title": title, "description": description,
-                "redirect_url": redirect_url, "error_level": error_level.upper(),
-                "error_messages": e.errors() if isinstance(e, ValidationError) else [{"msg": str(e), "loc": ["form"]}],
-                "error_levels": ["L", "M", "Q", "H"]
+                "redirect_url": redirect_url,
+                "error_messages": [{"msg": str(e), "loc": ["form"]}]
             },
             status_code=422 # Unprocessable Entity for validation errors
         )
@@ -194,7 +195,7 @@ async def update_qr_code_fragment( # Renamed from update_qr_code
                 {
                     "request": request,
                     "qr": qr, "redirect_url": redirect_url, "title": title, "description": description,
-                    "error_messages": e.errors() if isinstance(e, ValidationError) else [{"msg": str(e), "loc": ["form"]}]
+                    "error_messages": [{"msg": str(e), "loc": ["form"]}]
                 },
                 status_code=422
             )
