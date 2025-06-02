@@ -68,7 +68,7 @@ class QRCreationService:
 
             # All HTTP/HTTPS URLs with valid domains are now allowed
             logger.info(f"Validated redirect URL: {url}")
-                    return True
+            return True
 
         except Exception as e:
             logger.error(f"Error parsing URL {url}: {str(e)}")
