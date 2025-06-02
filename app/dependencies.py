@@ -55,6 +55,19 @@ def get_qr_code_repository(db: Annotated[Session, Depends(get_db_with_logging)])
     return QRCodeRepository(db)
 
 
+def get_scan_log_repository(db: Annotated[Session, Depends(get_db_with_logging)]) -> ScanLogRepository:
+    """
+    Dependency for getting a ScanLogRepository instance.
+    
+    Args:
+        db: The database session (injected via FastAPI's dependency system)
+        
+    Returns:
+        An instance of ScanLogRepository with the database session
+    """
+    return ScanLogRepository(db)
+
+
 def get_qr_retrieval_service(qr_code_repo: Annotated[QRCodeRepository, Depends(get_qr_code_repository)]) -> QRRetrievalService:
     """
     Dependency for getting a QRRetrievalService instance.
@@ -68,17 +81,43 @@ def get_qr_retrieval_service(qr_code_repo: Annotated[QRCodeRepository, Depends(g
     return QRRetrievalService(qr_code_repo=qr_code_repo)
 
 
-def get_scan_log_repository(db: Annotated[Session, Depends(get_db_with_logging)]) -> ScanLogRepository:
+# New dependencies for Observatory-First refactoring - moved up to avoid forward references
+
+def get_segno_qr_generator() -> SegnoQRCodeGenerator:
     """
-    Dependency for getting a ScanLogRepository instance.
+    Dependency for getting a SegnoQRCodeGenerator adapter instance.
+    
+    Returns:
+        An instance of SegnoQRCodeGenerator
+    """
+    return SegnoQRCodeGenerator()
+
+
+def get_pillow_qr_formatter() -> PillowQRImageFormatter:
+    """
+    Dependency for getting a PillowQRImageFormatter adapter instance.
+    
+    Returns:
+        An instance of PillowQRImageFormatter
+    """
+    return PillowQRImageFormatter()
+
+
+def get_new_qr_generation_service(
+    generator: Annotated[QRCodeGenerator, Depends(get_segno_qr_generator)],
+    formatter: Annotated[QRImageFormatter, Depends(get_pillow_qr_formatter)],
+) -> NewQRGenerationService:
+    """
+    Dependency for getting a NewQRGenerationService instance.
     
     Args:
-        db: The database session (injected via FastAPI's dependency system)
+        generator: QR code generation implementation
+        formatter: QR image formatting implementation
         
     Returns:
-        An instance of ScanLogRepository with the database session
+        An instance of NewQRGenerationService with injected adapters
     """
-    return ScanLogRepository(db)
+    return NewQRGenerationService(generator=generator, formatter=formatter)
 
 
 def get_scan_processing_service(
@@ -189,44 +228,6 @@ def get_qr_deletion_service(
         An instance of QRDeletionService.
     """
     return QRDeletionService(qr_code_repo=qr_code_repo)
-
-# New dependencies for Observatory-First refactoring
-
-def get_segno_qr_generator() -> SegnoQRCodeGenerator:
-    """
-    Dependency for getting a SegnoQRCodeGenerator adapter instance.
-    
-    Returns:
-        An instance of SegnoQRCodeGenerator
-    """
-    return SegnoQRCodeGenerator()
-
-
-def get_pillow_qr_formatter() -> PillowQRImageFormatter:
-    """
-    Dependency for getting a PillowQRImageFormatter adapter instance.
-    
-    Returns:
-        An instance of PillowQRImageFormatter
-    """
-    return PillowQRImageFormatter()
-
-
-def get_new_qr_generation_service(
-    generator: Annotated[QRCodeGenerator, Depends(get_segno_qr_generator)],
-    formatter: Annotated[QRImageFormatter, Depends(get_pillow_qr_formatter)],
-) -> NewQRGenerationService:
-    """
-    Dependency for getting a NewQRGenerationService instance.
-    
-    Args:
-        generator: QR code generation implementation
-        formatter: QR image formatting implementation
-        
-    Returns:
-        An instance of NewQRGenerationService with injected adapters
-    """
-    return NewQRGenerationService(generator=generator, formatter=formatter)
 
 
 # def get_qr_service removed
