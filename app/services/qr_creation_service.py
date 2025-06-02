@@ -30,7 +30,7 @@ class QRCreationService:
     def __init__(
         self,
         qr_code_repo: QRCodeRepository,
-        settings: Settings, # Injected for BASE_URL, ALLOWED_REDIRECT_DOMAINS, USE_NEW_QR_GENERATION_SERVICE
+        settings: Settings, # Injected for BASE_URL, USE_NEW_QR_GENERATION_SERVICE
         new_qr_generation_service: Optional[NewQRGenerationService],
         new_qr_generation_breaker: Optional[aiobreaker.CircuitBreaker],
     ):
@@ -42,7 +42,9 @@ class QRCreationService:
     # Moved from QRCodeService
     def _is_safe_redirect_url(self, url: str) -> bool:
         """
-        Validate if a redirect URL is safe based on scheme and domain allowlist.
+        Validate if a redirect URL is safe based on scheme validation only.
+        
+        Allows any HTTP/HTTPS URL to any domain while blocking malicious schemes.
 
         Args:
             url: The URL to validate
@@ -53,30 +55,20 @@ class QRCreationService:
         try:
             parsed_url = urlparse(url)
 
-            # Check if scheme is http or https
+            # Check if scheme is http or https - this is the primary security boundary
             if parsed_url.scheme not in ("http", "https"):
                 logger.warning(f"Unsafe URL scheme: {parsed_url.scheme}")
                 return False
 
-            # Get the domain (netloc)
+            # Ensure domain exists
             domain = parsed_url.netloc.lower()
             if not domain:
                 logger.warning("URL has no domain")
                 return False
 
-            # Check against allowed domains (exact match or subdomain)
-            # Using self.settings.ALLOWED_REDIRECT_DOMAINS
-            for allowed_domain in self.settings.ALLOWED_REDIRECT_DOMAINS:
-                allowed_domain = allowed_domain.lower()
-                # Exact match
-                if domain == allowed_domain:
-                    return True
-                # Subdomain match (domain ends with .allowed_domain)
-                if domain.endswith(f".{allowed_domain}"):
-                    return True
-
-            logger.warning(f"Domain not in allowlist: {domain}")
-            return False
+            # All HTTP/HTTPS URLs with valid domains are now allowed
+            logger.info(f"Validated redirect URL: {url}")
+            return True
 
         except Exception as e:
             logger.error(f"Error parsing URL {url}: {str(e)}")
@@ -227,8 +219,7 @@ class QRCreationService:
         try:
             redirect_url_str = str(data.redirect_url)
             if not self._is_safe_redirect_url(redirect_url_str): # Changed to self._is_safe_redirect_url
-                allowed_domains = ", ".join(self.settings.ALLOWED_REDIRECT_DOMAINS)
-                raise RedirectURLError(f"Redirect URL not allowed: {redirect_url_str}. Allowed domains: {allowed_domains}")
+                raise RedirectURLError(f"Invalid redirect URL: {redirect_url_str}. Only HTTP and HTTPS URLs are allowed.")
 
             short_id = str(uuid.uuid4())[:8]
             full_url = f"{self.settings.BASE_URL}/r/{short_id}?scan_ref=qr" # Changed to self.settings
