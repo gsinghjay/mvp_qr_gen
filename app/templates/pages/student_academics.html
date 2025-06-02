@@ -6,7 +6,13 @@
 {% block content %}
 <!-- Page intro section -->
 <section class="page-intro">
-  <h1>Academics</h1>
+  <h1>{{ page_header|default('Academics') }}</h1>
+  {% if user_email %}
+  <p class="text-muted">{{ user_email }}{% if is_student %} (Student){% endif %}</p>
+  {% endif %}
+  {% if groups %}
+  <p class="text-muted">Groups: {{ groups|join(', ') }}</p>
+  {% endif %}
 </section>
 
 <!-- Breadcrumbs -->

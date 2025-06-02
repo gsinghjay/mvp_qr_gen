@@ -1,6 +1,17 @@
 {% extends "base_hccc_portal.html" %}
 
 {% block content %}
+<!-- Welcome Section -->
+<section class="page-intro">
+  <h1>{{ page_header|default('Faculty & Staff Portal') }}</h1>
+  {% if user_email %}
+  <p class="text-muted">{{ user_email }} {% if user_role %}({{ user_role }}){% endif %}</p>
+  {% endif %}
+  {% if groups %}
+  <p class="text-muted">Groups: {{ groups|join(', ') }}</p>
+  {% endif %}
+</section>
+
 <!-- Announcements Section -->
 <section class="announcements section">
   <div class="announcements__inner">

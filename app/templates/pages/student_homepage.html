@@ -7,9 +7,12 @@
 {% block content %}
 <!-- Student Welcome Section -->
 <section class="page-intro">
-  <h1>Welcome, {{ preferred_username|default('Student') }}!</h1>
-  {% if email %}
-  <p class="text-muted">{{ email }}</p>
+  <h1>{{ page_header|default('Welcome, Student!') }}</h1>
+  {% if user_email %}
+  <p class="text-muted">{{ user_email }}</p>
+  {% endif %}
+  {% if groups %}
+  <p class="text-muted">Groups: {{ groups|join(', ') }}</p>
   {% endif %}
 </section>
 
