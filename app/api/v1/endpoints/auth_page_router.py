@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, Header, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -16,11 +16,76 @@ logger = logging.getLogger("app.auth_pages")
 router = APIRouter(
     tags=["Pages - Authentication"], # Updated tag
     responses={404: {"description": "Not found"}},
-from fastapi import Header, status # Added Header and status
+)
 
 # Note: The original pages.py had a context_processor for 'request'.
 # If these templates rely on it, Jinja2Templates instance here should also have it.
 # For now, assuming 'request' will be passed explicitly if needed by template context itself.
+
+# Context processor similar to pages.py
+def get_base_template_context(request: Request) -> dict:
+    request.scope["scheme"] = "https"
+    return {
+        "request": request,
+        "app_version": "1.0.0", # Example, consider centralizing if needed
+        "environment": settings.ENVIRONMENT,
+        "current_year": 2024, # Or use datetime.now().year
+        "api_base_url": "/api/v1",
+    }
+
+templates = Jinja2Templates(
+    directory=str(settings.TEMPLATES_DIR),
+    context_processors=[get_base_template_context],
+)
+
+@router.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """ Render the login page. """
+    try:
+        return templates.TemplateResponse(
+            name="auth/login.html",
+            context={"request": request, "page_title": "Login"},
+        )
+    except Exception as e:
+        logger.error("Error in login page", extra={"error": str(e)})
+        return templates.TemplateResponse(
+            name="auth/login.html",
+            context={"request": request, "page_title": "Login", "error": "An error occurred while loading the login page"},
+            status_code=500,
+        )
+
+@router.get("/logout", response_class=HTMLResponse)
+async def logout_page(request: Request):
+    """ Render the logout page or handle logout. """
+    try:
+        # This might redirect to an external logout URL or render a logout confirmation
+        return templates.TemplateResponse(
+            name="auth/logout.html",
+            context={"request": request, "page_title": "Logout"},
+        )
+    except Exception as e:
+        logger.error("Error in logout page", extra={"error": str(e)})
+        return templates.TemplateResponse(
+            name="auth/logout.html",
+            context={"request": request, "page_title": "Logout", "error": "An error occurred during logout"},
+            status_code=500,
+        )
+
+@router.get("/unauthorized", response_class=HTMLResponse)
+async def unauthorized_page(request: Request):
+    """ Render the unauthorized access page. """
+    try:
+        return templates.TemplateResponse(
+            name="auth/unauthorized.html",
+            context={"request": request, "page_title": "Unauthorized", "error_message": "You are not authorized to access this resource."},
+        )
+    except Exception as e:
+        logger.error("Error in unauthorized page", extra={"error": str(e)})
+        return templates.TemplateResponse(
+            name="auth/unauthorized.html",
+            context={"request": request, "page_title": "Unauthorized", "error": "An error occurred while loading the unauthorized page"},
+            status_code=500,
+        )
 
 @router.get("/hello-secure", response_class=HTMLResponse)
 async def hello_secure_page( # Renamed from hello_secure to avoid conflict if pages.py is still imported
@@ -111,25 +176,6 @@ async def hello_secure_page( # Renamed from hello_secure to avoid conflict if pa
             },
             status_code=500,
         )
-
-@router.get("/logout", response_class=HTMLResponse) # Renamed from logout_success
-async def logout_page(request: Request): # Renamed from logout_success
-    """
-    Post-logout landing page.
-    (Moved from pages.py, was logout_success)
-    """
-    try:
-        return templates.TemplateResponse(
-            name="pages/logout_success.html",
-            context={
-                "request": request,
-                "page_title": "Logged Out",
-            },
-        )
-    except Exception as e:
-        logger.error(f"Error in logout success page", extra={"error": str(e)})
-        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-
 
 @router.get("/logout/oidc", response_class=RedirectResponse)
 async def oidc_logout_page( # Renamed from oidc_logout
