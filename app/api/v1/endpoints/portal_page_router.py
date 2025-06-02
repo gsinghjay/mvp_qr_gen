@@ -37,8 +37,9 @@ templates = Jinja2Templates(
 async def portal_demo_page(request: Request): # Renamed
     """ Portal navigation demo page. (Moved from pages.py) """
     try:
+        # Use the existing hccc_portal template as a demo for now
         return templates.TemplateResponse(
-            "pages/portal_demo.html",
+            "pages/hccc_portal.html",
             {
                 "page_title": "Portal Navigation Demo",
                 "page_description": "Demonstration of the new HCCC portal template with ifactory navigation",
@@ -49,7 +50,7 @@ async def portal_demo_page(request: Request): # Renamed
     except Exception as e:
         logger.error(f"Error rendering portal demo page: {e}")
         return templates.TemplateResponse( # Consider a generic error page
-            "error.html", {"error": "An error occurred while loading the portal demo page"}, status_code=500,
+            "fragments/error.html", {"error": "An error occurred while loading the portal demo page"}, status_code=500,
         )
 
 @router.get("/hccc-portal", response_class=HTMLResponse)
@@ -63,7 +64,7 @@ async def hccc_portal_page(request: Request): # Renamed from hccc_portal
     except Exception as e:
         logger.error("Error in HCCC portal page", extra={"error": str(e)})
         return templates.TemplateResponse( # Consider a generic error page
-            name="pages/hccc_portal.html",
+            name="fragments/error.html",
             context={"request": request, "is_authenticated": True, "error": "An error occurred while loading the HCCC portal"},
             status_code=500,
         )
@@ -73,12 +74,12 @@ async def student_home_portal_page(request: Request): # Renamed from student_hom
     """ Render the student home portal page. (Moved from pages.py) """
     try:
         return templates.TemplateResponse(
-            name="pages/student_home.html",
+            name="pages/student_homepage.html",  # Fixed: use correct template name
             context={"request": request, "is_authenticated": True}, # Assuming auth, request already in context_processor
         )
     except Exception as e:
         logger.error("Error in student home portal page", extra={"error": str(e)})
-        return templates.TemplateResponse("error.html", {"request": request, "error": "An error occurred while loading the student portal"}, status_code=500)
+        return templates.TemplateResponse("fragments/error.html", {"request": request, "error": "An error occurred while loading the student portal"}, status_code=500)
 
 @router.get("/hr-portal", response_class=HTMLResponse)
 async def hr_portal_page(request: Request): # Renamed from hr_portal
@@ -87,12 +88,12 @@ async def hr_portal_page(request: Request): # Renamed from hr_portal
         # Assuming HR portal has specific data or permissions
         # For now, using a generic template
         return templates.TemplateResponse(
-            name="pages/hr_portal.html",
+            name="pages/faculty_hr.html",  # Fixed: use correct template name
             context={"request": request, "is_authenticated": True}, # Assuming auth, request already in context_processor
         )
     except Exception as e:
         logger.error("Error in HR portal page", extra={"error": str(e)})
-        return templates.TemplateResponse("error.html", {"request": request, "error": "An error occurred while loading the HR portal"}, status_code=500)
+        return templates.TemplateResponse("fragments/error.html", {"request": request, "error": "An error occurred while loading the HR portal"}, status_code=500)
 
 @router.get("/student-academics", response_class=HTMLResponse)
 async def student_academics_portal_page(request: Request): # Renamed from student_academics_portal
@@ -106,4 +107,4 @@ async def student_academics_portal_page(request: Request): # Renamed from studen
         )
     except Exception as e:
         logger.error("Error in student academics portal page", extra={"error": str(e)})
-        return templates.TemplateResponse("error.html", {"request": request, "error": "An error occurred while loading the student academics portal"}, status_code=500)
+        return templates.TemplateResponse("fragments/error.html", {"request": request, "error": "An error occurred while loading the student academics portal"}, status_code=500)
