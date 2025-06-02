@@ -1,21 +1,20 @@
 import logging
+import math # For pagination calculations
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Request, Header
+from fastapi import APIRouter, Depends, Request, Query
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from datetime import datetime
 
 from app.core.config import settings
-from app.schemas.qr import QRListParameters # For pagination params
+from app.core.exceptions import DatabaseError
+# Import specific service dependencies needed
 from app.services.qr_retrieval_service import QRRetrievalService
 from app.dependencies import get_qr_retrieval_service
-from app.core.exceptions import InvalidQRTypeError, DatabaseError # For error handling
 
-# Dependency type
+# Dependency types
 QRRetrievalServiceDep = Annotated[QRRetrievalService, Depends(get_qr_retrieval_service)]
-
-import math # For pagination
-from datetime import datetime # For current_year
 
 # Templates setup
 def get_base_template_context(request: Request) -> dict:
@@ -23,7 +22,7 @@ def get_base_template_context(request: Request) -> dict:
         "request": request,
         "app_version": "1.0.0",
         "environment": settings.ENVIRONMENT,
-        "current_year": datetime.now().year, # Corrected
+        "current_year": datetime.now().year,
         "api_base_url": "/api/v1",
     }
 
@@ -34,70 +33,83 @@ templates = Jinja2Templates(
 
 logger = logging.getLogger("app.qr_list_fragments")
 router = APIRouter(
-    prefix="/fragments",
-    tags=["Fragments - QR List"],
+    prefix="/fragments", # Common prefix
+    tags=["Fragments - QR Lists"],
     responses={404: {"description": "Not found"}},
 )
 
 @router.get("/qr-list", response_class=HTMLResponse)
 async def get_qr_list_fragment(
     request: Request,
-    qr_retrieval_service: QRRetrievalServiceDep, # Changed from qr_service
-    page: int = 1,
-    limit: int = 10,
-    search: str = "",
-    sort_by: str = "created_at",
-    sort_order: str = "desc",
+    qr_retrieval_service: QRRetrievalServiceDep, # Changed dependency
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    search: Optional[str] = Query(None),
 ):
-    """ Get the QR code list fragment. (Moved from fragments.py) """
+    """ Get QR code list fragment. (Moved from fragments.py) """
     try:
-        qr_codes, total = await qr_retrieval_service.list_qr_codes( # Changed from qr_service and added await
-            skip=(page - 1) * limit,
-            limit=limit,
-            search=search,
-            sort_by=sort_by,
-            sort_desc=sort_order.lower() == "desc"
+        skip = (page - 1) * limit
+        qr_codes, total_count = await qr_retrieval_service.list_qr_codes(
+            skip=skip, limit=limit, search=search
         )
 
+        total_pages = math.ceil(total_count / limit) if total_count > 0 else 1
+
         return templates.TemplateResponse(
-            "qr_list.html", # Assuming template name is qr_list.html in fragments folder
+            "qr_list_table.html",
             {
-                "qr_codes": qr_codes,
-                "page": page,
-                "limit": limit,
-                "search": search,
-                "total": total,
-                "sort_by": sort_by,
-                "sort_order": sort_order,
-                "total_pages": math.ceil(total / limit) if limit > 0 else 1
+                "request": request,
+                "qr_codes": qr_codes, "total_count": total_count,
+                "page": page, "limit": limit, "total_pages": total_pages, "search": search
             }
         )
-    except DatabaseError as e: # Assuming DatabaseError is relevant here
-        logger.error("Database error in QR list fragment", extra={"error": str(e)})
+    except DatabaseError as e:
+        logger.error(f"Database error retrieving QR list: {str(e)}")
         return templates.TemplateResponse(
-            "error.html", # Assuming error.html in fragments folder
-            {"error": "Unable to load QR code data"},
-            status_code=500,
+            "qr_list_table.html",
+            {
+                "request": request,
+                "qr_codes": [], "total_count": 0,
+                "page": page, "limit": limit, "total_pages": 1, "search": search,
+                "error": "An error occurred while retrieving QR codes."
+            },
+            status_code=500
         )
 
-@router.get("/pagination", response_class=HTMLResponse)
-async def get_pagination_fragment(
+@router.get("/qr-list-pagination", response_class=HTMLResponse)
+async def get_qr_list_pagination_fragment(
     request: Request,
-    page: int = 1,
-    limit: int = 10,
-    total: int = 0,
-    resource: str = "qr-list", # Default resource, can be overridden
+    qr_retrieval_service: QRRetrievalServiceDep, # Changed dependency
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    search: Optional[str] = Query(None),
 ):
-    """ Get the pagination fragment. (Moved from fragments.py) """
-    total_pages = math.ceil(total / limit) if limit > 0 else 1
+    """ Get QR code list pagination fragment. (Moved from fragments.py) """
+    try:
+        skip = (page - 1) * limit
+        _, total_count = await qr_retrieval_service.list_qr_codes(
+            skip=skip, limit=limit, search=search
+        )
 
-    return templates.TemplateResponse(
-        "pagination.html", # Assuming pagination.html in fragments folder
-        {
-            "page": page,
-            "limit": limit,
-            "total": total,
-            "total_pages": total_pages,
-            "resource": resource
-        }
-    )
+        total_pages = math.ceil(total_count / limit) if total_count > 0 else 1
+
+        return templates.TemplateResponse(
+            "qr_list_pagination.html",
+            {
+                "request": request,
+                "total_count": total_count,
+                "page": page, "limit": limit, "total_pages": total_pages, "search": search
+            }
+        )
+    except DatabaseError as e:
+        logger.error(f"Database error retrieving QR list pagination: {str(e)}")
+        return templates.TemplateResponse(
+            "qr_list_pagination.html",
+            {
+                "request": request,
+                "total_count": 0,
+                "page": page, "limit": limit, "total_pages": 1, "search": search,
+                "error": "An error occurred while retrieving pagination data."
+            },
+            status_code=500
+        )
