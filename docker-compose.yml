@@ -10,7 +10,7 @@ services:
       - DEBUG=${DEBUG:-false}
       - BASE_URL=${BASE_URL:-https://10.1.6.12} # This should be your primary internal access URL
       # Security Configuration
-      - ALLOWED_REDIRECT_DOMAINS=${ALLOWED_REDIRECT_DOMAINS:-hccc.edu,example.com,localhost}
+      # NOTE: Domain allowlist removed - QR codes can now redirect to any valid HTTP/HTTPS URL
       # Database Configuration
       - PG_DATABASE_URL=${PG_DATABASE_URL:-postgresql+psycopg2://pguser:pgpassword@postgres:5432/qrdb}
       - ENVIRONMENT=production # Production environment settings
