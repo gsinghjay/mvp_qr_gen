@@ -227,7 +227,8 @@ class QRCreationService:
         try:
             redirect_url_str = str(data.redirect_url)
             if not self._is_safe_redirect_url(redirect_url_str): # Changed to self._is_safe_redirect_url
-                raise RedirectURLError(f"Redirect URL not allowed: {redirect_url_str}")
+                allowed_domains = ", ".join(self.settings.ALLOWED_REDIRECT_DOMAINS)
+                raise RedirectURLError(f"Redirect URL not allowed: {redirect_url_str}. Allowed domains: {allowed_domains}")
 
             short_id = str(uuid.uuid4())[:8]
             full_url = f"{self.settings.BASE_URL}/r/{short_id}?scan_ref=qr" # Changed to self.settings
