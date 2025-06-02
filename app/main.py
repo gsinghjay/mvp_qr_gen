@@ -34,7 +34,6 @@ from .middleware import LoggingMiddleware, MetricsMiddleware, RequestIDMiddlewar
 from .database import get_db_with_logging
 from .repositories.qr_code_repository import QRCodeRepository
 from .repositories.scan_log_repository import ScanLogRepository
-from .services.qr_service import QRCodeService
 from .core.metrics_logger import initialize_feature_flags
 
 # Configure logging
@@ -77,11 +76,10 @@ async def lifespan(app: FastAPI):
         db = next(get_db_with_logging())
         logger.info("Database session created")
         
-        # Initialize repositories and services
+        # Initialize repositories
         qr_code_repo = QRCodeRepository(db)
         scan_log_repo = ScanLogRepository(db)
-        qr_service = QRCodeService(qr_code_repo=qr_code_repo, scan_log_repo=scan_log_repo)
-        logger.info("Repository and service layers initialized")
+        logger.info("Repository layers initialized")
         
         # Explicitly import routing modules to load them
         logger.info("Pre-loading route modules...")
@@ -93,135 +91,13 @@ async def lifespan(app: FastAPI):
         from .api.v1.endpoints.redirect import redirect_qr
         logger.info("Pre-loaded redirect endpoint function")
         
-        # Try to warm up the most common code paths
+        # Basic database connectivity test
         try:
-            # Initialize database query paths
             total = qr_code_repo.count()
             logger.info(f"Database contains {total} QR codes")
-            
-            # Initialize API endpoints and template rendering
-            recent_qrs, _ = qr_code_repo.list_qr_codes(skip=0, limit=5)
-            
-            if recent_qrs:
-                # Warm ORM model conversion paths
-                logger.info(f"Warming up ORM paths for {len(recent_qrs)} QR codes...")
-                _ = [qr.id for qr in recent_qrs]
-                _ = [qr.to_dict() for qr in recent_qrs]
-                
-                # Warm up QR generation paths
-                if len(recent_qrs) > 0:
-                    first_qr = recent_qrs[0]
-                    logger.info("Warming up QR image generation...")
-                    # Generate a test QR image to warm up the image generation path
-                    _ = qr_service.generate_qr(
-                        data=first_qr.content,
-                        size=10,
-                        border=4,
-                        fill_color=first_qr.fill_color,
-                        back_color=first_qr.back_color,
-                        image_format="png",
-                        image_quality=90,
-                        include_logo=False,
-                        error_level="M"
-                    )
-                
-                # Exercise the critical redirect path
-                logger.info("Warming up redirect code paths...")
-                dynamic_qrs = [qr for qr in recent_qrs if qr.qr_type == "dynamic"]
-                if dynamic_qrs:
-                    dynamic_qr = dynamic_qrs[0]
-                    # Extract the short_id from the content
-                    content = dynamic_qr.content
-                    if content and "/r/" in content:
-                        # Extract short_id from the URL path
-                        short_id = content.split("/r/")[-1]
-                        
-                        # CRITICAL: Warm up the exact service method used by redirect endpoint
-                        logger.info(f"Warming up get_qr_by_short_id with {short_id}...")
-                        try:
-                            # This uses direct lookup by short_id
-                            found_qr = qr_service.get_qr_by_short_id(short_id)
-                            logger.info(f"Successfully retrieved QR via short_id: {found_qr.id}")
-                            
-                            # Warm up redirect URL access
-                            if found_qr.qr_type == "dynamic" and found_qr.redirect_url:
-                                logger.info(f"Verifying redirect URL: {found_qr.redirect_url}")
-                            
-                            # Warm up the update_scan_statistics method (used in background task)
-                            try:
-                                # Call with minimal parameters since we're just warming up
-                                qr_service.update_scan_statistics(
-                                    qr_id=found_qr.id,
-                                    timestamp=datetime.now(UTC)
-                                )
-                                logger.info("Warmed up scan statistics update path")
-                            except Exception as e:
-                                logger.warning(f"Scan statistics update warm-up failed: {e}")
-                                
-                        except Exception as e:
-                            logger.warning(f"Service method warm-up failed: {e}")
-                            
-                            # Log the error but continue initialization
-                            logger.warning(f"Unable to warm up QR redirect path: {e}")
-                            logger.info("Application will continue to initialize")
-            else:
-                # If no QRs exist, create test ones to warm up paths
-                logger.info("No QR codes found, creating test QRs for initialization...")
-                
-                # Create a static test QR
-                test_static_qr = qr_service.create_static_qr({
-                    "content": "warmup-test",
-                    "size": 5,
-                    "border": 1,
-                    "fill_color": "#000000",
-                    "back_color": "#FFFFFF"
-                })
-                
-                # Create a dynamic test QR
-                test_dynamic_qr = qr_service.create_dynamic_qr({
-                    "redirect_url": "https://example.com",
-                    "size": 5,
-                    "border": 1,
-                    "fill_color": "#000000",
-                    "back_color": "#FFFFFF"
-                })
-                
-                # CRITICAL: Exercise the exact service method used by redirect endpoint
-                content = test_dynamic_qr.content
-                if content and "/r/" in content:
-                    short_id = content.split("/r/")[-1]
-                    logger.info(f"Warming up get_qr_by_short_id with test QR {short_id}...")
-                    try:
-                        found_qr = qr_service.get_qr_by_short_id(short_id)
-                        logger.info(f"Successfully retrieved test QR via short_id service method")
-                        
-                        # Warm up scan statistics with the test QR
-                        qr_service.update_scan_statistics(qr_id=found_qr.id)
-                        logger.info("Warmed up scan statistics with test QR")
-                    except Exception as e:
-                        logger.warning(f"Service method warm-up failed: {e}")
-                        logger.info("Application will continue to initialize")
-                
-                # Generate test image
-                _ = qr_service.generate_qr(
-                    data=test_static_qr.content,
-                    size=5,
-                    border=1,
-                    fill_color="#000000",
-                    back_color="#FFFFFF",
-                    image_format="png"
-                )
-                
-                # Clean up test QRs - using correct delete method
-                qr_code_repo.delete(test_static_qr.id)
-                qr_code_repo.delete(test_dynamic_qr.id)
-                logger.info("Cleaned up test QRs after initialization")
-                
-            # Warm up error handling code paths
-            logger.info("Warming up error handling code paths...")
-            
         except Exception as e:
-            logger.warning(f"Pre-initialization operation failed: {e}")
+            logger.warning(f"Database connectivity test failed: {e}")
+            
     except Exception as e:
         logger.warning(f"Pre-initialization failed: {e}")
     finally:
