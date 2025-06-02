@@ -1,11 +1,13 @@
 import logging
-from typing import Annotated
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Header, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from datetime import datetime
 
 from app.core.config import settings # For templates directory
+from app.core.exceptions import DatabaseError
 from app.services.qr_retrieval_service import QRRetrievalService # New dependency
 from app.dependencies import get_qr_retrieval_service # New dependency getter
 
@@ -13,7 +15,20 @@ from app.dependencies import get_qr_retrieval_service # New dependency getter
 QRRetrievalServiceDep = Annotated[QRRetrievalService, Depends(get_qr_retrieval_service)]
 
 # Configure templates
-templates = Jinja2Templates(directory=str(settings.TEMPLATES_DIR))
+def get_base_template_context(request: Request) -> dict:
+    request.scope["scheme"] = "https"
+    return {
+        "request": request,
+        "app_version": "1.0.0", # Example, consider centralizing if needed
+        "environment": settings.ENVIRONMENT,
+        "current_year": datetime.now().year,
+        "api_base_url": "/api/v1",
+    }
+
+templates = Jinja2Templates(
+    directory=str(settings.TEMPLATES_DIR),
+    context_processors=[get_base_template_context],
+)
 logger = logging.getLogger("app.dashboard_pages")
 
 router = APIRouter(
@@ -21,35 +36,19 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-@router.get("/", response_class=HTMLResponse)
-async def home(request: Request, qr_retrieval_service: QRRetrievalServiceDep):
-    """
-    Render the home page template with dynamic data.
-    (Moved from pages.py)
-    """
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request, qr_retrieval_service: QRRetrievalServiceDep):
+    """ Render the dashboard page. (Moved from pages.py) """
     try:
-        # Get dashboard data using the retrieval service
-        # Assuming get_dashboard_data in QRRetrievalService is now async
-        dashboard_data = await qr_retrieval_service.get_dashboard_data(current_user_id=0) # User ID 0 for now, adjust if needed
-
-        return templates.TemplateResponse(
-            name="pages/dashboard.html", # Ensure this template exists and path is correct
-            context={
-                "request": request, # Explicitly passing request
-                "total_qr_codes": dashboard_data["total_qr_codes"],
-                "recent_qr_codes": dashboard_data["recent_qr_codes"],
-            },
-        )
-    except Exception as e: # Catching generic Exception, consider more specific ones if known
-        logger.error("Error in home page (dashboard_page_router)", extra={"error": str(e)})
-        # Fallback context for template rendering in case of error
+        dashboard_data = await qr_retrieval_service.get_dashboard_data(current_user_id=0) # UserID 0 for now
         return templates.TemplateResponse(
             name="pages/dashboard.html",
-            context={
-                "request": request, # Explicitly passing request
-                "total_qr_codes": 0,
-                "recent_qr_codes": [],
-                "error": "Unable to load QR code data",
-            },
+            context={"request": request, "dashboard_data": dashboard_data, "is_authenticated": True},
+        )
+    except DatabaseError as e:
+        logger.error("Database error in dashboard page", extra={"error": str(e)})
+        return templates.TemplateResponse(
+            name="pages/dashboard.html",
+            context={"request": request, "dashboard_data": {}, "error": "Unable to load dashboard data", "is_authenticated": True},
             status_code=500,
         )
