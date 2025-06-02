@@ -48,7 +48,7 @@
       
       <!-- Size limit note -->
       <div class="form-text mb-2">
-        <i class="bi bi-info-circle me-1"></i> For pixel measurements, maximum size is 50 (1250px). For physical dimensions, please use inches, cm, or mm.
+        <i class="bi bi-info-circle me-1"></i> For pixel measurements, maximum size is 1250px. For physical dimensions, please use inches, cm, or mm.
       </div>
       
       <div class="size-presets mb-3">
@@ -59,6 +59,12 @@
           <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="10" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Poster</button>
           <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn" data-size="50" data-unit="px" data-dpi="0" onclick="event.preventDefault(); applyPreset(this);">50px</button>
         </div>
+      </div>
+      
+      <!-- Pixel sizing explanation -->
+      <div class="alert alert-info small mb-3">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>About Pixel Sizing:</strong> QR codes are made of discrete modules (like squares in a grid). The final pixel size may be slightly smaller than requested (e.g., 500px → 495px) to ensure each module is rendered with whole pixels for optimal scan quality and crisp edges.
       </div>
       
       <!-- Add logo checkbox -->
@@ -129,8 +135,18 @@
     
     // Check if pixels are selected and hide DPI field if needed
     if (unitSelect && dpiContainer) {
+      const sizeInput = document.getElementById('downloadSize');
       if (unitSelect.value === 'px') {
         dpiContainer.style.display = 'none';
+        // Set max attribute for pixel unit
+        if (sizeInput) {
+          sizeInput.setAttribute('max', '1250');
+        }
+      } else {
+        // Set max attribute for physical units
+        if (sizeInput) {
+          sizeInput.setAttribute('max', '500');
+        }
       }
     }
     
@@ -156,8 +172,17 @@
     // Add unit change event listener
     if (unitSelect) {
       unitSelect.addEventListener('change', function() {
+        const sizeInput = document.getElementById('downloadSize');
         if (dpiContainer) {
           dpiContainer.style.display = this.value === 'px' ? 'none' : 'block';
+        }
+        // Update max attribute based on unit
+        if (sizeInput) {
+          if (this.value === 'px') {
+            sizeInput.setAttribute('max', '1250');
+          } else {
+            sizeInput.setAttribute('max', '500');
+          }
         }
         updateDownloadLinks();
       });
@@ -222,12 +247,7 @@ function updateDownloadLinks() {
   const dpi = dpiInput.value;
   const includeLogo = logoCheckbox.checked;
   
-  // Cap the size at 50 if using pixels
-  if (unit === 'px' && size > 50) {
-    size = 50;
-    sizeInput.value = 50;
-    console.log('Capped pixel size at 50');
-  }
+  // Removed artificial pixel size cap - backend will validate via scale factor
   
   console.log('Updating download links with:');
   console.log('- Size:', size, unit);
