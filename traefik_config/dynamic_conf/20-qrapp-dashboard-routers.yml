@@ -267,7 +267,7 @@ http:
         - web
       middlewares:
         - redirect-to-https@file
-        - ip-whitelist@file      # INTERNAL IPs only - SECURITY FIX
+        - ip-whitelist@file      # SECURITY FIX: Restore IP restrictions for dashboard
         - dashboard-auth@file    # Basic Auth for dashboard access
         - security-headers@file
       priority: 800 # Lower than /r/ paths, higher than other domains
@@ -279,7 +279,7 @@ http:
         - websecure
       tls: {}
       middlewares:
-        - ip-whitelist@file      # INTERNAL IPs only - SECURITY FIX
+        - ip-whitelist@file      # SECURITY FIX: Restore IP restrictions for dashboard
         - dashboard-auth@file    # Basic Auth for dashboard access
         - security-headers@file
       priority: 800
