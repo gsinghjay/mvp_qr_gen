@@ -259,7 +259,7 @@ http:
         - security-headers@file
       priority: 805 # Higher than dashboard catch-all (800)
 
-    # web.hccc.edu - Admin/Dashboard paths (PROTECTED with Basic Auth)
+    # web.hccc.edu - Admin/Dashboard paths (INTERNAL ACCESS ONLY)
     web-hccc-internal-dashboard-router:
       rule: "Host(`web.hccc.edu`)"  # Catch-all for everything else
       service: api-service
@@ -267,7 +267,7 @@ http:
         - web
       middlewares:
         - redirect-to-https@file
-        - public-endpoints@file  # Public access (but basic auth provides security)
+        - ip-whitelist@file      # INTERNAL IPs only - SECURITY FIX
         - dashboard-auth@file    # Basic Auth for dashboard access
         - security-headers@file
       priority: 800 # Lower than /r/ paths, higher than other domains
@@ -279,7 +279,7 @@ http:
         - websecure
       tls: {}
       middlewares:
-        - public-endpoints@file  # Public access (but basic auth provides security)
+        - ip-whitelist@file      # INTERNAL IPs only - SECURITY FIX
         - dashboard-auth@file    # Basic Auth for dashboard access
         - security-headers@file
       priority: 800
