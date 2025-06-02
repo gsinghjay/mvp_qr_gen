@@ -67,6 +67,14 @@
             </h2>
         </div>
         <div class="card-body">
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Customization Options:</strong> Error correction levels, logo inclusion, and advanced formatting options are available when downloading your QR code.
+            </div>
+            <div class="alert alert-warning mb-3">
+                <i class="bi bi-shield-exclamation me-2"></i>
+                <strong>Security Notice:</strong> Dynamic QR codes can only redirect to approved domains: <code>hccc.edu</code>, <code>example.com</code>, <code>localhost</code>
+            </div>
             <div id="qr-form-container" 
                 hx-get="/api/v1/fragments/qr-form/static" 
                 hx-trigger="load"

@@ -332,7 +332,7 @@
     class="btn btn-outline-secondary"
     hx-get="/api/v1/fragments/qr-edit/{{ qr.id }}"
     hx-target="#qr-detail-modal .modal-content"
-    hx-indicator="#loading-indicator">
+    hx-indicator="#detail-loading-indicator">
     <i class="bi bi-pencil me-1"></i> Edit
   </button>
   {% endif %}
@@ -341,7 +341,7 @@
   <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 
   <!-- Loading indicator for HTMX requests -->
-  <div id="loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary" style="margin-right: 10px;" role="status">
+  <div id="detail-loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary" style="margin-right: 10px;" role="status">
     <span class="visually-hidden">Loading...</span>
   </div>
 </div>

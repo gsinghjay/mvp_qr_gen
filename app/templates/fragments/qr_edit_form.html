@@ -2,7 +2,7 @@
 <form
   hx-post="/api/v1/fragments/qr-update/{{ qr.id }}"
   hx-target="#qr-edit-form-container"
-  hx-indicator="#loading-indicator"
+  hx-indicator="#edit-form-loading-indicator"
   class="card border mb-4"
 >
   <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -82,7 +82,7 @@
   </div>
   
   <div class="card-footer bg-light d-flex justify-content-end">
-    <div id="loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary me-3" role="status">
+    <div id="edit-form-loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary me-3" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
     <button type="submit" class="btn btn-primary">
