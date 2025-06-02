@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from datetime import datetime # For current_year in context
 
 from app.core.config import settings
+from app.core.exceptions import DatabaseError # Though not directly used, good for consistency if error handling evolves
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES_DIR))
 logger = logging.getLogger("app.portal_pages")
@@ -14,17 +15,17 @@ logger = logging.getLogger("app.portal_pages")
 router = APIRouter(
     tags=["Pages - HCCC Portal"],
     responses={404: {"description": "Not found"}},
-from app.core.exceptions import DatabaseError # Though not directly used, good for consistency if error handling evolves
+)
 
 # Context processor similar to pages.py
 def get_base_template_context(request: Request) -> dict:
-    request.scope["scheme"] = "https" # Assuming HTTPS for all portal pages
+    request.scope["scheme"] = "https"
     return {
         "request": request,
-        "app_version": "1.0.0", # Example, consider centralizing
+        "app_version": "1.0.0", # Example, consider centralizing if needed
         "environment": settings.ENVIRONMENT,
         "current_year": datetime.now().year,
-        "api_base_url": "/api/v1", # Or whatever is appropriate for portal context
+        "api_base_url": "/api/v1",
     }
 
 templates = Jinja2Templates(
@@ -52,118 +53,57 @@ async def portal_demo_page(request: Request): # Renamed
         )
 
 @router.get("/hccc-portal", response_class=HTMLResponse)
-async def hccc_main_portal_page(request: Request): # Renamed
-    """ HCCC Portal homepage. (Moved from pages.py) """
+async def hccc_portal_page(request: Request): # Renamed from hccc_portal
+    """ Render the HCCC portal page. (Moved from pages.py) """
     try:
         return templates.TemplateResponse(
-            "pages/hccc_portal.html",
-            {
-                "page_title": "My HCCC Portal - Faculty & Staff",
-                "page_description": "Hudson County Community College Faculty and Staff Portal",
-                "page_header": "My HCCC Portal",
-                "show_alert": True,
-                "alert_title": "Portal Launch",
-                "alert_message": "Welcome to the new HCCC Faculty & Staff Portal with enhanced navigation and resources.",
-                "alert_link": "#",
-            },
+            name="pages/hccc_portal.html",
+            context={"request": request, "is_authenticated": True}, # Assuming auth, request already in context_processor
         )
     except Exception as e:
-        logger.error(f"Error rendering HCCC portal page: {e}")
-        return templates.TemplateResponse("error.html", {"error": "An error occurred while loading the HCCC portal"}, status_code=500)
+        logger.error("Error in HCCC portal page", extra={"error": str(e)})
+        return templates.TemplateResponse( # Consider a generic error page
+            name="pages/hccc_portal.html",
+            context={"request": request, "is_authenticated": True, "error": "An error occurred while loading the HCCC portal"},
+            status_code=500,
+        )
 
-@router.get("/student-portal", response_class=HTMLResponse)
-async def student_home_portal_page( # Renamed
-    request: Request,
-    x_forwarded_email: Optional[str] = Header(None, alias="X-Forwarded-Email"),
-    x_forwarded_preferred_username: Optional[str] = Header(None, alias="X-Forwarded-Preferred-Username"),
-):
-    """ HCCC Student Portal homepage. (Moved from pages.py) """
+@router.get("/student-home", response_class=HTMLResponse)
+async def student_home_portal_page(request: Request): # Renamed from student_home_portal
+    """ Render the student home portal page. (Moved from pages.py) """
     try:
-        user_name = None
-        if x_forwarded_email:
-            user_part = x_forwarded_email.split('@')[0]
-            if '.' in user_part: user_name = user_part.split('.')[0].title()
-        elif x_forwarded_preferred_username:
-            user_part = x_forwarded_preferred_username.split('@')[0]
-            if '.' in user_part: user_name = user_part.split('.')[0].title()
-
         return templates.TemplateResponse(
-            "pages/student_homepage.html",
-            {
-                "page_title": "My HCCC Portal - Student",
-                "page_description": "Hudson County Community College Student Portal",
-                "page_header": "My HCCC Student Portal",
-                "user_name": user_name,
-                "email": x_forwarded_email,
-                "preferred_username": x_forwarded_preferred_username,
-                "show_alert": True,
-                "alert_title": "Important Reminder",
-                "alert_message": "Finals week is approaching! Don't forget to check your final exam schedule and visit the tutoring center for help.",
-                "alert_link": "#",
-            },
+            name="pages/student_home.html",
+            context={"request": request, "is_authenticated": True}, # Assuming auth, request already in context_processor
         )
     except Exception as e:
-        logger.error(f"Error rendering student portal page: {e}")
-        return templates.TemplateResponse("error.html", {"error": "An error occurred while loading the student portal"}, status_code=500)
+        logger.error("Error in student home portal page", extra={"error": str(e)})
+        return templates.TemplateResponse("error.html", {"request": request, "error": "An error occurred while loading the student portal"}, status_code=500)
 
-@router.get("/faculty-hr", response_class=HTMLResponse)
-async def faculty_hr_main_portal_page( # Renamed
-    request: Request,
-    x_forwarded_email: Optional[str] = Header(None, alias="X-Forwarded-Email"),
-    x_forwarded_preferred_username: Optional[str] = Header(None, alias="X-Forwarded-Preferred-Username"),
-):
-    """ HCCC Faculty & Staff HR Portal. (Moved from pages.py) """
+@router.get("/hr-portal", response_class=HTMLResponse)
+async def hr_portal_page(request: Request): # Renamed from hr_portal
+    """ Render the HR portal page. (Moved from pages.py) """
     try:
-        user_name = None
-        if x_forwarded_email:
-            user_part = x_forwarded_email.split('@')[0]
-            if '.' in user_part: user_name = user_part.split('.')[0].title()
-        elif x_forwarded_preferred_username:
-            user_part = x_forwarded_preferred_username.split('@')[0]
-            if '.' in user_part: user_name = user_part.split('.')[0].title()
-
+        # Assuming HR portal has specific data or permissions
+        # For now, using a generic template
         return templates.TemplateResponse(
-            "pages/faculty_hr.html",
-            {
-                "page_title": "Human Resources - Faculty & Staff Portal",
-                "page_description": "Hudson County Community College Faculty & Staff HR Portal",
-                "page_header": "Human Resources Portal",
-                "user_name": user_name,
-                "email": x_forwarded_email,
-                "preferred_username": x_forwarded_preferred_username,
-            },
+            name="pages/hr_portal.html",
+            context={"request": request, "is_authenticated": True}, # Assuming auth, request already in context_processor
         )
     except Exception as e:
-        logger.error(f"Error rendering faculty HR portal page: {e}")
-        return templates.TemplateResponse("error.html", {"error": "An error occurred while loading the HR portal"}, status_code=500)
+        logger.error("Error in HR portal page", extra={"error": str(e)})
+        return templates.TemplateResponse("error.html", {"request": request, "error": "An error occurred while loading the HR portal"}, status_code=500)
 
 @router.get("/student-academics", response_class=HTMLResponse)
-async def student_academics_main_portal_page( # Renamed
-    request: Request,
-    x_forwarded_email: Optional[str] = Header(None, alias="X-Forwarded-Email"),
-    x_forwarded_preferred_username: Optional[str] = Header(None, alias="X-Forwarded-Preferred-Username"),
-):
-    """ HCCC Student Academics Portal. (Moved from pages.py) """
+async def student_academics_portal_page(request: Request): # Renamed from student_academics_portal
+    """ Render the student academics portal page. (Moved from pages.py) """
     try:
-        user_name = None
-        if x_forwarded_email:
-            user_part = x_forwarded_email.split('@')[0]
-            if '.' in user_part: user_name = user_part.split('.')[0].title()
-        elif x_forwarded_preferred_username:
-            user_part = x_forwarded_preferred_username.split('@')[0]
-            if '.' in user_part: user_name = user_part.split('.')[0].title()
-
+        # Assuming student academics portal has specific data
+        # For now, using a generic template
         return templates.TemplateResponse(
-            "pages/student_academics.html",
-            {
-                "page_title": "Student Academics - Student Portal",
-                "page_description": "Hudson County Community College Student Academics Portal",
-                "page_header": "Student Academics Portal",
-                "user_name": user_name,
-                "email": x_forwarded_email,
-                "preferred_username": x_forwarded_preferred_username,
-            },
+            name="pages/student_academics.html",
+            context={"request": request, "is_authenticated": True}, # Assuming auth, request already in context_processor
         )
     except Exception as e:
-        logger.error(f"Error rendering student academics portal page: {e}")
-        return templates.TemplateResponse("error.html", {"error": "An error occurred while loading the student academics portal"}, status_code=500)
+        logger.error("Error in student academics portal page", extra={"error": str(e)})
+        return templates.TemplateResponse("error.html", {"request": request, "error": "An error occurred while loading the student academics portal"}, status_code=500)
