@@ -29,26 +29,14 @@ from app.schemas import (
     QRUpdateParameters,
     StaticQRCreateParameters,
 )
-# from app.services.qr_service import QRCodeService # No longer directly needed by all routes if split
-from app.services.qr_retrieval_service import QRRetrievalService # Added
-from app.services.qr_image_service import QRImageService
-# QRServiceDep might be removed if not used by other endpoints not touched in this subtask
-from app.types import QRServiceDep
-
-# Define new dependency types
-from app.services.qr_creation_service import QRCreationService
-from app.dependencies import get_qr_creation_service
-from app.services.qr_update_service import QRUpdateService # Added
-from app.dependencies import get_qr_update_service # Added
-from app.services.qr_deletion_service import QRDeletionService # Added
-from app.dependencies import get_qr_deletion_service # Added
-
-
-QRRetrievalServiceDep = Annotated[QRRetrievalService, Depends(get_qr_retrieval_service)]
-QRImageServiceDep = Annotated[QRImageService, Depends(get_qr_image_service)]
-QRCreationServiceDep = Annotated[QRCreationService, Depends(get_qr_creation_service)]
-QRUpdateServiceDep = Annotated[QRUpdateService, Depends(get_qr_update_service)] # Added
-QRDeletionServiceDep = Annotated[QRDeletionService, Depends(get_qr_deletion_service)] # Added
+# Import the new atomic service type aliases from types.py
+from app.types import (
+    QRRetrievalServiceDep,
+    QRImageServiceDep,
+    QRCreationServiceDep,
+    QRUpdateServiceDep,
+    QRDeletionServiceDep
+)
 
 # Configure logger for QR code routes
 logger = logging.getLogger("app.qr")
