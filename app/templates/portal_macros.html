@@ -3,4 +3,194 @@ Portal Macros for HCCC Portal Templates
 This file contains reusable Jinja2 macros for common UI patterns across the portal templates.
 #}
 
+{# ========== BASIC UTILITY MACROS ========== #}
+
+{# 
+Render a CTA button with customizable styling and optional icon
+Parameters:
+- text: Button text (required)
+- href: Button link (required)
+- style: Button style class, default "button" (optional)
+- icon_class: CSS class for icon (optional)
+- target: Link target attribute (optional)
+#}
+{% macro render_cta_button(text, href, style="button", icon_class=None, target=None) %}
+<a class="cta cta--{{ style }}" href="{{ href }}"{% if target %} target="{{ target }}"{% endif %}>
+  {% if icon_class %}
+  <i class="{{ icon_class }}"></i>
+  {% endif %}
+  {{ text }}
+</a>
+{% endmacro %}
+
+{# 
+Render an alert banner with customizable content and styling
+Parameters:
+- title: Banner title (required)
+- message: Banner message content (required)
+- link: Optional link for additional action (optional)
+- link_text: Text for the link, default "Learn More" (optional)
+- alert_type: Alert styling type, default "info" (optional)
+#}
+{% macro render_alert_banner(title, message, link=None, link_text="Learn More", alert_type="info") %}
+<section class="banner section banner--{{ alert_type }}">
+  <div class="banner__inner">
+    <div class="banner__content">
+      <div class="banner__content__col">
+        <h2 class="banner__header section__header">{{ title }}</h2>
+        <div class="section__intro banner__intro">
+          <p>{{ message }}</p>
+        </div>
+      </div>
+      {% if link %}
+      <div class="banner__content__col">
+        {{ render_cta_button(link_text, link, target="_blank") }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endmacro %}
+
+{# ========== PAGE STRUCTURE MACROS ========== #}
+
+{# 
+Render the page introduction section with user personalization
+Parameters:
+- header_title: Main page title (required)
+- subtitle_text: Optional subtitle (optional)
+- user_email_display: User email to display (optional)
+- user_role_display: User role to display (optional)
+- groups_display: List of user groups to display (optional)
+#}
+{% macro render_page_intro(header_title, subtitle_text=None, user_email_display=None, user_role_display=None, groups_display=None) %}
+<section class="page-intro">
+  <h1>{{ header_title }}</h1>
+  {% if subtitle_text %}
+  <p class="page-intro__subtitle">{{ subtitle_text }}</p>
+  {% endif %}
+  {% if user_email_display %}
+  <p class="text-muted">{{ user_email_display }}{% if user_role_display %} ({{ user_role_display }}){% endif %}</p>
+  {% endif %}
+  {% if groups_display %}
+  <p class="text-muted">Groups: {{ groups_display|join(', ') }}</p>
+  {% endif %}
+</section>
+{% endmacro %}
+
+{# 
+Render breadcrumbs navigation
+Parameters:
+- items: List of breadcrumb items with "text" and "href" keys (required)
+- style_class: CSS class for styling, default "breadcrumbs-green" (optional)
+#}
+{% macro render_breadcrumbs(items, style_class="breadcrumbs-green") %}
+{% if items %}
+<nav class="breadcrumbs {{ style_class }}" aria-label="Breadcrumb">
+  <ol class="breadcrumbs__list">
+    {% for item in items %}
+    <li class="breadcrumbs__item">
+      {% if item.href %}
+      <a href="{{ item.href }}" class="breadcrumbs__link">{{ item.text }}</a>
+      {% else %}
+      <span class="breadcrumbs__current">{{ item.text }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</nav>
+{% endif %}
+{% endmacro %}
+
+{# ========== CONTENT SECTION MACROS ========== #}
+
+{# 
+Render an announcement card
+Parameters:
+- title: Announcement title (required)
+- date: Announcement date (required)
+- body_html: HTML content for the announcement body (required)
+- link: Optional link for "Read More" action (optional)
+- link_text: Text for the link, default "Read More" (optional)
+#}
+{% macro render_announcement_card(title, date, body_html, link=None, link_text="Read More") %}
+<div class="announce-card">
+  <h3 class="announce-card__header">{{ title }}</h3>
+  <div class="announce-card__date">{{ date }}</div>
+  <div class="announce-card__body">
+    {{ body_html|safe }}
+    {% if link %}
+    <a href="{{ link }}" class="announce-card__link">{{ link_text }}</a>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{# 
+Render a toolkit icon with yellow circle and arrow
+Parameters:
+- href: Link destination (required)
+- icon_src: Path to icon image (required)
+- title: Icon title text (required)
+- alt_text: Alt text for icon image, default "" (optional)
+- circle_fill: Circle fill color, default "#FFC72C" (optional)
+- arrow_stroke: Arrow stroke color, default "white" (optional)
+#}
+{% macro render_toolkit_icon(href, icon_src, title, alt_text="", circle_fill="#FFC72C", arrow_stroke="white") %}
+<a href="{{ href }}" class="icon">
+  <img class="icon__img" src="{{ icon_src }}" alt="{{ alt_text }}" onerror="this.style.display='none'">
+  <h3 class="icon__header">
+    <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="12" fill="{{ circle_fill }}"/>
+      <path d="M10.5 8.5L14 12L10.5 15.5" stroke="{{ arrow_stroke }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    {{ title }}
+  </h3>
+</a>
+{% endmacro %}
+
+{# 
+Render a complete icon toolkit section
+Parameters:
+- id_prefix: Unique ID prefix for the section (required)
+- section_title: Section title (required)
+- section_intro_html: HTML content for section introduction (required)
+- icon_links: List of icon link objects with href, icon_src, title, alt_text properties (required)
+- bottom_cta_text: Optional bottom CTA text (optional)
+- bottom_cta_href: Optional bottom CTA link (optional)
+#}
+{% macro render_icon_toolkit_section(id_prefix, section_title, section_intro_html, icon_links, bottom_cta_text=None, bottom_cta_href=None) %}
+<section class="i-link-list section" id="{{ id_prefix }}-toolkit">
+  <div class="i-link-list__inner">
+    <div class="i-link-list__top">
+      <h2 class="i-link-list__header section__header">{{ section_title }}</h2>
+      <div class="section__intro i-link-list__intro">{{ section_intro_html|safe }}</div>
+    </div>
+
+    <div class="i-link-list__icons">
+      {% for icon_link in icon_links %}
+      {{ render_toolkit_icon(
+        href=icon_link.href,
+        icon_src=icon_link.icon_src,
+        title=icon_link.title,
+        alt_text=icon_link.get('alt_text', ''),
+        circle_fill=icon_link.get('circle_fill', '#FFC72C'),
+        arrow_stroke=icon_link.get('arrow_stroke', 'white')
+      ) }}
+      {% endfor %}
+    </div>
+
+    {% if bottom_cta_text and bottom_cta_href %}
+    <div class="i-link-list__bottom">
+      {{ bottom_cta_text|safe }} <a href="{{ bottom_cta_href }}">{{ bottom_cta_link_text|default('here') }}</a>
+    </div>
+    {% elif bottom_cta_text %}
+    <div class="i-link-list__bottom">
+      {{ bottom_cta_text|safe }}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endmacro %}
+
 {# This file will be populated with macros in Phase 2 #} 
