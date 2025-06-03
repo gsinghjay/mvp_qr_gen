@@ -89,5 +89,161 @@
       "title": "Library",
       "alt_text": "Library"
     }
+  ],
+  "enrollment_toolkit_links": [
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-2.svg",
+      "title": "Register For Classes",
+      "alt_text": "Register For Classes"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-9.svg",
+      "title": "My Degree Progress",
+      "alt_text": "My Degree Progress"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-4.svg",
+      "title": "My Transcripts",
+      "alt_text": "My Transcripts"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-10.svg",
+      "title": "View/Print My Schedule",
+      "alt_text": "View/Print My Schedule"
+    }
+  ],
+  "support_center_cards": [
+    {
+      "image_src": "/static/portal_template/assets/img/card-carousel-1.png",
+      "title": "Academic Advising",
+      "body_html": "Talk to an advisor about your academic goals, course selection, and any concerns you have with your classes.",
+      "link": "#"
+    },
+    {
+      "image_src": "/static/portal_template/assets/img/card-carousel-2.png",
+      "title": "Tutoring Services",
+      "body_html": "Work with a tutor for help with your studies. Tutoring services are free and available online or in-person.",
+      "link": "#"
+    },
+    {
+      "image_src": "/static/portal_template/assets/img/card-carousel-1.png",
+      "title": "Career Services",
+      "body_html": "Get help with resume building, job searches, and career planning to prepare for your future.",
+      "link": "#"
+    },
+    {
+      "image_src": "/static/portal_template/assets/img/card-carousel-1.png",
+      "title": "Financial Aid",
+      "body_html": "Get assistance with FAFSA applications, scholarships, and understanding your financial aid options.",
+      "link": "#"
+    },
+    {
+      "image_src": "/static/portal_template/assets/img/card-carousel-2.png",
+      "title": "Disability Services",
+      "body_html": "Access accommodations and support services to help you succeed in your academic journey.",
+      "link": "#"
+    },
+    {
+      "image_src": "/static/portal_template/assets/img/card-carousel-1.png",
+      "title": "Library Services",
+      "body_html": "Access research resources, study spaces, and librarian assistance for your academic projects.",
+      "link": "#"
+    }
+  ],
+  "on_campus_resources": {
+    "image_src": "/static/portal_template/assets/img/image-and-links-01.png",
+    "image_alt": "On-campus resources and facilities",
+    "title": "On-Campus Resources",
+    "intro_html": "Explore what's available on campus from the parking lot to the bookstore. Take a break in one of our student lounges. Use the tech in our computer labs. Or find a quiet area in the library to study.",
+    "cta_buttons": [
+      {
+        "text": "Bookstore",
+        "href": "#",
+        "target": "_blank"
+      },
+      {
+        "text": "Campus Map",
+        "href": "#",
+        "target": "_blank"
+      }
+    ]
+  },
+  "academic_contact_section": {
+    "title": "Academic Support Contacts",
+    "intro": "Find the contact information you need for academic departments and support services.",
+    "cta_buttons": [
+      {
+        "text": "All Academic Departments",
+        "href": "#",
+        "target": "_blank"
+      },
+      {
+        "text": "Faculty Directory",
+        "href": "#",
+        "target": "_blank"
+      }
+    ]
+  },
+  "academic_contact_accordion": [
+    {
+      "id_suffix": "1",
+      "title": "Registrar's Office",
+      "details_html": "HCCC Enrollment Services<br/>70 Sip Avenue - First Floor<br/>Jersey City, NJ 07306",
+      "phone": "(201) 714-7200",
+      "email": "registrar@hccc.edu",
+      "expanded": true
+    },
+    {
+      "id_suffix": "2",
+      "title": "Academic Advising",
+      "details_html": "HCCC Student Success Center<br/>70 Sip Avenue - Second Floor<br/>Jersey City, NJ 07306",
+      "phone": "(201) 714-7300",
+      "email": "advising@hccc.edu",
+      "expanded": false
+    },
+    {
+      "id_suffix": "3",
+      "title": "Financial Aid",
+      "details_html": "HCCC Financial Aid Office<br/>70 Sip Avenue - First Floor<br/>Jersey City, NJ 07306",
+      "phone": "(201) 714-7400",
+      "email": "financialaid@hccc.edu",
+      "expanded": false
+    }
+  ],
+  "student_support_items": [
+    {
+      "title": "Tutoring Center",
+      "body": "Get free tutoring in math, writing, science, and more. Both online and in-person options available.",
+      "href": "#"
+    },
+    {
+      "title": "Academic Advising",
+      "body": "Meet with an advisor to plan your course schedule and stay on track for graduation.",
+      "href": "#"
+    },
+    {
+      "title": "Financial Aid Office",
+      "body": "Get help with FAFSA, scholarships, payment plans, and understanding your financial aid package.",
+      "href": "#"
+    },
+    {
+      "title": "Student Life",
+      "body": "Join clubs, attend events, and connect with other students. Make the most of your college experience.",
+      "href": "#"
+    },
+    {
+      "title": "Accessibility Services",
+      "body": "Get accommodations and support services if you have a documented disability.",
+      "href": "#"
+    },
+    {
+      "title": "Mental Health & Counseling",
+      "body": "Access confidential counseling services and mental health resources on campus.",
+      "href": "#"
+    }
   ]
 } 

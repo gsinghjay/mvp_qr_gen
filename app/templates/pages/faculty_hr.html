@@ -1,173 +1,95 @@
 {% extends "base_hccc_portal.html" %}
+{% import "portal_macros.html" as portal_elements %}
 
 {% block title %}Human Resources - Faculty & Staff Portal{% endblock %}
 {% block page_title %}Human Resources{% endblock %}
 
 {% block content %}
 <!-- Page intro section -->
-<section class="page-intro">
-  <h1>{{ page_header|default('Human Resources') }}</h1>
-  {% if user_email %}
-  <p class="text-muted">{{ user_email }}{% if has_hr_permissions %} (HR Access){% endif %}</p>
-  {% endif %}
-  {% if groups %}
-  <p class="text-muted">Groups: {{ groups|join(', ') }}</p>
-  {% endif %}
-</section>
+{{ portal_elements.render_page_intro(
+  header_title=page_header|default('Human Resources'),
+  user_email_display=user_email,
+  user_role_display=("HR Access" if has_hr_permissions else None),
+  groups_display=groups
+) }}
 
 <!-- Breadcrumbs -->
-<section class="breadcrumbs breadcrumbs-green">
-  <div class="breadcrumbs__inner">
-    <nav class="breadcrumbs__list" aria-label="breadcrumbs">
-      <ul>
-        <li><a href="/hccc-portal">Home</a></li>
-        <li><a href="/faculty-hr">Human Resources</a></li>
-      </ul>
-    </nav>
-  </div>
-</section>
+{{ portal_elements.render_breadcrumbs([
+  {"text": "Home", "href": "/hccc-portal"},
+  {"text": "Human Resources", "href": "/hr-portal"}
+]) }}
 
 <!-- HR Notice Banner -->
-<section class="banner section">
-  <div class="banner__inner">
-    <div class="banner__content">
-      <div class="banner__content__col">
-        <h2 class="banner__header section__header">Important Reminder!</h2>
-        <div class="section__intro banner__intro">
-          <p>Open enrollment period for benefits is now through December 15th. Complete your selections in the employee portal by the deadline.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+{{ portal_elements.render_alert_banner(
+  title="Important Reminder!",
+  message="Open enrollment period for benefits is now through December 15th. Complete your selections in the employee portal by the deadline.",
+  alert_type="info"
+) }}
 
 <!-- Onboarding Toolkit Section -->
-<section class="image-and-links section">
-  <div class="image-and-links__inner">
-    <div class="image-and-links__img">
-      <picture>
-        <source media='(min-width: 700px)' srcset='/static/portal_template/assets/img/image-and-links-02.png' />
-        <source media='(min-width: 1024px)' srcset='/static/portal_template/assets/img/image-and-links-02.png' />
-        <img src='/static/portal_template/assets/img/image-and-links-02.png' alt='Onboarding toolkit for new HCCC faculty and staff' />
-      </picture>
-    </div>
-
-    <div class="image-and-links__content">
-      <h2 class="image-and-links__header section__header">Onboarding Toolkit</h2>
-      <div class="image-and-links__intro">New to HCCC? Let us help you get set up. Follow these steps to access your email, program your office phone, and complete all of your onboarding forms.</div>
-      <div class="image-and-links__ctas">
-        <a class="cta cta--button" href="#" target="_blank">Get Started</a>
-        <a class="cta cta--button" href="#" target="_blank">Program Your Office Phone</a>
-      </div>
-    </div>
-  </div>
-</section>
+{% if onboarding_toolkit %}
+{{ portal_elements.render_image_and_links_section(
+  image_src=onboarding_toolkit.image_src,
+  image_alt=onboarding_toolkit.image_alt,
+  section_title=onboarding_toolkit.title,
+  intro_html=onboarding_toolkit.intro_html,
+  cta_list=onboarding_toolkit.cta_buttons
+) }}
+{% endif %}
 
 <!-- HR Forms and Quick Links -->
 <section class="doc-and-links section">
   <div class="doc-and-links__inner">
-    <div class="doc-and-links__col">
-      <h2 class="doc-and-links__header section__header">HR Forms</h2>
-      
-      <div class="doc">
-        <h3 class="doc__title"><a href="#" target="_blank">Employee Information Update Form</a></h3>
-        <p class="doc__desc">Update your personal information and emergency contacts</p>
-      </div>
+    <!-- HR Forms Column -->
+    {% if hr_forms %}
+    {{ portal_elements.render_doc_links_column(
+      title="HR Forms",
+      items=hr_forms,
+      cta_button=hr_forms_cta
+    ) }}
+    {% endif %}
 
-      <div class="doc">
-        <h3 class="doc__title"><a href="#" target="_blank">Leave Request Form</a></h3>
-        <p class="doc__desc">Request vacation, sick leave, or personal time off</p>
-      </div>
-
-      <div class="doc">
-        <h3 class="doc__title"><a href="#" target="_blank">Benefits Enrollment Form</a></h3>
-        <p class="doc__desc">Enroll in health, dental, and retirement benefits</p>
-      </div>
-
-      <div class="doc">
-        <h3 class="doc__title"><a href="#" target="_blank">Direct Deposit Authorization</a></h3>
-        <p class="doc__desc">Set up or change your direct deposit information</p>
-      </div>
-
-      <a class="cta cta--button" href="#" target="_blank">All HR Forms</a>
-    </div>
-
-    <div class="doc-and-links__col">
-      <h2 class="doc-and-links__header section__header">Quick Links</h2>
-      <ul class="links">
-        <li><a href="#" target="_blank">Employee Portal</a></li>
-        <li><a href="#" target="_blank">Benefits Information</a></li>
-        <li><a href="#" target="_blank">Payroll Calendar</a></li>
-        <li><a href="#" target="_blank">Report a Concern</a></li>
-        <li><a href="#" target="_blank">Policies & Guidelines</a></li>
-        <li><a href="#" target="_blank">Professional Development</a></li>
-      </ul>
-    </div>
+    <!-- Quick Links Column -->
+    {% if hr_quick_links %}
+    {{ portal_elements.render_quick_links_column(
+      title="Quick Links",
+      items=hr_quick_links
+    ) }}
+    {% endif %}
   </div>
 </section>
 
 <!-- Contact Information -->
 <section class="contact-accordion section">
   <div class="contact-accordion__inner">
+    {% if contact_section %}
     <div class="contact-accordion__col">
-      <h2 class="contact-accordion__header section__header">Get In Touch</h2>
-      <div class="section__intro contact-accordion__intro">Find the contact information you need for HR departments or for a specific HR staff member.</div>
-      <a class="cta cta--button" href="#" target="_blank">All Offices</a>
-      <a class="cta cta--button" href="#" target="_blank">Faculty/Staff Directory</a>
+      <h2 class="contact-accordion__header section__header">{{ contact_section.title }}</h2>
+      <div class="section__intro contact-accordion__intro">{{ contact_section.intro }}</div>
+      {% for cta in contact_section.cta_buttons %}
+      {{ portal_elements.render_cta_button(
+        text=cta.text,
+        href=cta.href,
+        target=cta.target
+      ) }}
+      {% endfor %}
     </div>
+    {% endif %}
 
+    {% if contact_accordion %}
     <div class="contact-accordion__col">
-      <div class="acc">
-        <div class="acc__top">
-          <h3 id="acc-title-1" class="acc__title"><a href="#">Human Resources</a></h3>
-        </div>
-
-        <button class="acc__button" aria-labelledby="acc-title-1" aria-expanded="true"><span></span></button>
-        <div class="acc__dropdown" aria-hidden="false" style="display: block;">
-          <p class="acc__details">
-            HCCC Human Resources<br/>
-            70 Sip Avenue - Second Floor<br/>
-            Jersey City, NJ 07306
-          </p>
-          <a class="acc__phone" href="tel:+12017142500">(201) 714-2500</a>
-          <a class="acc__email" href="mailto:hr@hccc.edu">hr@hccc.edu</a>
-        </div>
-      </div>
-
-      <div class="acc">
-        <div class="acc__top">
-          <h3 id="acc-title-2" class="acc__title">Benefits Administration</h3>
-        </div>
-
-        <button class="acc__button" aria-labelledby="acc-title-2" aria-expanded="false"><span></span></button>
-        <div class="acc__dropdown" aria-hidden="true" style="display: none;">
-          <p class="acc__details">
-            HCCC Benefits Office<br/>
-            70 Sip Avenue - Second Floor<br/>
-            Jersey City, NJ 07306
-          </p>
-          <a class="acc__phone" href="tel:+12017142501">(201) 714-2501</a>
-          <a class="acc__email" href="mailto:benefits@hccc.edu">benefits@hccc.edu</a>
-        </div>
-      </div>
-
-      <div class="acc">
-        <div class="acc__top">
-          <h3 id="acc-title-3" class="acc__title">Payroll Services</h3>
-        </div>
-
-        <button class="acc__button" aria-labelledby="acc-title-3" aria-expanded="false"><span></span></button>
-        <div class="acc__dropdown" aria-hidden="true" style="display: none;">
-          <p class="acc__details">
-            HCCC Payroll Department<br/>
-            70 Sip Avenue - Finance Office<br/>
-            Jersey City, NJ 07306
-          </p>
-          <a class="acc__phone" href="tel:+12017142450">(201) 714-2450</a>
-          <a class="acc__email" href="mailto:payroll@hccc.edu">payroll@hccc.edu</a>
-        </div>
-      </div>
+      {% for contact in contact_accordion %}
+      {{ portal_elements.render_contact_accordion_item(
+        id_suffix=contact.id_suffix,
+        title=contact.title,
+        details_html=contact.details_html,
+        phone=contact.phone,
+        email=contact.email,
+        expanded=contact.expanded
+      ) }}
+      {% endfor %}
     </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %} 

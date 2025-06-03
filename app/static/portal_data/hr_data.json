@@ -55,5 +55,124 @@
       "title": "Training Resources",
       "alt_text": "Professional Development"
     }
+  ],
+  "onboarding_toolkit": {
+    "image_src": "/static/portal_template/assets/img/image-and-links-02.png",
+    "image_alt": "Onboarding toolkit for new HCCC faculty and staff",
+    "title": "Onboarding Toolkit",
+    "intro_html": "New to HCCC? Let us help you get set up. Follow these steps to access your email, program your office phone, and complete all of your onboarding forms.",
+    "cta_buttons": [
+      {
+        "text": "Get Started",
+        "href": "#",
+        "target": "_blank"
+      },
+      {
+        "text": "Program Your Office Phone",
+        "href": "#",
+        "target": "_blank"
+      }
+    ]
+  },
+  "hr_forms": [
+    {
+      "title": "Employee Information Update Form",
+      "href": "#",
+      "description": "Update your personal information and emergency contacts"
+    },
+    {
+      "title": "Leave Request Form",
+      "href": "#",
+      "description": "Request vacation, sick leave, or personal time off"
+    },
+    {
+      "title": "Benefits Enrollment Form",
+      "href": "#",
+      "description": "Enroll in health, dental, and retirement benefits"
+    },
+    {
+      "title": "Direct Deposit Authorization",
+      "href": "#",
+      "description": "Set up or change your direct deposit information"
+    }
+  ],
+  "hr_forms_cta": {
+    "text": "All HR Forms",
+    "href": "#",
+    "target": "_blank"
+  },
+  "hr_quick_links": [
+    {
+      "text": "Employee Portal",
+      "href": "#",
+      "target": "_blank"
+    },
+    {
+      "text": "Benefits Information",
+      "href": "#",
+      "target": "_blank"
+    },
+    {
+      "text": "Payroll Calendar",
+      "href": "#",
+      "target": "_blank"
+    },
+    {
+      "text": "Report a Concern",
+      "href": "#",
+      "target": "_blank"
+    },
+    {
+      "text": "Policies & Guidelines",
+      "href": "#",
+      "target": "_blank"
+    },
+    {
+      "text": "Professional Development",
+      "href": "#",
+      "target": "_blank"
+    }
+  ],
+  "contact_section": {
+    "title": "Get In Touch",
+    "intro": "Find the contact information you need for HR departments or for a specific HR staff member.",
+    "cta_buttons": [
+      {
+        "text": "All Offices",
+        "href": "#",
+        "target": "_blank"
+      },
+      {
+        "text": "Faculty/Staff Directory",
+        "href": "#",
+        "target": "_blank"
+      }
+    ]
+  },
+  "contact_accordion": [
+    {
+      "id_suffix": "1",
+      "title": "Human Resources",
+      "details_html": "HCCC Human Resources<br/>70 Sip Avenue - Second Floor<br/>Jersey City, NJ 07306",
+      "phone": "(201) 714-2500",
+      "email": "hr@hccc.edu",
+      "expanded": true
+    },
+    {
+      "id_suffix": "2",
+      "title": "Benefits Administration",
+      "details_html": "HCCC Benefits Office<br/>70 Sip Avenue - Second Floor<br/>Jersey City, NJ 07306",
+      "phone": "(201) 714-2501",
+      "email": "benefits@hccc.edu",
+      "expanded": false
+    },
+    {
+      "id_suffix": "3",
+      "title": "Payroll Services",
+      "details_html": "HCCC Payroll Department<br/>70 Sip Avenue - Finance Office<br/>Jersey City, NJ 07306",
+      "phone": "(201) 714-2450",
+      "email": "payroll@hccc.edu",
+      "expanded": false
+    }
   ]
 } 

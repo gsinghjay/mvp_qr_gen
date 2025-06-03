@@ -29,7 +29,7 @@
     </div>
 
     <div class="announcements__cards">
-      {% set student_announcement_items = student_announcement_items|default([
+      {% set announcement_items = student_announcement_items|default([
         {
           'title': 'Spring 2025 Registration Now Open',
           'date': 'DEC 10',
@@ -46,7 +46,7 @@
           'body_html': '<p>Campus services will operate on reduced hours during winter break. Check the academic calendar for specific dates and times.</p>'
         }
       ]) %}
-      {% for announcement in student_announcement_items %}
+      {% for announcement in announcement_items %}
       {{ portal_elements.render_announcement_card(
         title=announcement.title,
         date=announcement.date,
@@ -60,40 +60,16 @@
 </section>
 
 <!-- Important Dates Section -->
-<section class="deadlines section">
-  <div class="deadlines__inner">
-    <div class="deadlines__top">
-      <h2 class="deadlines__header section__header">Important Dates</h2>
-    </div>
-
-    <ul class="deadlines__list">
-      {% set student_important_dates = student_important_dates|default([
-        {'date': 'DEC 16', 'title': 'Fall Semester Ends'},
-        {'date': 'DEC 17-23', 'title': 'Final Examinations'},
-        {'date': 'JAN 21', 'title': 'Spring Semester Begins', 'href': '#'},
-        {'date': 'JAN 27', 'title': 'Add/Drop Deadline'},
-        {'date': 'FEB 01', 'title': 'FAFSA & Financial Aid Applications Open', 'href': '#'}
-      ]) %}
-      {% for date_item in student_important_dates %}
-      <li class="deadline">
-        <span class="deadline__date">{{ date_item.date }}</span>
-        <span class="deadline__title">
-          {% if date_item.get('href') %}
-          <a href="{{ date_item.href }}" target="_blank">{{ date_item.title }}</a>
-          {% else %}
-          {{ date_item.title }}
-          {% endif %}
-        </span>
-      </li>
-      {% endfor %}
-    </ul>
-
-    {{ portal_elements.render_cta_button("Full Academic Calendar", "#", target="_blank") }}
-  </div>
-</section>
+{% if student_important_dates %}
+{{ portal_elements.render_deadlines_section(
+  title="Important Dates",
+  items=student_important_dates,
+  cta_button={"text": "Full Academic Calendar", "href": "#", "target": "_blank"}
+) }}
+{% endif %}
 
 <!-- Student Toolkit -->
-{% set student_toolkit_links = student_toolkit_links|default([
+{% set toolkit_links = student_toolkit_links|default([
   {
     'href': '#',
     'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-1.svg'),
@@ -148,70 +124,30 @@
   id_prefix="student",
   section_title="Student Toolkit",
   section_intro_html="Use these resources to prepare for the semester and succeed in your classes.",
-  icon_links=student_toolkit_links,
+  icon_links=toolkit_links,
   bottom_cta_text='Can\'t find what you are looking for? Go to <a href="#" target="_blank">I Am a Current Student</a>'
 ) }}
 
 <!-- Career Journey Section -->
-<section class="fifty-fifty section">
-  <div class="fifty-fifty__inner">
-    <div class="fifty-fifty__image">
-      <picture>
-        <source media='(min-width: 700px)' srcset='{{ url_for("static", path="portal_template/assets/img/fifty-fifty-01.png") }}' />
-        <source media='(min-width: 1024px)' srcset='{{ url_for("static", path="portal_template/assets/img/fifty-fifty-01.png") }}' />
-        <img src='{{ url_for("static", path="portal_template/assets/img/fifty-fifty-01.png") }}' alt='Students working on career planning' />
-      </picture>
-    </div>
-    <div class="fifty-fifty__content">
-      <h2 class="fifty-fifty__title">Let's Work on Your Career Journey</h2>
-      <div class="fifty-fifty__body">
-        <p>Meet with a career coach to discuss your future goals and your plan for reaching them. Then, join us at the career fair to talk to your future employer!</p>
-      </div>
-      {{ portal_elements.render_cta_button("Career Fair", "#", target="_blank") }}
-      {{ portal_elements.render_cta_button("Career Services", "#", target="_blank") }}
-    </div>
-  </div>
-</section>
+{{ portal_elements.render_fifty_fifty_section(
+  image_src=url_for("static", path="portal_template/assets/img/fifty-fifty-01.png"),
+  image_alt="Students working on career planning",
+  title="Let's Work on Your Career Journey",
+  body_html="<p>Meet with a career coach to discuss your future goals and your plan for reaching them. Then, join us at the career fair to talk to your future employer!</p>",
+  cta_list=[
+    {"text": "Career Fair", "href": "#", "target": "_blank"},
+    {"text": "Career Services", "href": "#", "target": "_blank"}
+  ]
+) }}
 
 <!-- Student Support Resources -->
-<section class="link-and-summary-list section">
-  <div class="link-and-summary-list__inner">
-    <div class="link-and-summary-list__top">
-      <h2 class="link-and-summary-list__header section__header">Student Support</h2>
-      <div class="link-and-summary-list__intro">We're here to help you succeed. Access resources and tools to support your academic journey.</div>
-      {{ portal_elements.render_cta_button("All Student Services", "#", style="button cta--desktop", target="_blank") }}
-    </div>
-
-    <div class="link-and-summary-list__content">
-      <ul>
-        <li>
-          <h3 class="summary-list__header"><a href="#" target="_blank">Tutoring Center</a></h3>
-          <p class="summary-list__body">Get free tutoring in math, writing, science, and more. Both online and in-person options available.</p>
-        </li>
-        <li>
-          <h3 class="summary-list__header"><a href="#" target="_blank">Academic Advising</a></h3>
-          <p class="summary-list__body">Meet with an advisor to plan your course schedule and stay on track for graduation.</p>
-        </li>
-        <li>
-          <h3 class="summary-list__header"><a href="#" target="_blank">Financial Aid Office</a></h3>
-          <p class="summary-list__body">Get help with FAFSA, scholarships, payment plans, and understanding your financial aid package.</p>
-        </li>
-        <li>
-          <h3 class="summary-list__header"><a href="#" target="_blank">Student Life</a></h3>
-          <p class="summary-list__body">Join clubs, attend events, and connect with other students. Make the most of your college experience.</p>
-        </li>
-        <li>
-          <h3 class="summary-list__header"><a href="#" target="_blank">Accessibility Services</a></h3>
-          <p class="summary-list__body">Get accommodations and support services if you have a documented disability.</p>
-        </li>
-        <li>
-          <h3 class="summary-list__header"><a href="#" target="_blank">Mental Health & Counseling</a></h3>
-          <p class="summary-list__body">Access confidential counseling services and mental health resources on campus.</p>
-        </li>
-      </ul>
-    </div>
-
-    {{ portal_elements.render_cta_button("All Student Services", "#", style="button cta--mobile", target="_blank") }}
-  </div>
-</section>
+{% if student_support_items %}
+{{ portal_elements.render_link_and_summary_list_section(
+  title="Student Support",
+  intro_html="We're here to help you succeed. Access resources and tools to support your academic journey.",
+  items=student_support_items,
+  cta_button={"text": "All Student Services", "href": "#", "style": "button cta--desktop", "target": "_blank"},
+  cta_mobile_button={"text": "All Student Services", "href": "#", "style": "button cta--mobile", "target": "_blank"}
+) }}
+{% endif %}
 {% endblock %} 
