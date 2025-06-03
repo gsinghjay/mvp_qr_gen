@@ -2,7 +2,7 @@ http:
   routers:
     # --- Health Check (Public) - RESTORED to old working priority ---
     health-router:
-      rule: "PathPrefix(`/health`)" # Could be Host-specific if needed, but generally public
+      rule: "Host(`web.hccc.edu`, `webhost.hccc.edu`, `10.1.6.12`) && PathPrefix(`/health`)"
       service: api-service
       entryPoints:
         - web
@@ -10,10 +10,10 @@ http:
         - redirect-to-https@file
         - public-endpoints@file # Allow all IPs
         - security-headers@file
-      priority: 400 # RESTORED to match old working config
+      priority: 900 # Higher priority than dashboard catch-all (800)
 
     health-secure-router:
-      rule: "PathPrefix(`/health`)"
+      rule: "Host(`web.hccc.edu`, `webhost.hccc.edu`, `10.1.6.12`) && PathPrefix(`/health`)"
       service: api-service
       entryPoints:
         - websecure
@@ -21,11 +21,11 @@ http:
       middlewares:
         - public-endpoints@file
         - security-headers@file
-      priority: 400 # RESTORED to match old working config
+      priority: 900 # Higher priority than dashboard catch-all (800)
 
     # --- Admin Endpoints (Internal Only) - RESTORED to old working priority ---
     admin-api-router:
-      rule: "PathPrefix(`/api/v1/admin/`)"
+      rule: "Host(`webhost.hccc.edu`, `10.1.6.12`) && PathPrefix(`/api/v1/admin/`)"
       service: api-service
       entryPoints:
         - web
@@ -37,7 +37,7 @@ http:
       priority: 450 # RESTORED to match old working config
 
     admin-api-secure-router:
-      rule: "PathPrefix(`/api/v1/admin/`)"
+      rule: "Host(`webhost.hccc.edu`, `10.1.6.12`) && PathPrefix(`/api/v1/admin/`)"
       service: api-service
       entryPoints:
         - websecure

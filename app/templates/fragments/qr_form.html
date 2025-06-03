@@ -7,6 +7,7 @@
     <form
       hx-post="/api/v1/fragments/qr-create"
       hx-swap="none"
+      hx-indicator="#form-loading-indicator"
     >
       <input type="hidden" name="qr_type" value="{{ qr_type }}">
       
@@ -77,32 +78,12 @@
             required
           >
           <div class="form-text">
-            Enter the URL where users will be redirected when scanning this QR code
+            Enter the URL where users will be redirected when scanning this QR code. Any valid HTTP or HTTPS URL is allowed.
           </div>
         </div>
       {% endif %}
       
-      <div class="mb-3">
-        <label for="error_level" class="form-label">Error Correction Level</label>
-        <select id="error_level" name="error_level" class="form-select">
-          {% for level in error_levels %}
-            <option value="{{ level }}" {% if error_level == level %}selected{% endif %}>
-              {{ level }} - {% if level == "L" %}Low{% elif level == "M" %}Medium{% elif level == "Q" %}Quartile{% else %}High{% endif %}
-            </option>
-          {% endfor %}
-        </select>
-        <div class="form-text">
-          Higher error correction levels make QR codes more reliable but larger.
-        </div>
-      </div>
-      
-      <div class="mb-3 form-check">
-        <input type="checkbox" class="form-check-input" id="include_logo" name="include_logo" value="true" onchange="updateErrorLevel()">
-        <label class="form-check-label" for="include_logo">Include Organization Logo</label>
-        <div class="form-text">
-          Adds the organization logo to the center of the QR code. Requires high error correction level.
-        </div>
-      </div>
+      <!-- Error correction level and logo options moved to download options -->
       
       <div class="mb-3">
         <label for="svg_title" class="form-label">SVG Title (for accessibility)</label>
@@ -133,6 +114,9 @@
       </div>
       
       <div class="d-flex justify-content-end gap-2">
+        <div id="form-loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary me-3" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
         <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
         <button type="submit" class="btn btn-primary">
           <span class="htmx-indicator spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
@@ -144,14 +128,7 @@
 </div>
 
 <script>
-function updateErrorLevel() {
-  if (document.getElementById('include_logo').checked) {
-    document.getElementById('error_level').value = 'H';
-    document.getElementById('error_level').disabled = true;
-  } else {
-    document.getElementById('error_level').disabled = false;
-  }
-}
+// Error level and logo functions removed - these options are now available during download
 
 function closeModal() {
   // In Option B, just reset the form
@@ -161,9 +138,8 @@ function closeModal() {
   }
 }
 
-// Initialize the collapsible section
+// Initialize the form
 document.addEventListener('DOMContentLoaded', function() {
-  // Only initialize logo toggle
-  updateErrorLevel();
+  // Form initialization - error level and logo options removed
 });
 </script> 

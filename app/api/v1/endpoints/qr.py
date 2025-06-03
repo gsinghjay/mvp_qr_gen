@@ -18,7 +18,8 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import InvalidQRTypeError
-from app.dependencies import get_qr_service
+# get_qr_service removed from here
+from app.dependencies import get_qr_retrieval_service, get_qr_image_service, get_qr_update_service, get_qr_deletion_service
 from app.schemas import (
     DynamicQRCreateParameters,
     QRCodeList,
@@ -28,8 +29,14 @@ from app.schemas import (
     QRUpdateParameters,
     StaticQRCreateParameters,
 )
-from app.services.qr_service import QRCodeService
-from app.types import QRServiceDep
+# Import the new atomic service type aliases from types.py
+from app.types import (
+    QRRetrievalServiceDep,
+    QRImageServiceDep,
+    QRCreationServiceDep,
+    QRUpdateServiceDep,
+    QRDeletionServiceDep
+)
 
 # Configure logger for QR code routes
 logger = logging.getLogger("app.qr")
@@ -53,7 +60,8 @@ router = APIRouter(
     },
 )
 async def list_qr_codes(
-    qr_service: QRServiceDep,
+    # qr_service: QRServiceDep, # Old dependency
+    qr_retrieval_service: QRRetrievalServiceDep, # New dependency
     params: QRListParameters = Depends(),
 ):
     """
@@ -61,7 +69,7 @@ async def list_qr_codes(
 
     Args:
         params: Query parameters for listing QR codes
-        qr_service: The QR code service (injected)
+        qr_retrieval_service: The QR retrieval service (injected)
 
     Returns:
         A paginated list of QR codes
@@ -71,10 +79,10 @@ async def list_qr_codes(
         DatabaseError: If a database error occurs
     """
     # Validate QR type if provided
-    if params.qr_type and params.qr_type.value not in ["static", "dynamic"]:
+    if params.qr_type and params.qr_type.value not in ["static", "dynamic"]: # This validation could also be in the service
         raise InvalidQRTypeError(f"Invalid QR type: {params.qr_type}")
 
-    qr_codes, total = qr_service.list_qr_codes(
+    qr_codes, total = await qr_retrieval_service.list_qr_codes( # Changed to await
         skip=params.skip,
         limit=params.limit,
         qr_type=params.qr_type.value if params.qr_type else None,
@@ -109,13 +117,13 @@ async def list_qr_codes(
         500: {"description": "Database error"},
     },
 )
-async def get_qr(qr_id: str, qr_service: QRServiceDep):
+async def get_qr(qr_id: str, qr_retrieval_service: QRRetrievalServiceDep): # Changed dependency
     """
     Get QR code data by ID.
 
     Args:
         qr_id: The ID of the QR code to retrieve
-        qr_service: The QR code service (injected)
+        qr_retrieval_service: The QR retrieval service (injected)
 
     Returns:
         The QR code data
@@ -124,7 +132,7 @@ async def get_qr(qr_id: str, qr_service: QRServiceDep):
         QRCodeNotFoundError: If the QR code is not found
         DatabaseError: If a database error occurs
     """
-    return qr_service.get_qr_by_id(qr_id)
+    return await qr_retrieval_service.get_qr_by_id(qr_id) # Changed to await
 
 # Get QR Code Image
 @router.get(
@@ -146,7 +154,8 @@ async def get_qr(qr_id: str, qr_service: QRServiceDep):
 )
 async def get_qr_image(
     qr_id: str,
-    qr_service: QRServiceDep,
+    qr_retrieval_service: QRRetrievalServiceDep, # Added for fetching QR content
+    qr_image_service: QRImageServiceDep,       # Added for generating image
     params: QRImageParameters = Depends(),
 ):
     """
@@ -154,8 +163,9 @@ async def get_qr_image(
 
     Args:
         qr_id: The ID of the QR code to retrieve
+        qr_retrieval_service: Service to fetch QR code data.
+        qr_image_service: Service to generate QR code image.
         params: Parameters for generating the QR code image
-        qr_service: The QR code service (injected)
 
     Returns:
         The QR code image in the requested format
@@ -166,10 +176,10 @@ async def get_qr_image(
         DatabaseError: If a database error occurs
     """
     # Get the QR code
-    qr = qr_service.get_qr_by_id(qr_id)
+    qr = await qr_retrieval_service.get_qr_by_id(qr_id) # Use retrieval service
 
-    # Generate the QR code image
-    return await qr_service.generate_qr(
+    # Generate the QR code image using the new image service
+    return await qr_image_service.generate_qr_image_response(
         data=qr.content,
         size=params.size,
         border=params.border,
@@ -202,14 +212,14 @@ async def get_qr_image(
 )
 async def create_static_qr(
     data: StaticQRCreateParameters, 
-    qr_service: QRServiceDep
+    qr_creation_service: QRCreationServiceDep # Changed dependency
 ):
     """
     Create a new static QR code.
 
     Args:
         data: The QR code data to create
-        qr_service: The QR code service (injected)
+        qr_creation_service: The QR creation service (injected)
 
     Returns:
         The created QR code
@@ -221,7 +231,7 @@ async def create_static_qr(
     """
     # The service layer will raise appropriate exceptions that will be
     # handled by the exception handlers in main.py
-    qr = await qr_service.create_static_qr(data)
+    qr = await qr_creation_service.create_static_qr(data) # Use creation service
     logger.info("Created static QR code", extra={"qr_id": qr.id})
     return qr
 
@@ -238,14 +248,14 @@ async def create_static_qr(
 )
 async def create_dynamic_qr(
     data: DynamicQRCreateParameters, 
-    qr_service: QRServiceDep
+    qr_creation_service: QRCreationServiceDep # Changed dependency
 ):
     """
     Create a new dynamic QR code.
 
     Args:
         data: The QR code data to create
-        qr_service: The QR code service (injected)
+        qr_creation_service: The QR creation service (injected)
 
     Returns:
         The created QR code
@@ -257,7 +267,7 @@ async def create_dynamic_qr(
     """
     # The service layer will raise appropriate exceptions that will be
     # handled by the exception handlers in main.py
-    qr = await qr_service.create_dynamic_qr(data)
+    qr = await qr_creation_service.create_dynamic_qr(data) # Use creation service
     logger.info("Created dynamic QR code", extra={"qr_id": qr.id})
     return qr
 
@@ -275,7 +285,7 @@ async def create_dynamic_qr(
 async def update_qr(
     qr_id: str,
     qr_update: QRUpdateParameters,
-    qr_service: QRServiceDep,
+    qr_update_service: QRUpdateServiceDep, # Changed dependency
 ):
     """
     Update QR code data by ID.
@@ -286,7 +296,7 @@ async def update_qr(
     Args:
         qr_id: The ID of the QR code to update
         qr_update: The data to update
-        qr_service: The QR code service (injected)
+        qr_update_service: The QR update service (injected)
 
     Returns:
         The updated QR code data
@@ -297,7 +307,7 @@ async def update_qr(
         RedirectURLError: If the redirect URL is invalid
         DatabaseError: If a database error occurs
     """
-    qr = await qr_service.update_qr(qr_id, qr_update)
+    qr = await qr_update_service.update_qr(qr_id, qr_update) # Use update service
     logger.info(f"Updated QR code {qr_id}")
     return qr
 
@@ -314,14 +324,14 @@ async def update_qr(
 )
 async def delete_qr(
     qr_id: str,
-    qr_service: QRServiceDep,
+    qr_deletion_service: QRDeletionServiceDep, # Changed dependency
 ):
     """
     Delete QR code by ID.
 
     Args:
         qr_id: The ID of the QR code to delete
-        qr_service: The QR code service (injected)
+        qr_deletion_service: The QR deletion service (injected)
 
     Returns:
         204 No Content on success
@@ -330,5 +340,5 @@ async def delete_qr(
         QRCodeNotFoundError: If the QR code is not found
         DatabaseError: If a database error occurs
     """
-    qr_service.delete_qr(qr_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT) 
+    qr_deletion_service.delete_qr(qr_id) # Use deletion service
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

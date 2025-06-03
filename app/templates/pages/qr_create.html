@@ -67,6 +67,14 @@
             </h2>
         </div>
         <div class="card-body">
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Customization Options:</strong> Error correction levels, logo inclusion, and advanced formatting options are available when downloading your QR code.
+            </div>
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-shield-check me-2"></i>
+                <strong>Security Notice:</strong> Dynamic QR codes can redirect to any valid HTTP or HTTPS URL. Malicious schemes (javascript:, file:, etc.) are blocked for security.
+            </div>
             <div id="qr-form-container" 
                 hx-get="/api/v1/fragments/qr-form/static" 
                 hx-trigger="load"
@@ -118,7 +126,7 @@
                 }
                 
                 // Get the QR ID from the HX-Trigger header
-                const triggerHeader = event.detail.headers['HX-Trigger'];
+                const triggerHeader = event.detail.headers && event.detail.headers['HX-Trigger'];
                 if (triggerHeader) {
                     try {
                         const triggerData = JSON.parse(triggerHeader);

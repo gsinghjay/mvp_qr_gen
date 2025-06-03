@@ -144,9 +144,9 @@ http:
         - security-headers@file
       priority: 801
 
-    # ADDED: Student Portal routes for web.hccc.edu (PROTECTED with OAuth2-Proxy)
-    web-hccc-student-portal-router:
-      rule: "Host(`web.hccc.edu`) && PathPrefix(`/student-portal`)"
+    # ADDED: Portal Demo routes for web.hccc.edu (PROTECTED with OAuth2-Proxy)
+    web-hccc-portal-demo-router:
+      rule: "Host(`web.hccc.edu`) && PathPrefix(`/portal-demo`)"
       service: oauth2-proxy-qr-dashboard-service
       entryPoints:
         - web
@@ -156,8 +156,8 @@ http:
         - security-headers@file
       priority: 805 # Higher than dashboard catch-all (800)
 
-    web-hccc-student-portal-secure-router:
-      rule: "Host(`web.hccc.edu`) && PathPrefix(`/student-portal`)"
+    web-hccc-portal-demo-secure-router:
+      rule: "Host(`web.hccc.edu`) && PathPrefix(`/portal-demo`)"
       service: oauth2-proxy-qr-dashboard-service
       entryPoints:
         - websecure
@@ -167,9 +167,9 @@ http:
         - security-headers@file
       priority: 805 # Higher than dashboard catch-all (800)
 
-    # ADDED: Faculty HR Portal routes for web.hccc.edu (PROTECTED with OAuth2-Proxy)
-    web-hccc-faculty-hr-router:
-      rule: "Host(`web.hccc.edu`) && PathPrefix(`/faculty-hr`)"
+    # ADDED: Student Home Portal routes for web.hccc.edu (PROTECTED with OAuth2-Proxy)
+    web-hccc-student-home-router:
+      rule: "Host(`web.hccc.edu`) && PathPrefix(`/student-home`)"
       service: oauth2-proxy-qr-dashboard-service
       entryPoints:
         - web
@@ -179,8 +179,31 @@ http:
         - security-headers@file
       priority: 805 # Higher than dashboard catch-all (800)
 
-    web-hccc-faculty-hr-secure-router:
-      rule: "Host(`web.hccc.edu`) && PathPrefix(`/faculty-hr`)"
+    web-hccc-student-home-secure-router:
+      rule: "Host(`web.hccc.edu`) && PathPrefix(`/student-home`)"
+      service: oauth2-proxy-qr-dashboard-service
+      entryPoints:
+        - websecure
+      tls: {}
+      middlewares:
+        - public-endpoints@file  # Public access
+        - security-headers@file
+      priority: 805 # Higher than dashboard catch-all (800)
+
+    # ADDED: HR Portal routes for web.hccc.edu (PROTECTED with OAuth2-Proxy)
+    web-hccc-hr-portal-router:
+      rule: "Host(`web.hccc.edu`) && PathPrefix(`/hr-portal`)"
+      service: oauth2-proxy-qr-dashboard-service
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https@file
+        - public-endpoints@file  # Public access
+        - security-headers@file
+      priority: 805 # Higher than dashboard catch-all (800)
+
+    web-hccc-hr-portal-secure-router:
+      rule: "Host(`web.hccc.edu`) && PathPrefix(`/hr-portal`)"
       service: oauth2-proxy-qr-dashboard-service
       entryPoints:
         - websecure
@@ -236,7 +259,7 @@ http:
         - security-headers@file
       priority: 805 # Higher than dashboard catch-all (800)
 
-    # web.hccc.edu - Admin/Dashboard paths (PROTECTED with Basic Auth)
+    # web.hccc.edu - Admin/Dashboard paths (INTERNAL ACCESS ONLY)
     web-hccc-internal-dashboard-router:
       rule: "Host(`web.hccc.edu`)"  # Catch-all for everything else
       service: api-service
@@ -244,7 +267,7 @@ http:
         - web
       middlewares:
         - redirect-to-https@file
-        - public-endpoints@file  # Public access (but basic auth provides security)
+        - ip-whitelist@file      # SECURITY FIX: Restore IP restrictions for dashboard
         - dashboard-auth@file    # Basic Auth for dashboard access
         - security-headers@file
       priority: 800 # Lower than /r/ paths, higher than other domains
@@ -256,7 +279,7 @@ http:
         - websecure
       tls: {}
       middlewares:
-        - public-endpoints@file  # Public access (but basic auth provides security)
+        - ip-whitelist@file      # SECURITY FIX: Restore IP restrictions for dashboard
         - dashboard-auth@file    # Basic Auth for dashboard access
         - security-headers@file
       priority: 800

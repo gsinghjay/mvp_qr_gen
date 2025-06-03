@@ -12,9 +12,8 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select, or_
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.types import DbSessionDep, QRServiceDep
+from app.types import DbSessionDep, QRRetrievalServiceDep, ScanProcessingServiceDep, QRCreationServiceDep
 from app.models.qr import QRCode
-from app.services.qr_service import QRCodeService
 from app.core.config import settings
 from app.core.exceptions import QRCodeNotFoundError, DatabaseError
 from app.core.metrics_logger import MetricsLogger
@@ -51,7 +50,9 @@ async def redirect_qr(
     short_id: str,
     request: Request,
     background_tasks: BackgroundTasks,
-    qr_service: QRServiceDep,
+    qr_retrieval_service: QRRetrievalServiceDep,
+    scan_processing_service: ScanProcessingServiceDep,
+    qr_creation_service: QRCreationServiceDep,  # For _is_safe_redirect_url method
 ):
     """
     Redirect a QR code scan to the target URL.
@@ -60,7 +61,9 @@ async def redirect_qr(
         short_id: The short ID from the QR code
         request: The FastAPI request object
         background_tasks: FastAPI background tasks
-        qr_service: The QR code service (injected)
+        qr_retrieval_service: The QR retrieval service (injected)
+        scan_processing_service: The scan processing service (injected)
+        qr_creation_service: The QR creation service (injected, for URL validation)
 
     Returns:
         A redirect response to the target URL
@@ -73,7 +76,7 @@ async def redirect_qr(
             raise HTTPException(status_code=404, detail="QR code not found")
 
         # Get the QR code using the service with normalized short_id
-        qr = qr_service.get_qr_by_short_id(normalized_short_id)
+        qr = await qr_retrieval_service.get_qr_by_short_id(normalized_short_id)
 
         # Validate QR code type and redirect URL
         if qr.qr_type != "dynamic" or not qr.redirect_url or not qr.redirect_url.startswith(('http://', 'https://')):
@@ -81,7 +84,7 @@ async def redirect_qr(
             raise HTTPException(status_code=400, detail="QR code not configured for redirects")
 
         # Defense-in-depth: validate redirect URL safety
-        if not qr_service._is_safe_redirect_url(qr.redirect_url):
+        if not qr_creation_service._is_safe_redirect_url(qr.redirect_url):
             logger.warning(f"Unsafe redirect URL detected for QR {qr.id}: {qr.redirect_url}")
             raise HTTPException(status_code=400, detail="Redirect not permitted")
 
@@ -109,7 +112,7 @@ async def redirect_qr(
 
         # Add the background task to update scan statistics with client info and genuine scan signal
         background_tasks.add_task(
-            qr_service.update_scan_statistics, 
+            scan_processing_service.update_scan_statistics, 
             qr.id, 
             timestamp, 
             client_ip, 

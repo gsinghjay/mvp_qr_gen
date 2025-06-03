@@ -6,7 +6,7 @@
 <form
   hx-post="/api/v1/fragments/qr-update/{{ qr.id }}"
   hx-target="#qr-detail-modal .modal-content"
-  hx-indicator="#loading-indicator"
+  hx-indicator="#edit-loading-indicator"
 >
   <div class="modal-body">
     {% if error_messages %}
@@ -76,7 +76,7 @@
   </div>
   
   <div class="modal-footer">
-    <div id="loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary me-3" role="status">
+    <div id="edit-loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary me-3" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
