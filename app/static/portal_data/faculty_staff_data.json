@@ -1,0 +1,60 @@
+{
+  "announcement_items": [
+    {
+      "title": "QR Code Generator Available",
+      "date": "NOW",
+      "body_html": "<p>Create QR codes for events, documents, and more with our new <a href=\"/\">QR Code Generator tool</a>.</p>"
+    },
+    {
+      "title": "Faculty Portal Updates",
+      "date": "RECENT",
+      "body_html": "<p>New features and improved navigation have been added to the faculty portal for better accessibility.</p>"
+    },
+    {
+      "title": "IT Service Desk",
+      "date": "INFO",
+      "body_html": "<p>For technical support and IT assistance, contact the Help Desk at ext. 2000 or submit a ticket online.</p>"
+    }
+  ],
+  "important_dates": [
+    {
+      "date": "JAN 15",
+      "title": "Spring Semester Begins"
+    },
+    {
+      "date": "MAR 10",
+      "title": "Faculty Development Day",
+      "href": "#"
+    },
+    {
+      "date": "MAY 15",
+      "title": "Final Grades Due"
+    }
+  ],
+  "faculty_toolkit_links": [
+    {
+      "href": "/",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-11.svg",
+      "title": "QR Code Generator",
+      "alt_text": "QR Code Generator"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-6.svg",
+      "title": "Academic Calendar",
+      "alt_text": "Academic Calendar"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-12.svg",
+      "title": "Safety & Security",
+      "alt_text": "Safety & Security"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-13.svg",
+      "title": "All College Council",
+      "alt_text": "All College Council"
+    }
+  ]
+} 

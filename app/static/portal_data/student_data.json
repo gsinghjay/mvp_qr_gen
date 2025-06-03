@@ -1,0 +1,93 @@
+{
+  "student_announcement_items": [
+    {
+      "title": "Spring 2025 Registration Now Open",
+      "date": "DEC 10",
+      "body_html": "<p>Register for spring semester classes now. <a href=\"#\" target=\"_blank\">Advisors are available</a> to help you plan your schedule and ensure you're on track for graduation.</p>"
+    },
+    {
+      "title": "Final Exam Schedule Available",
+      "date": "DEC 08",
+      "body_html": "<p><a href=\"#\" target=\"_blank\">Check your final exam schedule</a> in Self Service. Remember that final exams are worth a significant portion of your grade.</p>"
+    },
+    {
+      "title": "Winter Break Campus Hours",
+      "date": "DEC 05",
+      "body_html": "<p>Campus services will operate on reduced hours during winter break. Check the academic calendar for specific dates and times.</p>"
+    }
+  ],
+  "student_important_dates": [
+    {
+      "date": "DEC 16",
+      "title": "Fall Semester Ends"
+    },
+    {
+      "date": "DEC 17-23",
+      "title": "Final Examinations"
+    },
+    {
+      "date": "JAN 21",
+      "title": "Spring Semester Begins",
+      "href": "#"
+    },
+    {
+      "date": "JAN 27",
+      "title": "Add/Drop Deadline"
+    },
+    {
+      "date": "FEB 01",
+      "title": "FAFSA & Financial Aid Applications Open",
+      "href": "#"
+    }
+  ],
+  "student_toolkit_links": [
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-1.svg",
+      "title": "My Financial Aid",
+      "alt_text": "My Financial Aid"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-2.svg",
+      "title": "Register For Classes",
+      "alt_text": "Register For Classes"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-3.svg",
+      "title": "My Grades",
+      "alt_text": "My Grades"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-4.svg",
+      "title": "My Transcripts",
+      "alt_text": "My Transcripts"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-5.svg",
+      "title": "Getting to Campus",
+      "alt_text": "Getting to Campus"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-6.svg",
+      "title": "Academic Calendar",
+      "alt_text": "Academic Calendar"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-7.svg",
+      "title": "Academic Advising",
+      "alt_text": "Academic Advising"
+    },
+    {
+      "href": "#",
+      "icon_src": "/static/portal_template/assets/icons/icon-link-list-icon-8.svg",
+      "title": "Library",
+      "alt_text": "Library"
+    }
+  ]
+} 
