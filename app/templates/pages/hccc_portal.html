@@ -6,9 +6,13 @@
 {{ portal_elements.render_page_intro(
   header_title=page_header|default('Faculty & Staff Portal'),
   user_email_display=user_email,
-  user_role_display=user_role,
   groups_display=groups
 ) }}
+
+<!-- Breadcrumbs -->
+{{ portal_elements.render_breadcrumbs([
+  {"text": "Home", "href": "/hccc-portal"}
+]) }}
 
 <!-- Announcements Section -->
 <section class="announcements section">

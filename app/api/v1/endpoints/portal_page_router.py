@@ -88,7 +88,6 @@ async def portal_demo_page(
                 "user_email": x_forwarded_email,
                 "preferred_username": x_forwarded_preferred_username,
                 "groups": groups_list,
-                "user_role": "Faculty" if any('faculty' in g.lower() for g in groups_list) else "Staff",
                 **portal_data,
             },
         )
@@ -120,14 +119,7 @@ async def hccc_portal_page(
         if x_forwarded_groups:
             groups_list = [g.strip() for g in x_forwarded_groups.split(',') if g.strip()]
         
-        # Determine user role for content customization
-        user_role = "Faculty & Staff"
-        if any('faculty' in g.lower() for g in groups_list):
-            user_role = "Faculty"
-        elif any('staff' in g.lower() for g in groups_list):
-            user_role = "Staff"
-        
-        logger.info(f"HCCC portal accessed by: email={x_forwarded_email}, user_name={user_name}, role={user_role}")
+        logger.info(f"HCCC portal accessed by: email={x_forwarded_email}, user_name={user_name}, groups={groups_list}")
         
         # Get structured data for the portal from JSON
         portal_data = get_faculty_staff_data()
@@ -141,7 +133,6 @@ async def hccc_portal_page(
                 "user_name": user_name,
                 "user_email": x_forwarded_email,
                 "preferred_username": x_forwarded_preferred_username,
-                "user_role": user_role,
                 "groups": groups_list,
                 "is_authenticated": True,
                 **portal_data,
@@ -223,16 +214,7 @@ async def hr_portal_page(
         if x_forwarded_groups:
             groups_list = [g.strip() for g in x_forwarded_groups.split(',') if g.strip()]
         
-        # Determine user role for HR content customization
-        user_role = "HR Staff"
-        if any('faculty' in g.lower() for g in groups_list):
-            user_role = "Faculty"
-        elif any('hr' in g.lower() for g in groups_list):
-            user_role = "HR"
-        elif any('staff' in g.lower() for g in groups_list):
-            user_role = "Staff"
-        
-        logger.info(f"HR portal accessed by: email={x_forwarded_email}, user_name={user_name}, role={user_role}")
+        logger.info(f"HR portal accessed by: email={x_forwarded_email}, user_name={user_name}, groups={groups_list}")
         
         # Get structured data for the HR portal from JSON
         hr_data = get_hr_data()
@@ -246,7 +228,6 @@ async def hr_portal_page(
                 "user_name": user_name,
                 "user_email": x_forwarded_email,
                 "preferred_username": x_forwarded_preferred_username,
-                "user_role": user_role,
                 "groups": groups_list,
                 "is_authenticated": True,
                 **hr_data,
@@ -296,7 +277,6 @@ async def student_academics_portal_page(
                 "preferred_username": x_forwarded_preferred_username,
                 "groups": groups_list,
                 "is_authenticated": True,
-                "is_student": True,  # Add missing context variable for student academics portal
                 **academics_data,
             },
         )

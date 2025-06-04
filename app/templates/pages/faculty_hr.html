@@ -9,7 +9,6 @@
 {{ portal_elements.render_page_intro(
   header_title=page_header|default('Human Resources'),
   user_email_display=user_email,
-  user_role_display=("HR Access" if has_hr_permissions else None),
   groups_display=groups
 ) }}
 

@@ -13,6 +13,11 @@
   groups_display=groups
 ) }}
 
+<!-- Breadcrumbs -->
+{{ portal_elements.render_breadcrumbs([
+  {"text": "Home", "href": "/student-home"}
+]) }}
+
 <!-- Student Campus Alert Banner -->
 {{ portal_elements.render_alert_banner(
   title="Reminder!",
