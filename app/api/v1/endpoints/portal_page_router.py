@@ -296,6 +296,7 @@ async def student_academics_portal_page(
                 "preferred_username": x_forwarded_preferred_username,
                 "groups": groups_list,
                 "is_authenticated": True,
+                "is_student": True,  # Add missing context variable for student academics portal
                 **academics_data,
             },
         )
