@@ -1,0 +1,439 @@
+{
+  "id": null,
+  "title": "OPS - System & Infrastructure Overview",
+  "tags": ["operations", "system-health", "infrastructure", "overview"],
+  "style": "dark",
+  "timezone": "browser",
+  "refresh": "15s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "🏗️ Operations Overview",
+      "type": "text",
+      "gridPos": {"h": 3, "w": 24, "x": 0, "y": 0},
+      "options": {
+        "mode": "markdown",
+        "content": "# Operations Dashboard - System & Infrastructure Overview\n\n**Audience**: Operations team and system administrators\n**Purpose**: High-level system health monitoring, service status, and key SLOs at a glance\n\n🎯 **Key SLOs**: 99.9% uptime, <100ms P95 redirect latency, <1% error rate"
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 3},
+      "id": 2,
+      "panels": [],
+      "title": "Key SLOs & System Health",
+      "type": "row"
+    },
+    {
+      "id": 3,
+      "title": "System Uptime (24h)",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 4},
+      "targets": [
+        {
+          "expr": "avg_over_time(up{job=\"qr-app\"}[24h]) * 100 or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 99,
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 99.5},
+              {"color": "green", "value": 99.9}
+            ]
+          }
+        }
+      },
+      "options": {
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 4,
+      "title": "QR Redirect Success Rate",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 6, "x": 6, "y": 4},
+      "targets": [
+        {
+          "expr": "(sum(rate(app_http_requests_total{endpoint=~\"/r/.*\", status=\"302\"}[24h])) / sum(rate(app_http_requests_total{endpoint=~\"/r/.*\"}[24h]))) * 100 or vector(100)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 99,
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 99.5},
+              {"color": "green", "value": 99.9}
+            ]
+          }
+        }
+      },
+      "options": {
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 5,
+      "title": "P95 Redirect Latency",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 4},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(app_http_request_duration_seconds_bucket{endpoint=~\"/r/.*\"}[1h])) by (le)) * 1000 or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "red", "value": 100}
+            ]
+          }
+        }
+      },
+      "options": {
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 6,
+      "title": "Overall Error Rate",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 4},
+      "targets": [
+        {
+          "expr": "(sum(rate(app_http_requests_total{status=~\"5..\"}[1h])) / sum(rate(app_http_requests_total[1h]))) * 100 or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 5,
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 0.5},
+              {"color": "red", "value": 1}
+            ]
+          }
+        }
+      },
+      "options": {
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 12},
+      "id": 7,
+      "panels": [],
+      "title": "Service Status & Feature Flags",
+      "type": "row"
+    },
+    {
+      "id": 8,
+      "title": "Core Services Status",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 13},
+      "targets": [
+        {
+          "expr": "up{job=\"qr-app\"} or vector(0)",
+          "refId": "A"
+        },
+        {
+          "expr": "up{job=\"prometheus\"} or vector(0)",
+          "refId": "B"
+        },
+        {
+          "expr": "up{job=\"traefik\"} or vector(0)",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {"color": "red", "index": 0, "text": "DOWN"},
+                "1": {"color": "green", "index": 1, "text": "UP"}
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byFrameRefID", "options": "A"},
+            "properties": [{"id": "displayName", "value": "QR Application"}]
+          },
+          {
+            "matcher": {"id": "byFrameRefID", "options": "B"},
+            "properties": [{"id": "displayName", "value": "Prometheus"}]
+          },
+          {
+            "matcher": {"id": "byFrameRefID", "options": "C"},
+            "properties": [{"id": "displayName", "value": "Traefik"}]
+          }
+        ]
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal"
+      }
+    },
+    {
+      "id": 9,
+      "title": "Feature Flag Status",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 13},
+      "targets": [
+        {
+          "expr": "feature_flag_active",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {"color": "red", "index": 0, "text": "DISABLED"},
+                "1": {"color": "green", "index": 1, "text": "ENABLED"}
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal"
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 19},
+      "id": 10,
+      "panels": [],
+      "title": "Circuit Breaker & Database Health",
+      "type": "row"
+    },
+    {
+      "id": 11,
+      "title": "Circuit Breaker Status",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 20},
+      "targets": [
+        {
+          "expr": "sum(rate(app_circuit_breaker_fallbacks_total[5m])) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "displayName": "Fallbacks/sec",
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 0.1},
+              {"color": "red", "value": 1}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 12,
+      "title": "Database Connections",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 20},
+      "targets": [
+        {
+          "expr": "pg_stat_activity_count{datname=\"qrdb\", state=\"active\"} or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "Active DB Connections",
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 10},
+              {"color": "red", "value": 20}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 13,
+      "title": "Request Volume",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 20},
+      "targets": [
+        {
+          "expr": "sum(rate(app_http_requests_total[5m])) * 60 or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "displayName": "Requests/min",
+          "thresholds": {
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "green", "value": 10},
+              {"color": "yellow", "value": 100}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 26},
+      "id": 14,
+      "panels": [],
+      "title": "Resource Utilization Summary",
+      "type": "row"
+    },
+    {
+      "id": 15,
+      "title": "Application Memory Usage",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 27},
+      "targets": [
+        {
+          "expr": "go_memstats_alloc_bytes{job=\"qr-app\"} / 1024 / 1024 or vector(0)",
+          "legendFormat": "Allocated Memory (MB)",
+          "refId": "A"
+        },
+        {
+          "expr": "go_memstats_sys_bytes{job=\"qr-app\"} / 1024 / 1024 or vector(0)",
+          "legendFormat": "System Memory (MB)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "min": 0,
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 500000000},
+              {"color": "red", "value": 1000000000}
+            ]
+          }
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 16,
+      "title": "Traefik Metrics Summary",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 27},
+      "targets": [
+        {
+          "expr": "sum(rate(traefik_service_requests_total{service=\"api-service@file\"}[5m])) * 60 or vector(0)",
+          "legendFormat": "API Requests/min",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(traefik_service_open_connections{service=\"api-service@file\"}) or vector(0)",
+          "legendFormat": "Open Connections",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    }
+  ],
+  "links": [
+    {
+      "title": "Infrastructure Deep Dive",
+      "url": "/d/ops-infrastructure-deep-dive/ops-infrastructure-traffic-deep-dive",
+      "type": "dashboards"
+    },
+    {
+      "title": "Database Health",
+      "url": "/d/dba-postgresql/dba-postgresql-performance-health",
+      "type": "dashboards"
+    },
+    {
+      "title": "Developer Deep Dive",
+      "url": "/d/dev-app-deep-dive/dev-qr-application-deep-dive-refactoring",
+      "type": "dashboards"
+    }
+  ]
+} 
