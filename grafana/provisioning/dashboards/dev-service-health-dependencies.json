@@ -99,7 +99,14 @@
               {"color": "yellow", "value": 1},
               {"color": "red", "value": 5}
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "View Error Logs",
+              "url": "/explore?orgId=1&left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bcontainer%3D%5C%22qr_generator_api%5C%22%7D%20%7C%3D%20%5C%22ERROR%5C%22%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D",
+              "targetBlank": true
+            }
+          ]
         }
       },
       "options": {
@@ -210,7 +217,19 @@
       "fieldConfig": {
         "defaults": {
           "unit": "reqps",
-          "min": 0
+          "min": 0,
+          "links": [
+            {
+              "title": "View Application Logs",
+              "url": "/explore?orgId=1&left=%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bcontainer%3D%5C%22qr_generator_api%5C%22%7D%20%7C%3D%20%5C%22ERROR%5C%22%20or%20%5C%22WARNING%5C%22%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D",
+              "targetBlank": true
+            },
+            {
+              "title": "View Recent Error Logs",
+              "url": "/d/ops-infrastructure-deep-dive/ops-infrastructure-traffic-deep-dive?viewPanel=15",
+              "targetBlank": true
+            }
+          ]
         }
       },
       "options": {
