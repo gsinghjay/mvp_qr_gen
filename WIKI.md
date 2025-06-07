@@ -30,8 +30,8 @@ The GitHub Wiki serves as the **public documentation** for the QR Code Generator
 | **Observatory Overview** | GRAFANA.md | Auto-sync |
 | **Backup & Recovery Guide** | BACKUP-RESTORE.md | Auto-sync |
 | **Wiki Maintenance Guide** | WIKI.md | Auto-sync |
+| **7 Streamlined Dashboard Suite** | Manual creation in wiki | Manual editing |
 | **Alert System** | Manual creation in wiki | Manual editing |
-| **Dashboard Suite** | Manual creation in wiki | Manual editing |
 | **Key Prometheus Queries for Developers** | Manual creation in wiki | Manual editing |
 | **Traefik Configuration** | Manual creation in wiki | Manual editing |
 | **Traefik Quick Reference** | Manual creation in wiki | Manual editing |
@@ -185,7 +185,7 @@ git push origin master
 
 #### **Monitoring** (SRE/DevOps)
 - Observatory Overview
-- Dashboard Suite
+- 7 Streamlined Dashboard Suite (Phase 3 Complete)
 - Key Prometheus Queries for Developers
 - Alert System
 - Performance Monitoring
@@ -297,5 +297,9 @@ git log --oneline -5
 - **GitHub Actions**: `.github/workflows/update-wiki.yml`
 
 This wiki serves as the primary public documentation for the QR Code Generator project, providing comprehensive guidance for all user types while maintaining itself through automated processes.
+
+## 🚀 Recent Updates
+
+**Phase 3 Dashboard Streamlining Complete**: The monitoring system has been enhanced with 7 streamlined, role-specific dashboards featuring dashboard linking, complete standardization, and comprehensive user acceptance testing. See the [Observatory Overview](https://github.com/gsinghjay/mvp_qr_gen/wiki/Observatory-Overview) for the updated dashboard suite.
 
 <!-- Test auto-sync workflow trigger --> 
