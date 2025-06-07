@@ -9,6 +9,7 @@ from fastapi import APIRouter
 from .endpoints import health, qr, admin_metrics # pages and fragments removed
 from .endpoints import dashboard_page_router, auth_page_router
 from .endpoints import qr_management_page_router, portal_page_router
+from .endpoints import portal_router # New dynamic portal router
 from .endpoints import qr_list_fragments_router, qr_form_fragments_router
 from .endpoints import qr_analytics_fragments_router # Import new analytics fragment router
 
@@ -31,6 +32,9 @@ web_router.include_router(dashboard_page_router.router)
 web_router.include_router(auth_page_router.router)
 web_router.include_router(qr_management_page_router.router)
 web_router.include_router(portal_page_router.router)
+
+# Include dynamic portal router under API
+api_router.include_router(portal_router.router)
 
 # Include new fragment routers (these typically have their own /fragments prefix)
 api_router.include_router(qr_list_fragments_router.router)

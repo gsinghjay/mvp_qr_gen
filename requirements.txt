@@ -14,6 +14,7 @@ psutil==7.0.0  # System metrics for health checks
 psycopg2-binary==2.9.10  # PostgreSQL driver
 asyncpg==0.30.0  # Async PostgreSQL driver for testing
 PyYAML==6.0.2  # Required for user-agents
+markdown[meta]==3.7  # Markdown parsing with YAML frontmatter support
 ua-parser==1.0.1  # User agent string parsing
 user-agents==2.2.0  # Device detection from user agent strings
 

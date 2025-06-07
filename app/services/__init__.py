@@ -13,6 +13,7 @@ from .scan_processing_service import ScanProcessingService
 from .new_qr_generation_service import NewQRGenerationService
 from .new_analytics_service import NewAnalyticsService
 from .new_validation_service import NewValidationService
+from .content_service import ContentService
 
 __all__ = [
     "HealthService",
@@ -24,5 +25,6 @@ __all__ = [
     "ScanProcessingService",
     "NewQRGenerationService",
     "NewAnalyticsService", 
-    "NewValidationService"
+    "NewValidationService",
+    "ContentService"
 ]
