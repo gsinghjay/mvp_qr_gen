@@ -25,6 +25,7 @@ from .services.qr_update_service import QRUpdateService
 from .services.qr_deletion_service import QRDeletionService # Added
 from .services.new_analytics_service import NewAnalyticsService
 from .services.new_validation_service import NewValidationService
+from .services.content_service import ContentService
 
 # Circuit breaker imports
 import aiobreaker
@@ -264,3 +265,13 @@ def get_new_validation_service(
     # TODO: Implement concrete ValidationProvider adapter
     # For now, this is a placeholder that won't be used until Phase 1
     return None  # This will be updated when we have concrete implementations
+
+
+def get_content_service() -> ContentService:
+    """
+    Dependency for getting a ContentService instance.
+    
+    Returns:
+        An instance of ContentService for portal content parsing
+    """
+    return ContentService()
