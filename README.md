@@ -1,46 +1,44 @@
-# QR Code Generator
+# QR Code Generator & Management Platform
 
-A robust QR code generation and management API built with FastAPI and PostgreSQL. Features include static/dynamic QR codes, scan tracking, customizable appearance, and network-level security through Traefik.
+A production-grade QR code generation and management platform built with FastAPI and PostgreSQL. This system features a service-oriented architecture, advanced QR customization, detailed scan analytics, and a comprehensive security model enforced by Traefik. It is fully instrumented with an **Observatory-First** monitoring stack, including a suite of 10 specialized Grafana dashboards for unparalleled system visibility.
 
 ## Features
 
+-   **Service-Oriented Architecture**: Decoupled services for creation, retrieval, updates, imaging, and scan processing ensure maintainability and scalability.
 -   **Static & Dynamic QR Codes**: Generate permanent codes or codes with updatable redirect URLs.
--   **Customization**: Control QR code colors, size, and border.
--   **Scan Tracking**: Monitor dynamic QR code usage with scan counts and timestamps.
--   **Edge Security Model**:
-    -   **Network-level Access Control**: IP allowlisting for administrative functionality via Traefik
-    -   **Path-based Protection**: Only `/r/{short_id}` endpoints exposed on public domains
-    -   **Basic Authentication**: Dashboard access protected by username/password
--   **Web Interface**: Manage QR codes through an intuitive web UI built with Jinja2 templates and Bootstrap.
--   **RESTful API**: Comprehensive API for programmatic QR code management.
--   **Docker & Traefik**: Production-ready deployment with HTTPS support, reverse proxying, and load balancing capabilities provided by Traefik.
--   **PostgreSQL Database**: Robust relational database for improved concurrency and data integrity.
--   **Database Migrations**: Managed with Alembic.
--   **Optimized First-Request Performance**: Uses FastAPI's lifespan context manager to pre-initialize critical code paths, eliminating cold-start delays for QR redirects and API endpoints.
--   **Analytics Dashboard**: Detailed analytics for QR code usage with interactive charts and filtering.
--   **Enhanced Scan Tracking**: User agent analysis for device, browser, and OS statistics.
--   **Observatory-First Monitoring**: Comprehensive Grafana dashboard suite with 8 specialized monitoring views for system health, performance tracking, user experience, and infrastructure monitoring.
--   **Production-Grade Observability**: Real-time metrics, SLA compliance monitoring, and data-driven refactoring support through Prometheus and Grafana integration.
+-   **Advanced Customization**:
+    -   Control QR colors, size (relative and physical units like inches/cm), border, and DPI for print.
+    -   Embed a central logo with automatic error correction adjustments.
+    -   Generate images in multiple formats (PNG, JPEG, SVG, WebP).
+-   **Enhanced Scan Tracking & Analytics**:
+    -   Detailed logging of every scan, differentiating between genuine QR scans and direct URL access.
+    -   User-agent analysis provides insights into device types, operating systems, and browsers.
+    -   Interactive analytics dashboard with time-series charts and filterable data.
+-   **Observatory-First Monitoring**:
+    -   **7 Streamlined Grafana Dashboards**: A role-specific suite for monitoring system health, performance, user experience, database, infrastructure, and business KPIs with enhanced linking and standardization.
+    -   **Full-Stack Observability**: Real-time metrics via Prometheus, structured logging via Loki, and visualization via Grafana.
+    -   **Enhanced Navigation**: Dashboard linking and standardized design patterns for improved troubleshooting workflows.
+    -   **Data-Driven Refactoring**: Custom metrics and circuit breaker monitoring to safely roll out new features.
+-   **Production-Ready Infrastructure**:
+    -   **Docker & Traefik**: Deployed via Docker Compose with Traefik as a secure edge gateway.
+    -   **OIDC Authentication**: Integrated with Keycloak and Azure AD for secure user access to the HCCC portal.
+    -   **Robust Operations**: Includes production-safe scripts for backup, restore, and rollback.
+-   **Modern Web Interface**: A dynamic UI built with Jinja2, HTMX, and Alpine.js for a responsive user experience.
 
 ## Documentation
 
-- **GitHub Wiki**: Comprehensive public documentation at [mvp_qr_gen/wiki](https://github.com/gsinghjay/mvp_qr_gen/wiki)
-  - **[Getting Started Guide](https://github.com/gsinghjay/mvp_qr_gen/wiki/Getting-Started)**: Complete setup instructions for new users
-  - **[System Architecture](https://github.com/gsinghjay/mvp_qr_gen/wiki/System-Architecture)**: Technical overview and design patterns
-  - **[Traefik Configuration](https://github.com/gsinghjay/mvp_qr_gen/wiki/Traefik-Configuration)**: Complete reverse proxy setup guide
-  - **[Key Prometheus Queries for Developers](https://github.com/gsinghjay/mvp_qr_gen/wiki/Key-Prometheus-Queries-for-Developers)**: Essential PromQL queries and monitoring patterns
-- **API Documentation**: Interactive Swagger UI available at `/docs` endpoint
-- **Monitoring & Observability**: See `GRAFANA.md` for comprehensive monitoring dashboard guide
-- **Dashboard Suite**: 8 specialized Grafana dashboards for system monitoring, user experience, and infrastructure analysis
-- **Wiki Maintenance**: See `WIKI.md` for wiki contribution and maintenance guidelines
+-   **[GitHub Wiki](https://github.com/gsinghjay/mvp_qr_gen/wiki)**: The central hub for all public documentation.
+-   **[System Architecture Guide](https://github.com/gsinghjay/mvp_qr_gen/wiki/System-Architecture)**: In-depth technical overview.
+-   **[Network Infrastructure Guide](https://github.com/gsinghjay/mvp_qr_gen/wiki/Network-Infrastructure-Guide)**: Detailed domain and security strategy.
+-   **[Observatory & Grafana Guide](https://github.com/gsinghjay/mvp_qr_gen/wiki/Observatory-Overview)**: A tour of the 10 monitoring dashboards.
+-   **[Backup & Recovery Guide](BACKUP-RESTORE.md)**: Detailed procedures for data safety.
+-   **API Docs**: Interactive Swagger UI at `/api/v1/docs` (when accessed via internal admin host).
 
 ## Quick Start
 
-To run the QR Code Generator locally using Docker Compose:
-
 1.  **Prerequisites**: Docker and Docker Compose installed.
-2.  **Clone**: Clone this repository.
-3.  **Configure**: Create a `.env` file or set environment variables directly in `docker-compose.yml`.
+2.  **Clone Repository**: `git clone https://github.com/gsinghjay/mvp_qr_gen.git`
+3.  **Configure**: Create a `.env` file from `.env.example` and set your credentials.
 4.  **Run**:
     ```bash
     docker-compose up --build -d
@@ -48,346 +46,167 @@ To run the QR Code Generator locally using Docker Compose:
 
 **Access Points:**
 
--   **Web Interface**: `https://localhost/` (e.g., `/`, `/qr-list`, `/qr-create`)
-    -   Requires basic authentication for dashboard access
--   **API Docs**: `https://localhost/docs`
--   **API Base URL**: `https://localhost/api/v1`
--   **Traefik Dashboard**: `http://localhost:8080/`
--   **Grafana Monitoring**: `http://localhost:3000/` (admin/admin)
-    -   8 specialized dashboards for comprehensive system monitoring
-    -   Log analysis and correlation with metrics
--   **Prometheus Metrics**: `http://localhost:9090/`
--   **Loki Logs**: `http://localhost:3100/` (integrated with Grafana)
+| Service | URL | Authentication |
+| :--- | :--- | :--- |
+| **HCCC Portal** | `https://web.hccc.edu/` | OIDC (Azure AD) |
+| **QR Redirects** | `https://web.hccc.edu/r/{short_id}` | Public |
+| **Admin Dashboard** | `https://webhost.hccc.edu/` | Basic Auth + IP Whitelist |
+| **Grafana Monitoring**| `https://webhost.hccc.edu/grafana/` | Basic Auth + IP Whitelist |
+| **Prometheus** | `https://webhost.hccc.edu/prometheus/` | Basic Auth + IP Whitelist |
+| **Traefik Dashboard** | `http://localhost:8080/` | Local Access |
 
 ### Docker Container Configuration
 
-| Container              | Purpose                                        | Ports Exposed (Host) | Internal Port | Network                  | Volumes Used                                                    |
-| :--------------------- | :--------------------------------------------- | :------------------- | :------------ | :----------------------- | :-------------------------------------------------------------- |
-| `qr_generator_api`     | FastAPI Application + Web UI                   | (via Traefik)        | 8000          | `qr_generator_network` | `qr_data`, `qr_logs`, `./app` (dev only)                        |
-| `qr_generator_postgres`| PostgreSQL Database                            | (internal only)      | 5432          | `qr_generator_network` | `postgres_data`                                                 |
-| `qr_generator_traefik` | Reverse Proxy, TLS, Routing, Security         | 80, 443, 8080        | N/A           | `qr_generator_network` | `docker.sock`, `traefik_certs`, `traefik_logs`                |
-| `qr_generator_prometheus` | Metrics Collection & Storage                | 9090                 | 9090          | `qr_generator_network` | `prometheus_data`                                               |
-| `qr_generator_grafana` | Monitoring Dashboards & Visualization         | 3000                 | 3000          | `qr_generator_network` | `grafana_data`                                                  |
-| `qr_generator_loki` | Log Aggregation & Analysis                     | 3100                 | 3100          | `qr_generator_network` | `loki_data`                                                     |
+| Container | Purpose | Ports Exposed (Host) |
+| :--- | :--- | :--- |
+| `qr_generator_api` | FastAPI App, Web UI, HCCC Portal | (via Traefik) |
+| `qr_generator_postgres`| Primary PostgreSQL Database | (internal) |
+| `qr_generator_traefik`| Edge Gateway, TLS, Routing, Security| 80, 443, 8082 |
+| `qr_generator_prometheus`| Metrics Collection & Storage | (via Traefik) |
+| `qr_generator_grafana`| Monitoring Dashboards & Visualization | 3000, (via Traefik) |
+| `qr_generator_loki`| Log Aggregation & Analysis | (via Traefik) |
+| `keycloak_service` | OIDC Identity Broker | 8180, (via Traefik)|
+| `oauth2-proxy-qr-dashboard`| Authentication Proxy | 4180, (via Traefik)|
 
-## Security Setup
+## System Architecture
 
-The application uses a simplified security model based on network-level controls:
-
-### Edge Gateway Security Model
-
-1. **Network-level Protection**: 
-   - IP allowlisting for administrative endpoints
-   - Path-based routing restrictions (only `/r/{short_id}` accessible on public domains)
-   - TLS termination at the edge
-
-2. **Basic Authentication**:
-   - Dashboard access protected with username/password authentication
-   - Credentials managed via Traefik's basicAuth middleware
-   - Layered security approach (IP whitelisting + basic authentication)
-
-3. **Environment Variables**:
-   ```dotenv
-   # Basic configuration
-   BASE_URL=https://10.1.6.12
-   ```
-
-4. **No Complex Authentication System**:
-   - Administrative endpoints are protected via network-level controls and basic authentication
-   - No complex user management or JWT/OAuth required
-   - Simplified deployment and maintenance
-
-## Infrastructure Architecture
-
-The system uses Docker containers orchestrated by Docker Compose, with Traefik acting as the edge router and reverse proxy.
+The system employs a service-oriented architecture orchestrated by Docker Compose, with Traefik as the secure edge gateway.
 
 ```mermaid
 flowchart TD
-    USER((External User)) --> ENTRY
+    subgraph "External World"
+        USER((👥 Users / Admins))
+    end
 
-    subgraph traefik["Traefik Edge Gateway"]
+    subgraph "Traefik Edge Gateway (TLS, Auth, Routing)"
         direction LR
-        ENTRY["EntryPoints: web(:80), websecure(:443), traefik(:8080), metrics(:8082)"]
-        ROUTERS["Routers: api-rtr (/*), public-rtr (/r/*), health-rtr (/health)"]
-        MIDDLEWARES["Middlewares: HTTPS Redirect, CORS, Security Headers, IP Whitelist"]
-        SERVICES["Services: api-svc(:8000)"]
-        ENTRY --> | Apply TLS | ROUTERS
-        ROUTERS --> MIDDLEWARES --> SERVICES
+        PUBLIC_ROUTER["🌐 Public Routers<br>(web.hccc.edu)"]
+        AUTH_ROUTER["🔐 Auth Routers<br>(auth.hccc.edu)"]
+        ADMIN_ROUTER["🛠️ Admin Routers<br>(webhost.hccc.edu)"]
     end
 
-    traefik --> api_service
-
-    subgraph api_service["API Service (FastAPI Application)"]
-         direction LR
-         APP["FastAPI App"]
-         QR["QR Logic"]
-         DB[("PostgreSQL DB")]
-         APP --> QR
-         APP --> DB
-         DB --> DB_VOL["Volume: postgres_data"]
-         style APP fill:#ccf,stroke:#333,stroke-width:2px
-    end
-
-    subgraph monitoring["Observatory Monitoring Stack"]
+    subgraph "Docker Service Mesh (qr_generator_network)"
         direction LR
-        PROMETHEUS[("Prometheus<br/>Metrics Collection")]
-        LOKI[("Loki<br/>Log Aggregation")]
-        GRAFANA[("Grafana<br/>8 Dashboard Suite<br/>+ Log Analysis")]
-        PROMETHEUS --> GRAFANA
-        LOKI --> GRAFANA
-        style PROMETHEUS fill:#fff3e0,stroke:#333,stroke-width:2px
-        style LOKI fill:#e3f2fd,stroke:#333,stroke-width:2px
-        style GRAFANA fill:#e8f5e8,stroke:#333,stroke-width:2px
+        subgraph "Authentication Services"
+            OAUTH2["OAuth2-Proxy"]
+            KEYCLOAK["Keycloak"]
+        end
+        subgraph "Application Services"
+            API_SVC["FastAPI App<br>(Atomic Services)"]
+            DB[("PostgreSQL DB")]
+            API_SVC --> DB
+        end
+        subgraph "Observatory Stack"
+            PROMETHEUS["Prometheus"]
+            GRAFANA["Grafana"]
+            LOKI["Loki"]
+        end
     end
 
-    api_service --> monitoring
+    USER --> PUBLIC_ROUTER
+    USER --> AUTH_ROUTER
+    USER --> ADMIN_ROUTER
 
-    subgraph docker_build["Docker Build Process"]
-        direction LR
-        subgraph builder["Builder Stage"]
-            B["python:3.12-slim + build deps + venv + requirements.txt"]
-        end
+    PUBLIC_ROUTER --> API_SVC
+    PUBLIC_ROUTER --> OAUTH2
+    AUTH_ROUTER --> KEYCLOAK
+    ADMIN_ROUTER --> API_SVC
+    ADMIN_ROUTER --> GRAFANA
+    ADMIN_ROUTER --> PROMETHEUS
 
-        subgraph runtime["Runtime Stage"]
-            R["python:3.12-slim + runtime deps (curl, postgresql-client) + app code + scripts"]
-            ENV_VARS["ENV: PORT=8000, WORKERS, PG_DATABASE_URL, etc."]
-            HEALTH["Healthcheck: /health (curl)"]
-        end
-
-        builder --> runtime
-        runtime --> DOCKER_IMAGE[("Docker Image: qr-generator")]
-    end
-
-
-    subgraph compose["Docker Compose Orchestration"]
-        direction LR
-        subgraph compose_services["Services"]
-            API_SVC["API Service (qr_generator_api)"]
-            POSTGRES_SVC["PostgreSQL (qr_generator_postgres)"]
-            PROXY_SVC["Traefik Proxy (qr_generator_traefik)"]
-        end
-
-        subgraph compose_env["Environment"]
-            direction LR
-            subgraph DEV["Development (default)"]
-                DEV_FEATURES["Features: Hot reload, Debug, App mounting"]
-                TEST_MODE["Testing: Test Database (pytest)"]
-            end
-
-            PROD["Production Env: Optimized, No hot reload"]
-        end
-
-        subgraph compose_storage["Storage & Network"]
-            direction LR
-            VOLUMES["Named Volumes: qr_data, postgres_data, qr_logs, traefik_certs, traefik_logs"]
-            NET["Network: qr_generator_network (bridge)"]
-        end
-
-        compose_services -- Manages --> api_service
-        compose_services -- Uses --> compose_env
-        compose_services -- Uses --> compose_storage
-    end
-
-    docker_build --> compose
-    compose -- Deploys --> api_service
-    compose -- Deploys --> traefik
-
-    %% Logging Flow
-    subgraph logs["Logging Output"]
-        direction LR
-        LOG_VOL["Volumes: qr_logs, traefik_logs"] --> LOG_FILES["Log Files:<br>/logs/api/*<br>/logs/database/*<br>/logs/traefik/*"]
-        API_SVC -- Logs --> LOG_VOL
-        PROXY_SVC -- Logs --> LOG_VOL
-    end
+    OAUTH2 --> KEYCLOAK
+    KEYCLOAK --> DB
 ```
 
-## System Architecture Overview
+## Internal Application Architecture
 
-A high-level look at how the main FastAPI application is structured internally and how core components interact.
+The FastAPI application is structured into decoupled, single-responsibility services that promote testability and maintainability.
 
 ```mermaid
 flowchart TD
     subgraph "FastAPI Application"
         direction LR
-        Router["Routers (API & Web)"]
-        Middleware["Middleware Layer<br>(Logging · Metrics · Security)"]
-        Services["Service Layer (Business Logic)"]
-        Repos["Repository Layer (DB Access)"]
-        Models["SQLAlchemy Models"]
+        Routers["API & Web Routers<br>(HTMX Fragments)"]
+        Middleware["Middleware<br>(Metrics, Logging, Security)"]
+        Dependencies["Dependency Injection"]
 
-        Router --> Middleware --> Services --> Repos --> Models
+        subgraph "Service Layer"
+            Creation["QRCreationService"]
+            Retrieval["QRRetrievalService"]
+            Image["QRImageService"]
+            Scan["ScanProcessingService"]
+        end
+        
+        subgraph "Adapter Layer"
+            Segno["SegnoQRCodeGenerator"]
+            Pillow["PillowQRImageFormatter"]
+        end
+
+        subgraph "Data Layer"
+            Repos["Repositories<br>(QRCode, ScanLog)"]
+            Models["SQLAlchemy Models"]
+        end
+
+        Routers --> Middleware --> Dependencies
+        Dependencies --> Creation & Retrieval & Image & Scan
+
+        Image --> Segno & Pillow
+        Creation --> Repos
+        Retrieval --> Repos
+        Scan --> Repos
+
+        Repos --> Models
     end
 
-    Models -- Read / Write --> Postgres[(PostgreSQL)]
-    Services -- Generates --> Segno["Segno & Pillow (QR Imaging)"]
-    Router -- Serves --> Jinja[Jinja2 Templates]
-    Router -- Streams --> APIClients[REST Clients]
+    Models -- ORM --> Postgres[(PostgreSQL)]
 ```
 
-## Request Flow Through the System
+## Authentication & Authorization
 
-The sequence below illustrates how a typical request is handled from the browser to the database (showing both an admin dashboard request and a public QR redirect).
+The system uses a robust OIDC flow with Keycloak as an identity broker for Azure AD, secured by Traefik and OAuth2-Proxy.
 
 ```mermaid
 sequenceDiagram
     participant User
+    participant Browser
     participant Traefik
-    participant FastAPI
-    participant DB as PostgreSQL
-
-    User->>Traefik: HTTPS request (e.g. /qr-list or /r/{short_id})
-
-    alt Admin / API request
-        Traefik->>Traefik: Check IP allow-list & basicAuth
-        Traefik->>FastAPI: Forward on success
-        FastAPI->>FastAPI: Middleware chain
-        FastAPI->>DB: ORM query
-        DB-->>FastAPI: Data
-        FastAPI-->>User: HTML / JSON response
-    else Public QR redirect
-        Traefik->>Traefik: Path-based rule + rate-limit
-        Traefik->>FastAPI: Forward request
-        FastAPI->>DB: Lookup short_id
-        DB-->>FastAPI: Redirect URL
-        FastAPI->>FastAPI: Background task → update scan logs
-        FastAPI-->>User: 302 Redirect
-    end
+    participant OAuth2-Proxy
+    participant Keycloak
+    participant AzureAD
+    
+    User->>Browser: Access HCCC Portal
+    Browser->>Traefik: Request page
+    Traefik->>OAuth2-Proxy: Route to Auth Proxy
+    OAuth2-Proxy-->>Browser: Redirect to Keycloak
+    Browser->>Keycloak: Initiate login
+    Keycloak-->>Browser: Redirect to Azure AD
+    User->>AzureAD: Authenticate
+    AzureAD-->>Browser: SAML/OIDC Token
+    Browser->>Keycloak: Present token
+    Keycloak-->>OAuth2-Proxy: OIDC Code/Token
+    OAuth2-Proxy->>OAuth2-Proxy: Create session cookie
+    OAuth2-Proxy-->>Browser: Redirect to original page
+    Browser->>Traefik: Request page with auth cookie
+    Traefik-->>Browser: Serve protected content
 ```
 
 ## Database Evolution
 
-Key milestones in the schema's history.
+The database schema has evolved to support new features, tracked by Alembic.
 
 ```mermaid
 gitGraph
-    commit id: "initial" tag: "Initial Schema"
-    commit id: "tz" tag: "UTC Timestamps"
-    commit id: "short_id" tag: "Dynamic QR short_id"
-    commit id: "scan_log" tag: "Scan Log Table"
-    commit id: "current" tag: "Current Schema"
+    commit id: "Initial Schema" tag: "17f49..."
+    commit id: "Add Short ID" tag: "c10a..."
+    commit id: "Add Scan Logs" tag: "d59b..."
+    commit id: "Refactor Prep" tag: "8d13..."
+    commit id: "Current"
 ```
 
-## API Documentation
-
-The API provides endpoints for managing QR codes. Access the interactive documentation (Swagger UI) via `/docs`.
-
-### Key Endpoints
-
--   **QR Management (`/api/v1/qr`)**: List, get details, get image, update, delete QR codes.
--   **Static QR Creation (`/api/v1/qr/static`)**: `POST` to create static QR codes.
--   **Dynamic QR Creation/Update (`/api/v1/qr/dynamic`)**: `POST` to create, `PUT` to update dynamic QR codes.
--   **QR Redirects (`/r/{short_id}`)**: Endpoint hit when a dynamic QR code is scanned.
--   **Health Check (`/health`)**: Monitors application and database status.
-
-## Application Performance
-
-The application is optimized for consistent performance, especially for critical QR redirect operations:
-
-### First-Request Performance Optimization
-
-- **FastAPI Lifespan Initialization**: Uses FastAPI's lifespan context manager to pre-initialize key dependencies and warm up critical code paths during application startup.
-- **Optimized Cold-Start**: No performance penalty for first requests after application startup, with redirect endpoints showing excellent cold/warm request time ratios (0.96x).
-- **Background Tasks**: Scan tracking statistics are processed asynchronously to avoid impacting redirect response times.
-- **Performance Metrics**:
-  - QR redirect response times average ~0.017 seconds
-  - Health check response times average ~0.017 seconds
-  - First-request/warm-request ratio averages 1.16x across all endpoints
-- **Performance Verification**: Comprehensive performance testing has confirmed exceptional response times (under 30ms for all operations) with synchronous database operations.
-
-### Performance Testing
-
-The application includes automated performance testing tools in `app/scripts/performance_test.sh` to measure and verify the effectiveness of initialization optimizations. Key findings from our testing:
-
-- All operations complete in under 30ms with current synchronous implementation
-- Minimal difference between cold start and warm requests (avg ratio: 1.01x)
-- QR redirect operations (most critical) extremely fast at 15-24ms
-- PostgreSQL operations very efficient with current synchronous implementation
-- FastAPI lifespan context manager effectively minimizing cold start penalties
-
-Based on these results, we've chosen to focus on code organization improvements through synchronous refactoring rather than pursuing asynchronous database operations.
-
-## Configuration
-
-Settings are managed via environment variables (loaded by `app/core/config.py`) and Traefik configuration files (`traefik.yml`, `dynamic_conf.yml`) or Docker labels.
-
-### Environment Variables
-
-Key variables include:
-
--   `PG_DATABASE_URL`: Connection string for the PostgreSQL database.
--   `ENVIRONMENT`: Set to `production` or `development`.
--   `BASE_URL`: The public base URL of the application (used for generating dynamic QR content).
--   `LOG_LEVEL`: Logging level (e.g., `INFO`, `DEBUG`).
--   `TRUSTED_HOSTS`, `CORS_ORIGINS`: Security settings for allowed hosts and origins.
-
-### Directory Structure
-
--   **`app/`**: Main FastAPI application code.
-    -   `core/`: Configuration and base exceptions.
-    -   `database.py`: SQLAlchemy setup, session management, Base model.
-    -   `middleware/`: Custom middleware (Logging, Metrics, Security).
-    -   `models/`: SQLAlchemy models (`qr.py`).
-    -   `routers/`: API and web page route definitions.
-    -   `schemas/`: Pydantic models for validation.
-    -   `services/`: Business logic (e.g., `qr_service.py`).
-    -   `static/`: CSS, JavaScript files.
-    -   `templates/`: Jinja2 HTML templates.
-    -   `tests/`: Pytest tests, fixtures, factories.
-    -   `scripts/`: Utility scripts (`init.sh`, `manage_db.py`).
--   **`alembic/`**: Database migration scripts.
--   **`data/`**: Persistent storage (via `qr_data` volume).
--   **`logs/`**: Log file storage (via `qr_logs`, `traefik_logs` volumes).
--   **`certs/`**: TLS certificates for Traefik.
--   `Dockerfile`: Defines the application's Docker image build process.
--   `docker-compose.yml`: Defines the multi-container setup.
--   `traefik.yml`, `dynamic_conf.yml`: Traefik static and dynamic configuration.
--   `alembic.ini`: Alembic configuration file.
--   `requirements.txt`: Python dependencies.
-
-## Security Architecture
-
--   **Edge Security (Traefik)**: 
-    -   TLS termination and HTTPS enforcement
-    -   IP-based access control for administrative endpoints
-    -   Path-based routing to restrict public access to only `/r/{short_id}` paths
-    -   Security headers (HSTS, Content-Security-Policy, etc.)
-    -   Rate limiting for public endpoints
-    -   Basic authentication for dashboard access
-
--   **Application Security:**
-    -   Input validation through Pydantic models
-    -   Parameter sanitization
-    -   CSRF protection for web forms
-    -   Database query parameterization via SQLAlchemy ORM
-    -   Network isolation through Docker configuration
-
-## Development and Testing
-
-### Local Development without Docker
-
-1.  Set up a Python virtual environment (`python -m venv venv`).
-2.  Install requirements: `pip install -r requirements.txt`.
-3.  Set required environment variables (PG_DATABASE_URL, etc.).
-4.  Initialize/Migrate database: `python app/scripts/manage_db.py --migrate`.
-5.  Run the development server: `uvicorn app.main:app --reload`.
-
-### Testing with Docker
-
-Use Docker Compose for an integrated testing environment:
-
-```bash
-# Run all tests with coverage reports
-docker-compose exec api pytest --cov=app --cov-report=term-missing -v
-
-# Run tests in a specific file
-docker-compose exec api pytest app/tests/test_api_v1.py -v
-```
-
-Tests utilize a dedicated test database managed by `conftest.py`, ensuring isolation.
+## Operational Management
 
 ### Database Management
-
-Use the provided scripts via Docker:
+Use the `manage_db.py` script for database operations. It automatically handles backups and validations.
 
 ```bash
 # Check if migrations are needed
@@ -395,22 +214,36 @@ docker-compose exec api python app/scripts/manage_db.py --check
 
 # Apply pending migrations
 docker-compose exec api python app/scripts/manage_db.py --migrate
-
-# Validate database integrity and structure
-docker-compose exec api python app/scripts/manage_db.py --validate
 ```
 
-The `init.sh` script automatically handles validation and migration checks on container startup.
+### Production Backup & Restore
+Production-safe scripts are provided to manage the API service lifecycle during operations.
 
-## Troubleshooting
+```bash
+# Create a production-safe backup
+bash scripts/production_backup.sh
 
--   **Database Errors**: Check API logs and potentially run `docker-compose exec api python app/scripts/manage_db.py --validate`.
--   **Connectivity**: Ensure containers are on the same `qr_generator_network`. Use `docker network inspect qr_generator_network`.
--   **Traefik Issues**: Check Traefik logs (`docker-compose logs traefik`) or the Traefik dashboard for routing or middleware errors.
--   **QR Redirect Issues**: Check for valid short_id and updated redirect URL in the database.
--   **PostgreSQL Issues**: Verify PostgreSQL container is running and healthy with `docker ps` and `docker-compose logs postgres`.
--   **Authentication Issues**: Verify that `users.htpasswd` is correctly mounted in the Traefik container and has appropriate permissions (600). Check that the middleware is correctly configured in `dynamic_conf.yml`.
+# Restore from a backup (stops/starts API service safely)
+bash scripts/safe_restore.sh qrdb_YYYYMMDD_HHMMSS.sql
+```
 
-## License
+### System & API Testing
+The project includes a comprehensive smoke test and performance test suite.
 
-This project is licensed under the MIT License - see the LICENSE file for details (if applicable).
+```bash
+# Run a full smoke test validating critical paths and error conditions
+bash scripts/enhanced_smoke_test.sh
+
+# Run a performance test measuring cold vs. warm request times
+bash app/scripts/performance_test.sh
+```
+
+## Development
+
+Set up a local environment for development and testing.
+
+1.  **Create venv**: `python3 -m venv venv && source venv/bin/activate`
+2.  **Install Deps**: `pip install -r requirements.txt`
+3.  **Set Environment**: Copy `.env.example` to `.env` and configure.
+4.  **Run Migrations**: `docker-compose exec api python app/scripts/manage_db.py --migrate`
+5.  **Run Dev Server**: `uvicorn app.main:app --reload`

@@ -1,0 +1,158 @@
+{% extends "base_hccc_portal.html" %}
+{% import "portal_macros.html" as portal_elements %}
+
+{% block head_extra %}
+<!-- Student-specific meta or styles can go here -->
+{% endblock %}
+
+{% block content %}
+<!-- Student Welcome Section -->
+{{ portal_elements.render_page_intro(
+  header_title=page_header|default('Welcome, Student!'),
+  user_email_display=user_email,
+  groups_display=groups
+) }}
+
+<!-- Breadcrumbs -->
+{{ portal_elements.render_breadcrumbs([
+  {"text": "Home", "href": "/student-home"}
+]) }}
+
+<!-- Student Campus Alert Banner -->
+{{ portal_elements.render_alert_banner(
+  title="Reminder!",
+  message="As finals approach, make sure to meet with a <a href=\"#\" target=\"_blank\">tutor</a> or <a href=\"#\" target=\"_blank\">academic advisor</a> to help you prepare! Don't let the stress get you down. Stay focused and remember the holidays are just around the corner!",
+  link="#",
+  link_text="Learn More"
+) }}
+
+<!-- Announcements Section -->
+<section class="announcements section">
+  <div class="announcements__inner">
+    <div class="announcements__top">
+      <h2 class="announcements__header section__header">Announcements</h2>
+    </div>
+
+    <div class="announcements__cards">
+      {% set announcement_items = student_announcement_items|default([
+        {
+          'title': 'Spring 2025 Registration Now Open',
+          'date': 'DEC 10',
+          'body_html': '<p>Register for spring semester classes now. <a href="#" target="_blank">Advisors are available</a> to help you plan your schedule and ensure you\'re on track for graduation.</p>'
+        },
+        {
+          'title': 'Final Exam Schedule Available',
+          'date': 'DEC 08',
+          'body_html': '<p><a href="#" target="_blank">Check your final exam schedule</a> in Self Service. Remember that final exams are worth a significant portion of your grade.</p>'
+        },
+        {
+          'title': 'Winter Break Campus Hours',
+          'date': 'DEC 05',
+          'body_html': '<p>Campus services will operate on reduced hours during winter break. Check the academic calendar for specific dates and times.</p>'
+        }
+      ]) %}
+      {% for announcement in announcement_items %}
+      {{ portal_elements.render_announcement_card(
+        title=announcement.title,
+        date=announcement.date,
+        body_html=announcement.body_html,
+        link=announcement.get('link'),
+        link_text=announcement.get('link_text', 'Read More')
+      ) }}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Important Dates Section -->
+{% if student_important_dates %}
+{{ portal_elements.render_deadlines_section(
+  title="Important Dates",
+  items=student_important_dates,
+  cta_button={"text": "Full Academic Calendar", "href": "#", "target": "_blank"}
+) }}
+{% endif %}
+
+<!-- Student Toolkit -->
+{% set toolkit_links = student_toolkit_links|default([
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-1.svg'),
+    'title': 'My Financial Aid',
+    'alt_text': 'My Financial Aid'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-2.svg'),
+    'title': 'Register For Classes',
+    'alt_text': 'Register For Classes'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-3.svg'),
+    'title': 'My Grades',
+    'alt_text': 'My Grades'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-4.svg'),
+    'title': 'My Transcripts',
+    'alt_text': 'My Transcripts'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-5.svg'),
+    'title': 'Getting to Campus',
+    'alt_text': 'Getting to Campus'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-6.svg'),
+    'title': 'Academic Calendar',
+    'alt_text': 'Academic Calendar'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-7.svg'),
+    'title': 'Academic Advising',
+    'alt_text': 'Academic Advising'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-8.svg'),
+    'title': 'Library',
+    'alt_text': 'Library'
+  }
+]) %}
+
+{{ portal_elements.render_icon_toolkit_section(
+  id_prefix="student",
+  section_title="Student Toolkit",
+  section_intro_html="Use these resources to prepare for the semester and succeed in your classes.",
+  icon_links=toolkit_links,
+  bottom_cta_text='Can\'t find what you are looking for? Go to <a href="#" target="_blank">I Am a Current Student</a>'
+) }}
+
+<!-- Career Journey Section -->
+{{ portal_elements.render_fifty_fifty_section(
+  image_src=url_for("static", path="portal_template/assets/img/fifty-fifty-01.png"),
+  image_alt="Students working on career planning",
+  title="Let's Work on Your Career Journey",
+  body_html="<p>Meet with a career coach to discuss your future goals and your plan for reaching them. Then, join us at the career fair to talk to your future employer!</p>",
+  cta_list=[
+    {"text": "Career Fair", "href": "#", "target": "_blank"},
+    {"text": "Career Services", "href": "#", "target": "_blank"}
+  ]
+) }}
+
+<!-- Student Support Resources -->
+{% if student_support_items %}
+{{ portal_elements.render_link_and_summary_list_section(
+  title="Student Support",
+  intro_html="We're here to help you succeed. Access resources and tools to support your academic journey.",
+  items=student_support_items,
+  cta_button={"text": "All Student Services", "href": "#", "style": "button cta--desktop", "target": "_blank"},
+  cta_mobile_button={"text": "All Student Services", "href": "#", "style": "button cta--mobile", "target": "_blank"}
+) }}
+{% endif %}
+{% endblock %} 

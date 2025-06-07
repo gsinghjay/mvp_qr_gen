@@ -1,0 +1,109 @@
+{% extends "base_hccc_portal.html" %}
+{% import "portal_macros.html" as portal_elements %}
+
+{% block title %}Student Academics - Student Portal{% endblock %}
+{% block page_title %}Student Academics{% endblock %}
+
+{% block content %}
+<!-- Page intro section -->
+{{ portal_elements.render_page_intro(
+  header_title=page_header|default('Academics'),
+  user_email_display=user_email,
+  groups_display=groups
+) }}
+
+<!-- Breadcrumbs -->
+{{ portal_elements.render_breadcrumbs([
+  {"text": "Home", "href": "/student-home"},
+  {"text": "Academics", "href": "/student-academics"}
+]) }}
+
+<!-- Academic Registration Banner -->
+{{ portal_elements.render_alert_banner(
+  title="Registration Reminder!",
+  message="Registration for Spring 2024 classes begins Monday, November 6th. The FAFSA opens on October 1st. File your FAFSA to be considered for financial aid.",
+  link="#",
+  link_text="Learn More"
+) }}
+
+<!-- Enrollment Toolkit -->
+{% if enrollment_toolkit_links %}
+{{ portal_elements.render_icon_toolkit_section(
+  id_prefix="enrollment",
+  section_title="Enrollment Toolkit",
+  section_intro_html="Use these resources to prepare for your classes and stay on top of your progress.",
+  icon_links=enrollment_toolkit_links,
+  bottom_cta_text='Visit Enrollment Page',
+  bottom_cta_href="#"
+) }}
+{% endif %}
+
+<!-- Support Center Carousel -->
+{% if support_center_cards %}
+<section class="card-carousel section">
+  <div class="card-carousel__inner">
+    <div class="card-carousel__top">
+      <h2 class="card-carousel__header section__header">Support Center</h2>
+      <div class="section__intro card-carousel__intro">Access the support you need to succeed on your educational journey using these resources.</div>
+      {{ portal_elements.render_cta_button("See All Support", "#", target="_blank") }}
+    </div>
+
+    <div class="card-carousel__slides">
+      {% for card in support_center_cards %}
+      {{ portal_elements.render_content_card(
+        image_src=card.image_src,
+        title=card.title,
+        body_html=card.body_html,
+        link=card.link
+      ) }}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- On-Campus Resources -->
+{% if on_campus_resources %}
+{{ portal_elements.render_image_and_links_section(
+  image_src=on_campus_resources.image_src,
+  image_alt=on_campus_resources.image_alt,
+  section_title=on_campus_resources.title,
+  intro_html=on_campus_resources.intro_html,
+  cta_list=on_campus_resources.cta_buttons
+) }}
+{% endif %}
+
+<!-- Contact Information -->
+<section class="contact-accordion section">
+  <div class="contact-accordion__inner">
+    {% if academic_contact_section %}
+    <div class="contact-accordion__col">
+      <h2 class="contact-accordion__header section__header">{{ academic_contact_section.title }}</h2>
+      <div class="section__intro contact-accordion__intro">{{ academic_contact_section.intro }}</div>
+      {% for cta in academic_contact_section.cta_buttons %}
+      {{ portal_elements.render_cta_button(
+        text=cta.text,
+        href=cta.href,
+        target=cta.target
+      ) }}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if academic_contact_accordion %}
+    <div class="contact-accordion__col">
+      {% for contact in academic_contact_accordion %}
+      {{ portal_elements.render_contact_accordion_item(
+        id_suffix=contact.id_suffix,
+        title=contact.title,
+        details_html=contact.details_html,
+        phone=contact.phone,
+        email=contact.email,
+        expanded=contact.expanded
+      ) }}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %} 

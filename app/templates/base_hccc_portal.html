@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>{{ page_title|default("My HCCC Portal") }}</title>
+  <meta name="description" content="{{ page_description|default("HCCC Faculty and Staff Portal") }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,200;1,300;1,400;1,600;1,700;1,800&display=swap" rel="stylesheet">
+  
+  <!-- External CSS -->
+  <link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css"/>
+  
+  <!-- Main institutional CSS (what the institution paid for) -->
+  <link rel="stylesheet" href="{{ url_for('static', path='portal_template/css/main-ifactory.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='portal_template/css/main-intranet.css') }}">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="{{ url_for('static', path='portal_template/assets/favicon/favicon.ico') }}">
+  
+  {% block head_extra %}{% endblock %}
+</head>
+
+<body class="intranet">
+  <div class="wrapper">
+
+    <!-- Campus Alert (conditional) -->
+    {% if show_alert %}
+    <div class="container alert-display">
+      <div class="alert alert--intranet">
+        <div class="alert__content">
+          <div class="alert__message">
+            <div class="alert__description">
+              <strong>{{ alert_title|default("Campus Alert") }}</strong> 
+              {{ alert_message|default("Important campus information") }}
+            </div>
+          </div>
+          {% if alert_link %}
+          <a href="{{ alert_link }}" class="alert__cta">Learn More</a>
+          {% endif %}
+          <button class="alert__close"><span class="visually-hidden">close alert</span></button>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Header with Navigation -->
+    {% include "portal_components/_portal_header_nav.html" with context %}
+
+    <!-- Main Content -->
+    <main role="main" id="main" class="main">
+      <div class="container container--cols container--cols-intranet">
+        <div class="container__left">
+          {% include "portal_components/_portal_sidebar_quicklinks.html" with context %}
+        </div>
+        
+        <div class="container__right">
+          <!-- Page Header -->
+          <section class="page-intro">
+            <h1>{{ page_header|default("My HCCC Portal") }}</h1>
+          </section>
+          <hr>
+          
+          <!-- Main Content Area -->
+          {% block content %}{% endblock %}
+        </div>
+      </div>
+    </main>
+
+    <!-- Back to Top -->
+    <button class="intranet-back-to-top">
+      <span class="visually-hidden">back to top</span>
+    </button>
+
+    <!-- Footer -->
+    {% include "portal_components/_portal_footer.html" with context %}
+
+  </div>
+
+  <!-- JavaScript - ifactory way (compiled bundle includes jQuery and everything) -->
+  <script src="{{ url_for('static', path='portal_template/js/main-intranet.min.js') }}"></script>
+  
+
+  {% block scripts %}{% endblock %}
+</body>
+
+</html> 

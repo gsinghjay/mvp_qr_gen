@@ -1,0 +1,298 @@
+{% extends "base_hccc_portal.html" %}
+{% import "portal_macros.html" as portal_elements %}
+
+{% block content %}
+<!-- Welcome Section -->
+{{ portal_elements.render_page_intro(
+  header_title=page_header|default('Faculty & Staff Portal'),
+  user_email_display=user_email,
+  groups_display=groups
+) }}
+
+<!-- Breadcrumbs -->
+{{ portal_elements.render_breadcrumbs([
+  {"text": "Home", "href": "/hccc-portal"}
+]) }}
+
+<!-- Announcements Section -->
+<section class="announcements section">
+  <div class="announcements__inner">
+    <div class="announcements__top">
+      <h2 class="announcements__header section__header">Announcements</h2>
+    </div>
+
+    <div class="announcements__cards">
+      {% set announcement_items = announcement_items|default([
+        {
+          'title': 'QR Code Generator Available',
+          'date': 'NOW',
+          'body_html': '<p>Create QR codes for events, documents, and more with our new <a href="/">QR Code Generator tool</a>.</p>'
+        },
+        {
+          'title': 'Faculty Portal Updates',
+          'date': 'RECENT',
+          'body_html': '<p>New features and improved navigation have been added to the faculty portal for better accessibility.</p>'
+        },
+        {
+          'title': 'IT Service Desk',
+          'date': 'INFO',
+          'body_html': '<p>For technical support and IT assistance, contact the Help Desk at ext. 2000 or submit a ticket online.</p>'
+        }
+      ]) %}
+      {% for announcement in announcement_items %}
+      {{ portal_elements.render_announcement_card(
+        title=announcement.title,
+        date=announcement.date,
+        body_html=announcement.body_html,
+        link=announcement.get('link'),
+        link_text=announcement.get('link_text', 'Read More')
+      ) }}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Deadlines Section -->
+<section class="deadlines section">
+  <div class="deadlines__inner">
+    <div class="deadlines__top">
+      <h2 class="deadlines__header section__header">Important Dates</h2>
+    </div>
+
+    <ul class="deadlines__list">
+      {% set important_dates = important_dates|default([
+        {'date': 'JAN 15', 'title': 'Spring Semester Begins'},
+        {'date': 'MAR 10', 'title': 'Faculty Development Day', 'href': '#'},
+        {'date': 'MAY 15', 'title': 'Final Grades Due'}
+      ]) %}
+      {% for date_item in important_dates %}
+      <li class="deadline">
+        <span class="deadline__date">{{ date_item.date }}</span>
+        <span class="deadline__title">
+          {% if date_item.get('href') %}
+          <a href="{{ date_item.href }}">{{ date_item.title }}</a>
+          {% else %}
+          {{ date_item.title }}
+          {% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+
+    {{ portal_elements.render_cta_button("Full Academic Calendar", "#") }}
+  </div>
+</section>
+
+<!-- Faculty & Staff Toolkit -->
+{% set faculty_toolkit_links = faculty_toolkit_links|default([
+  {
+    'href': '/',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-11.svg'),
+    'title': 'QR Code Generator',
+    'alt_text': 'QR Code Generator'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-6.svg'),
+    'title': 'Academic Calendar',
+    'alt_text': 'Academic Calendar'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-12.svg'),
+    'title': 'Safety & Security',
+    'alt_text': 'Safety & Security'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-13.svg'),
+    'title': 'All College Council',
+    'alt_text': 'All College Council'
+  }
+]) %}
+
+{{ portal_elements.render_icon_toolkit_section(
+  id_prefix="faculty-staff",
+  section_title="Faculty & Staff Toolkit",
+  section_intro_html="Use these resources to prepare for the semester and succeed this coming semester.",
+  icon_links=faculty_toolkit_links,
+  bottom_cta_text='Can\'t find what you are looking for? Go to <a href="#">I Am a Faculty or Staff</a>'
+) }}
+
+<!-- Quick Resources Grid -->
+<section class="resource-grid section">
+  <div class="resource-grid__inner">
+    <div class="resource-grid__top">
+      <h2 class="resource-grid__header section__header">Quick Resources</h2>
+    </div>
+    
+    <div class="resource-grid__items">
+      <div class="resource-item">
+        <h3 class="resource-item__title">Technology Support</h3>
+        <p class="resource-item__description">Get help with computers, software, and classroom technology.</p>
+        <a href="#" class="resource-item__link">Contact IT Support</a>
+      </div>
+      
+      <div class="resource-item">
+        <h3 class="resource-item__title">Professional Development</h3>
+        <p class="resource-item__description">Find training opportunities and workshops for faculty and staff.</p>
+        <a href="#" class="resource-item__link">View Opportunities</a>
+      </div>
+      
+      <div class="resource-item">
+        <h3 class="resource-item__title">Campus Resources</h3>
+        <p class="resource-item__description">Access forms, policies, and important campus information.</p>
+        <a href="#" class="resource-item__link">Browse Resources</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Featured Links -->
+<section class="featured-links section">
+  <div class="featured-links__inner">
+    <div class="featured-links__top">
+      <h2 class="featured-links__header section__header">Featured Services</h2>
+    </div>
+    
+    <div class="featured-links__grid">
+      <a href="/" class="featured-link">
+        <div class="featured-link__icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+            <rect x="7" y="7" width="2" height="2" fill="currentColor"/>
+            <rect x="11" y="7" width="2" height="2" fill="currentColor"/>
+            <rect x="15" y="7" width="2" height="2" fill="currentColor"/>
+            <rect x="7" y="11" width="2" height="2" fill="currentColor"/>
+            <rect x="11" y="11" width="2" height="2" fill="currentColor"/>
+            <rect x="15" y="11" width="2" height="2" fill="currentColor"/>
+            <rect x="7" y="15" width="2" height="2" fill="currentColor"/>
+            <rect x="11" y="15" width="2" height="2" fill="currentColor"/>
+            <rect x="15" y="15" width="2" height="2" fill="currentColor"/>
+          </svg>
+        </div>
+        <h3 class="featured-link__title">QR Code Generator</h3>
+        <p class="featured-link__description">Create QR codes for events, documents, and marketing materials.</p>
+      </a>
+      
+      <a href="#" class="featured-link">
+        <div class="featured-link__icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+            <path d="M19 4H5C3.89543 4 3 4.89543 3 6V18C3 19.1046 3.89543 20 5 20H19C20.1046 20 21 19.1046 21 18V6C21 4.89543 20.1046 4 19 4Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M3 8H21" stroke="currentColor" stroke-width="2"/>
+            <path d="M8 12H16" stroke="currentColor" stroke-width="2"/>
+            <path d="M8 16H12" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <h3 class="featured-link__title">Canvas LMS</h3>
+        <p class="featured-link__description">Access your courses, grades, and learning materials.</p>
+      </a>
+      
+      <a href="#" class="featured-link">
+        <div class="featured-link__icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+            <path d="M16 4H18C19.1046 4 20 4.89543 20 6V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V6C4 4.89543 4.89543 4 6 4H8" stroke="currentColor" stroke-width="2"/>
+            <rect x="8" y="2" width="8" height="4" rx="1" stroke="currentColor" stroke-width="2"/>
+            <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3 class="featured-link__title">Self Service</h3>
+        <p class="featured-link__description">Manage your personal information, benefits, and more.</p>
+      </a>
+      
+      <a href="#" class="featured-link">
+        <div class="featured-link__icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+            <path d="M8 6V4C8 2.89543 8.89543 2 10 2H14C15.1046 2 16 2.89543 16 4V6" stroke="currentColor" stroke-width="2"/>
+            <path d="M4 8H20L19 18H5L4 8Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M10 12V14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M14 12V14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3 class="featured-link__title">Directory</h3>
+        <p class="featured-link__description">Find contact information for faculty, staff, and departments.</p>
+      </a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+  /* Custom styles for the portal content */
+  .resource-grid__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  
+  .resource-item {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1.5rem;
+  }
+  
+  .resource-item__title {
+    color: #00857a;
+    margin-bottom: 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+  
+  .resource-item__description {
+    color: #666;
+    margin-bottom: 1rem;
+  }
+  
+  .resource-item__link {
+    color: #00857a;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  
+  .resource-item__link:hover {
+    text-decoration: underline;
+  }
+  
+  .featured-links__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  
+  .featured-link {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.2s ease;
+  }
+  
+  .featured-link:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+  }
+  
+  .featured-link__icon {
+    color: #00857a;
+    margin-bottom: 1rem;
+  }
+  
+  .featured-link__title {
+    color: #00857a;
+    margin-bottom: 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+  
+  .featured-link__description {
+    color: #666;
+    font-size: 0.875rem;
+  }
+</style>
+{% endblock %} 

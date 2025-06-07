@@ -113,7 +113,7 @@
         </thead>
         <tbody>
           {% for qr in qr_codes %}
-            {% include "fragments/qr_list_item.html" %}
+            {% include "qr_list_item.html" %}
           {% endfor %}
         </tbody>
       </table>
@@ -131,7 +131,7 @@
           Showing {{ (page - 1) * limit + 1 }}-{{ (page - 1) * limit + qr_codes|length }} of {{ total }} entries
         </div>
         <div>
-          {% include "fragments/pagination.html" %}
+          {% include "pagination.html" %}
         </div>
       </div>
     {% endif %}

@@ -110,8 +110,14 @@
                 <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="1" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Business Card</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="3" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Small</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn me-1" data-size="12" data-unit="in" data-dpi="300" onclick="event.preventDefault(); applyPreset(this);">Poster</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn" data-size="500" data-unit="px" data-dpi="0" onclick="event.preventDefault(); applyPreset(this);">500px</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary size-preset-btn" data-size="1000" data-unit="px" data-dpi="0" onclick="event.preventDefault(); applyPreset(this);">1000px</button>
               </div>
+            </div>
+            
+            <!-- Pixel sizing explanation -->
+            <div class="alert alert-info small mb-3">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>About Pixel Sizing:</strong> QR codes are made of discrete modules (like squares in a grid). The final pixel size may be slightly smaller than requested (e.g., 500px → 495px) to ensure each module is rendered with whole pixels for optimal scan quality and crisp edges.
             </div>
             
             <!-- Add logo checkbox -->
@@ -332,7 +338,7 @@
     class="btn btn-outline-secondary"
     hx-get="/api/v1/fragments/qr-edit/{{ qr.id }}"
     hx-target="#qr-detail-modal .modal-content"
-    hx-indicator="#loading-indicator">
+    hx-indicator="#detail-loading-indicator">
     <i class="bi bi-pencil me-1"></i> Edit
   </button>
   {% endif %}
@@ -341,7 +347,7 @@
   <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 
   <!-- Loading indicator for HTMX requests -->
-  <div id="loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary" style="margin-right: 10px;" role="status">
+  <div id="detail-loading-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary" style="margin-right: 10px;" role="status">
     <span class="visually-hidden">Loading...</span>
   </div>
 </div>
@@ -378,8 +384,18 @@
     
     // Check if pixels are selected and hide DPI field if needed
     if (unitSelect && dpiContainer) {
+      const sizeInput = document.getElementById('downloadSize');
       if (unitSelect.value === 'px') {
         dpiContainer.style.display = 'none';
+        // Set max attribute for pixel unit
+        if (sizeInput) {
+          sizeInput.setAttribute('max', '1250');
+        }
+      } else {
+        // Set max attribute for physical units
+        if (sizeInput) {
+          sizeInput.setAttribute('max', '500');
+        }
       }
     }
     
@@ -413,8 +429,17 @@
     // Add unit change event listener
     if (unitSelect) {
       unitSelect.addEventListener('change', function() {
+        const sizeInput = document.getElementById('downloadSize');
         if (dpiContainer) {
           dpiContainer.style.display = this.value === 'px' ? 'none' : 'block';
+        }
+        // Update max attribute based on unit
+        if (sizeInput) {
+          if (this.value === 'px') {
+            sizeInput.setAttribute('max', '1250');
+          } else {
+            sizeInput.setAttribute('max', '500');
+          }
         }
         updateDownloadLinks();
       });
@@ -457,6 +482,15 @@
     // Hide or show DPI field based on the unit
     if (dpiContainer) {
       dpiContainer.style.display = unit === 'px' ? 'none' : 'block';
+    }
+    
+    // Update max attribute based on unit
+    if (sizeInput) {
+      if (unit === 'px') {
+        sizeInput.setAttribute('max', '1250');
+      } else {
+        sizeInput.setAttribute('max', '500');
+      }
     }
     
     updateDownloadLinks();
