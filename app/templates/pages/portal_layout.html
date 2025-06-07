@@ -1,0 +1,75 @@
+{% extends "base_hccc_portal.html" %}
+
+{# Set page title from metadata #}
+{% set page_title = page.meta.title|default("HCCC Portal") %}
+
+{# Set page header from metadata or use title as fallback #}
+{% set page_header = page.meta.header|default(page.meta.title)|default("Portal Page") %}
+
+{# Set page description from metadata #}
+{% set page_description = page.meta.description|default("HCCC Portal Page") %}
+
+{# Campus alert configuration from metadata #}
+{% if page.meta.show_alert %}
+{% set show_alert = true %}
+{% set alert_title = page.meta.alert_title %}
+{% set alert_message = page.meta.alert_message %}
+{% set alert_link = page.meta.alert_link %}
+{% endif %}
+
+{% block content %}
+<!-- Dynamic Markdown Content -->
+<div class="portal-content">
+  {{ page.content | safe }}
+</div>
+
+{# Optional metadata display for debugging/development #}
+{% if page.meta.show_debug_info %}
+<div class="mt-4 p-3 bg-light border rounded">
+  <h6>Debug Information</h6>
+  <small class="text-muted">
+    <strong>Page Path:</strong> {{ page_path }}<br>
+    <strong>Title:</strong> {{ page.meta.title }}<br>
+    <strong>Last Modified:</strong> {{ page.meta.last_modified }}<br>
+    {% if page.meta.author %}
+    <strong>Author:</strong> {{ page.meta.author }}<br>
+    {% endif %}
+    {% if page.meta.tags %}
+    <strong>Tags:</strong> {{ page.meta.tags | join(', ') }}<br>
+    {% endif %}
+  </small>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block head_extra %}
+{# Additional CSS from metadata #}
+{% if page.meta.custom_css %}
+{% for css_file in page.meta.custom_css %}
+<link rel="stylesheet" href="{{ url_for('static', path=css_file) }}">
+{% endfor %}
+{% endif %}
+
+{# Custom styles from metadata #}
+{% if page.meta.custom_styles %}
+<style>
+{{ page.meta.custom_styles | safe }}
+</style>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{# Additional JavaScript from metadata #}
+{% if page.meta.custom_js %}
+{% for js_file in page.meta.custom_js %}
+<script src="{{ url_for('static', path=js_file) }}"></script>
+{% endfor %}
+{% endif %}
+
+{# Custom scripts from metadata #}
+{% if page.meta.custom_scripts %}
+<script>
+{{ page.meta.custom_scripts | safe }}
+</script>
+{% endif %}
+{% endblock %} 
