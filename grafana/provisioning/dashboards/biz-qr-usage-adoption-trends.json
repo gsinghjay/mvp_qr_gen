@@ -1,0 +1,578 @@
+{
+  "id": null,
+  "title": "BIZ - QR Usage & Adoption Trends",
+  "tags": ["business", "analytics", "usage", "adoption", "trends"],
+  "style": "dark",
+  "timezone": "browser",
+  "refresh": "1m",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "📊 Business Analytics Overview",
+      "type": "text",
+      "gridPos": {"h": 3, "w": 24, "x": 0, "y": 0},
+      "options": {
+        "mode": "markdown",
+        "content": "# QR Usage & Adoption Trends Dashboard\n\n**Audience**: Business stakeholders, product managers, and marketing teams\n**Purpose**: Track QR code adoption patterns, usage trends, and business impact metrics\n\n🎯 **Key Metrics**: Creation trends, scan volume, popular QR codes, and user engagement"
+      }
+    },
+    {
+      "id": 2,
+      "title": "QR Codes Created (7d)",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 3},
+      "targets": [
+        {
+          "expr": "sum(increase(app_http_requests_total{endpoint=\"/qr-create\", status=\"200\"}[7d])) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "Total Created"
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 3},
+      "id": 2,
+      "panels": [],
+      "title": "📈 Usage Overview & Key Metrics",
+      "type": "row"
+    },
+    {
+      "id": 3,
+      "title": "QR Codes Created (7d)",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 4},
+      "targets": [
+        {
+          "expr": "sum(increase(app_http_requests_total{endpoint=\"/qr-create\", status=\"200\"}[7d])) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "Total Created",
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "red", "value": 200}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 4,
+      "title": "QR Scans (7d)",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 4},
+      "targets": [
+        {
+          "expr": "sum(increase(app_http_requests_total{endpoint=~\"/r/.*\", status=\"302\"}[7d])) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "Total Scans",
+          "thresholds": {
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 100},
+              {"color": "red", "value": 500}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Avg Scans per QR",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 4},
+      "targets": [
+        {
+          "expr": "(sum(increase(app_http_requests_total{endpoint=~\"/r/.*\", status=\"302\"}[7d])) or vector(0)) / (sum(increase(app_http_requests_total{endpoint=\"/qr-create\", status=\"200\"}[7d])) or vector(1))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "Scans/QR Ratio",
+          "decimals": 1,
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "green", "value": 5}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 6,
+      "title": "QR Success Rate",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 4},
+      "targets": [
+        {
+          "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\", status=\"302\"}[1h])) / sum(rate(app_http_requests_total{endpoint=~\"/r/.*\"}[1h])) * 100 or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "displayName": "Redirect Success",
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 95},
+              {"color": "green", "value": 99}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area"
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 10},
+      "id": 7,
+      "panels": [],
+      "title": "📅 Usage Trends Over Time",
+      "type": "row"
+    },
+    {
+      "id": 8,
+      "title": "QR Creation Trends",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 11},
+      "targets": [
+        {
+          "expr": "sum(rate(app_http_requests_total{endpoint=\"/qr-create\", method=\"POST\", status=\"200\"}[1h])) * 24 or vector(0)",
+          "legendFormat": "QR Codes Created/day",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(qr_creations_total{qr_type=\"static\", status=\"success\"}[1h])) * 24 or vector(0)",
+          "legendFormat": "Static QR/day",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(qr_creations_total{qr_type=\"dynamic\", status=\"success\"}[1h])) * 24 or vector(0)",
+          "legendFormat": "Dynamic QR/day",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 9,
+      "title": "QR Scan Volume Trends",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 11},
+      "targets": [
+        {
+          "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\", status=\"302\"}[1h])) * 24 or vector(0)",
+          "legendFormat": "Successful Scans/day",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\", status=\"404\"}[1h])) * 24 or vector(0)",
+          "legendFormat": "Failed Scans/day",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(qr_redirects_processed_total{status=\"success\"}[1h])) * 24 or vector(0)",
+          "legendFormat": "Total Redirects/day",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 19},
+      "id": 10,
+      "panels": [],
+      "title": "🏆 Popular Content & Engagement",
+      "type": "row"
+    },
+    {
+      "id": 11,
+      "title": "Most Active QR Codes (Top 10)",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "targets": [
+        {
+          "expr": "topk(10, sum by (endpoint) (increase(app_http_requests_total{endpoint=~\"/r/.*\", status=\"302\"}[7d]))) or vector(0)",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "basic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Value"},
+            "properties": [
+              {"id": "displayName", "value": "Scans (7d)"},
+              {"id": "unit", "value": "short"},
+              {"id": "custom.displayMode", "value": "color-background"},
+              {"id": "thresholds", "value": {
+                "steps": [
+                  {"color": "green", "value": null},
+                  {"color": "yellow", "value": 10},
+                  {"color": "red", "value": 50}
+                ]
+              }}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "endpoint"},
+            "properties": [
+              {"id": "displayName", "value": "QR Code"}
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "__name__": true,
+              "Time": true,
+              "instance": true,
+              "job": true,
+              "method": true,
+              "status": true
+            },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "QR Type Distribution",
+      "type": "piechart",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "targets": [
+        {
+          "expr": "sum by (qr_type) (qr_creations_total{status=\"success\"})",
+          "legendFormat": "{{qr_type}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "pieType": "pie",
+        "tooltip": {"mode": "single"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 28},
+      "id": 13,
+      "panels": [],
+      "title": "🎯 User Engagement Patterns",
+      "type": "row"
+    },
+    {
+      "id": 14,
+      "title": "Daily Activity Patterns",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 29},
+      "targets": [
+        {
+          "expr": "sum(rate(app_http_requests_total{endpoint=~\"/r/.*\", status=\"302\"}[1h])) * 60 or vector(0)",
+          "legendFormat": "QR Scans/min",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(app_http_requests_total{endpoint=\"/qr-create\", method=\"POST\", status=\"200\"}[1h])) * 60 or vector(0)",
+          "legendFormat": "QR Created/min",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(app_http_requests_total{endpoint=\"/qr-list\", status=\"200\"}[1h])) * 60 or vector(0)",
+          "legendFormat": "QR List Views/min",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 15,
+      "title": "User Journey Analytics",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 29},
+      "targets": [
+        {
+          "expr": "sum(rate(app_http_requests_total{endpoint=\"/\", status=\"200\"}[1h])) * 60 or vector(0)",
+          "legendFormat": "Home Page Views/min",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(app_http_requests_total{endpoint=~\"/qr/.*/analytics\", status=\"200\"}[1h])) * 60 or vector(0)",
+          "legendFormat": "Analytics Views/min",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(app_http_requests_total{endpoint=~\"/api/v1/qr/.*/image\", status=\"200\"}[1h])) * 60 or vector(0)",
+          "legendFormat": "Image Downloads/min",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 37},
+      "id": 16,
+      "panels": [],
+      "title": "📊 Business Intelligence Summary",
+      "type": "row"
+    },
+    {
+      "id": 17,
+      "title": "Growth Metrics (7d vs Previous 7d)",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 38},
+      "targets": [
+        {
+          "expr": "((sum(increase(app_http_requests_total{endpoint=\"/qr-create\", status=\"200\"}[7d])) or vector(0)) - (sum(increase(app_http_requests_total{endpoint=\"/qr-create\", status=\"200\"}[7d] offset 7d)) or vector(0))) / (sum(increase(app_http_requests_total{endpoint=\"/qr-create\", status=\"200\"}[7d] offset 7d)) or vector(1)) * 100",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "displayName": "QR Creation Growth",
+          "decimals": 1,
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 0},
+              {"color": "green", "value": 10}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 18,
+      "title": "Scan Growth Metrics",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 38},
+      "targets": [
+        {
+          "expr": "((sum(increase(app_http_requests_total{endpoint=~\"/r/.*\", status=\"302\"}[7d])) or vector(0)) - (sum(increase(app_http_requests_total{endpoint=~\"/r/.*\", status=\"302\"}[7d] offset 7d)) or vector(0))) / (sum(increase(app_http_requests_total{endpoint=~\"/r/.*\", status=\"302\"}[7d] offset 7d)) or vector(1)) * 100",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "displayName": "Scan Volume Growth",
+          "decimals": 1,
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 0},
+              {"color": "green", "value": 10}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 19,
+      "title": "User Engagement Score",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 38},
+      "targets": [
+        {
+          "expr": "(sum(rate(app_http_requests_total{endpoint=~\"/qr/.*/analytics\", status=\"200\"}[7d])) or vector(0)) / (sum(rate(app_http_requests_total{endpoint=\"/qr-create\", method=\"POST\", status=\"200\"}[7d])) or vector(1)) * 100",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "displayName": "Analytics Engagement",
+          "decimals": 1,
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 10},
+              {"color": "green", "value": 30}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 20,
+      "title": "Business Impact Summary (Last 30 Days)",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 44},
+      "targets": [
+        {
+          "expr": "sum(increase(app_http_requests_total{endpoint=\"/qr-create\", status=\"200\"}[30d])) or vector(0)",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        },
+        {
+          "expr": "sum(increase(app_http_requests_total{endpoint=~\"/r/.*\", status=\"302\"}[30d])) or vector(0)",
+          "format": "table",
+          "instant": true,
+          "refId": "B"
+        },
+        {
+          "expr": "sum(increase(app_http_requests_total{endpoint=~\"/api/v1/qr/.*/image\", status=\"200\"}[30d])) or vector(0)",
+          "format": "table",
+          "instant": true,
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "displayMode": "basic"
+          }
+        }
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "__name__": true,
+              "Time": true,
+              "instance": true,
+              "job": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "Value #A": "QR Codes Created",
+              "Value #B": "QR Codes Scanned", 
+              "Value #C": "Images Downloaded"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "title": "User Experience Insights",
+      "url": "/d/biz-performance-ux/biz-qr-performance-user-experience-insights",
+      "type": "dashboards"
+    },
+    {
+      "title": "System Overview",
+      "url": "/d/ops-system-overview/ops-system-infrastructure-overview",
+      "type": "dashboards"
+    }
+  ]
+} 
