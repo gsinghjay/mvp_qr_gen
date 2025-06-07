@@ -191,7 +191,19 @@
               {"color": "red", "value": null},
               {"color": "green", "value": 1}
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "View Service Health Details",
+              "url": "/d/dev-service-health/dev-service-health-dependencies",
+              "targetBlank": true
+            },
+            {
+              "title": "Infrastructure Deep Dive",
+              "url": "/d/ops-infrastructure-deep-dive/ops-infrastructure-traffic-deep-dive",
+              "targetBlank": true
+            }
+          ]
         },
         "overrides": [
           {
@@ -281,7 +293,14 @@
               {"color": "yellow", "value": 0.1},
               {"color": "red", "value": 1}
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Circuit Breaker Deep Dive",
+              "url": "/d/dev-app-deep-dive/dev-qr-application-deep-dive-refactoring?viewPanel=10",
+              "targetBlank": true
+            }
+          ]
         }
       },
       "options": {
@@ -310,7 +329,14 @@
               {"color": "yellow", "value": 10},
               {"color": "red", "value": 20}
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Database Performance Details",
+              "url": "/d/dba-postgresql/dba-postgresql-performance-health",
+              "targetBlank": true
+            }
+          ]
         }
       },
       "options": {
