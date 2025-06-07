@@ -4,7 +4,7 @@
   "tags": ["business", "analytics", "usage", "adoption", "trends"],
   "style": "dark",
   "timezone": "browser",
-  "refresh": "1m",
+  "refresh": "30s",
   "time": {
     "from": "now-7d",
     "to": "now"
