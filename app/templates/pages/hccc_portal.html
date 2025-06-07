@@ -1,16 +1,18 @@
 {% extends "base_hccc_portal.html" %}
+{% import "portal_macros.html" as portal_elements %}
 
 {% block content %}
 <!-- Welcome Section -->
-<section class="page-intro">
-  <h1>{{ page_header|default('Faculty & Staff Portal') }}</h1>
-  {% if user_email %}
-  <p class="text-muted">{{ user_email }} {% if user_role %}({{ user_role }}){% endif %}</p>
-  {% endif %}
-  {% if groups %}
-  <p class="text-muted">Groups: {{ groups|join(', ') }}</p>
-  {% endif %}
-</section>
+{{ portal_elements.render_page_intro(
+  header_title=page_header|default('Faculty & Staff Portal'),
+  user_email_display=user_email,
+  groups_display=groups
+) }}
+
+<!-- Breadcrumbs -->
+{{ portal_elements.render_breadcrumbs([
+  {"text": "Home", "href": "/hccc-portal"}
+]) }}
 
 <!-- Announcements Section -->
 <section class="announcements section">
@@ -20,29 +22,32 @@
     </div>
 
     <div class="announcements__cards">
-      <div class="announce-card">
-        <h3 class="announce-card__header">QR Code Generator Available</h3>
-        <div class="announce-card__date">NOW</div>
-        <div class="announce-card__body">
-          <p>Create QR codes for events, documents, and more with our new <a href="/">QR Code Generator tool</a>.</p>
-        </div>
-      </div>
-
-      <div class="announce-card">
-        <h3 class="announce-card__header">Faculty Portal Updates</h3>
-        <div class="announce-card__date">RECENT</div>
-        <div class="announce-card__body">
-          <p>New features and improved navigation have been added to the faculty portal for better accessibility.</p>
-        </div>
-      </div>
-
-      <div class="announce-card">
-        <h3 class="announce-card__header">IT Service Desk</h3>
-        <div class="announce-card__date">INFO</div>
-        <div class="announce-card__body">
-          <p>For technical support and IT assistance, contact the Help Desk at ext. 2000 or submit a ticket online.</p>
-        </div>
-      </div>
+      {% set announcement_items = announcement_items|default([
+        {
+          'title': 'QR Code Generator Available',
+          'date': 'NOW',
+          'body_html': '<p>Create QR codes for events, documents, and more with our new <a href="/">QR Code Generator tool</a>.</p>'
+        },
+        {
+          'title': 'Faculty Portal Updates',
+          'date': 'RECENT',
+          'body_html': '<p>New features and improved navigation have been added to the faculty portal for better accessibility.</p>'
+        },
+        {
+          'title': 'IT Service Desk',
+          'date': 'INFO',
+          'body_html': '<p>For technical support and IT assistance, contact the Help Desk at ext. 2000 or submit a ticket online.</p>'
+        }
+      ]) %}
+      {% for announcement in announcement_items %}
+      {{ portal_elements.render_announcement_card(
+        title=announcement.title,
+        date=announcement.date,
+        body_html=announcement.body_html,
+        link=announcement.get('link'),
+        link_text=announcement.get('link_text', 'Read More')
+      ) }}
+      {% endfor %}
     </div>
   </div>
 </section>
@@ -55,83 +60,64 @@
     </div>
 
     <ul class="deadlines__list">
+      {% set important_dates = important_dates|default([
+        {'date': 'JAN 15', 'title': 'Spring Semester Begins'},
+        {'date': 'MAR 10', 'title': 'Faculty Development Day', 'href': '#'},
+        {'date': 'MAY 15', 'title': 'Final Grades Due'}
+      ]) %}
+      {% for date_item in important_dates %}
       <li class="deadline">
-        <span class="deadline__date">JAN 15</span>
-        <span class="deadline__title">Spring Semester Begins</span>
+        <span class="deadline__date">{{ date_item.date }}</span>
+        <span class="deadline__title">
+          {% if date_item.get('href') %}
+          <a href="{{ date_item.href }}">{{ date_item.title }}</a>
+          {% else %}
+          {{ date_item.title }}
+          {% endif %}
+        </span>
       </li>
-      <li class="deadline">
-        <span class="deadline__date">MAR 10</span>
-        <span class="deadline__title"><a href="#">Faculty Development Day</a></span>
-      </li>
-      <li class="deadline">
-        <span class="deadline__date">MAY 15</span>
-        <span class="deadline__title">Final Grades Due</span>
-      </li>
+      {% endfor %}
     </ul>
 
-    <a class="cta cta--button" href="#">Full Academic Calendar</a>
+    {{ portal_elements.render_cta_button("Full Academic Calendar", "#") }}
   </div>
 </section>
 
 <!-- Faculty & Staff Toolkit -->
-<section class="i-link-list section">
-  <div class="i-link-list__inner">
-    <div class="i-link-list__top">
-      <h2 class="i-link-list__header section__header">Faculty & Staff Toolkit</h2>
-      <div class="section__intro i-link-list__intro">Use these resources to prepare for the semester and succeed this coming semester.</div>
-    </div>
+{% set faculty_toolkit_links = faculty_toolkit_links|default([
+  {
+    'href': '/',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-11.svg'),
+    'title': 'QR Code Generator',
+    'alt_text': 'QR Code Generator'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-6.svg'),
+    'title': 'Academic Calendar',
+    'alt_text': 'Academic Calendar'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-12.svg'),
+    'title': 'Safety & Security',
+    'alt_text': 'Safety & Security'
+  },
+  {
+    'href': '#',
+    'icon_src': url_for('static', path='portal_template/assets/icons/icon-link-list-icon-13.svg'),
+    'title': 'All College Council',
+    'alt_text': 'All College Council'
+  }
+]) %}
 
-    <div class="i-link-list__icons">
-      <a href="/" class="icon">
-        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-11.svg') }}" alt="" onerror="this.style.display='none'">
-        <h3 class="icon__header">
-          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="11" fill="#FFD700" stroke="#FFA500"/>
-            <path d="M10 8L14 12L10 16" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          QR Code Generator
-        </h3>
-      </a>
-
-      <a href="#" class="icon">
-        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-6.svg') }}" alt="" onerror="this.style.display='none'">
-        <h3 class="icon__header">
-          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="11" fill="#FFD700" stroke="#FFA500"/>
-            <path d="M10 8L14 12L10 16" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Academic Calendar
-        </h3>
-      </a>
-
-      <a href="#" class="icon">
-        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-12.svg') }}" alt="" onerror="this.style.display='none'">
-        <h3 class="icon__header">
-          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="11" fill="#FFD700" stroke="#FFA500"/>
-            <path d="M10 8L14 12L10 16" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Safety & Security
-        </h3>
-      </a>
-
-      <a href="#" class="icon">
-        <img class="icon__img" src="{{ url_for('static', path='portal_template/assets/icons/icon-link-list-icon-13.svg') }}" alt="" onerror="this.style.display='none'">
-        <h3 class="icon__header">
-          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="11" fill="#FFD700" stroke="#FFA500"/>
-            <path d="M10 8L14 12L10 16" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          All College Council
-        </h3>
-      </a>
-    </div>
-
-    <div class="i-link-list__bottom">
-      Can't find what you are looking for? Go to <a href="#">I Am a Faculty or Staff</a>
-    </div>
-  </div>
-</section>
+{{ portal_elements.render_icon_toolkit_section(
+  id_prefix="faculty-staff",
+  section_title="Faculty & Staff Toolkit",
+  section_intro_html="Use these resources to prepare for the semester and succeed this coming semester.",
+  icon_links=faculty_toolkit_links,
+  bottom_cta_text='Can\'t find what you are looking for? Go to <a href="#">I Am a Faculty or Staff</a>'
+) }}
 
 <!-- Quick Resources Grid -->
 <section class="resource-grid section">

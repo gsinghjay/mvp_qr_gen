@@ -1,0 +1,456 @@
+{#
+Portal Macros for HCCC Portal Templates
+This file contains reusable Jinja2 macros for common UI patterns across the portal templates.
+#}
+
+{# ========== BASIC UTILITY MACROS ========== #}
+
+{# 
+Render a CTA button with customizable styling and optional icon
+Parameters:
+- text: Button text (required)
+- href: Button link (required)
+- style: Button style class, default "button" (optional)
+- icon_class: CSS class for icon (optional)
+- target: Link target attribute (optional)
+#}
+{% macro render_cta_button(text, href, style="button", icon_class=None, target=None) %}
+<a class="cta cta--{{ style }}" href="{{ href }}"{% if target %} target="{{ target }}"{% endif %}>
+  {% if icon_class %}
+  <i class="{{ icon_class }}"></i>
+  {% endif %}
+  {{ text }}
+</a>
+{% endmacro %}
+
+{# 
+Render an alert banner with customizable content and styling
+Parameters:
+- title: Banner title (required)
+- message: Banner message content (required)
+- link: Optional link for additional action (optional)
+- link_text: Text for the link, default "Learn More" (optional)
+- alert_type: Alert styling type, default "info" (optional)
+#}
+{% macro render_alert_banner(title, message, link=None, link_text="Learn More", alert_type="info") %}
+<section class="banner section banner--{{ alert_type }}">
+  <div class="banner__inner">
+    <div class="banner__content">
+      <div class="banner__content__col">
+        <h2 class="banner__header section__header">{{ title }}</h2>
+        <div class="section__intro banner__intro">
+          <p>{{ message }}</p>
+        </div>
+      </div>
+      {% if link %}
+      <div class="banner__content__col">
+        {{ render_cta_button(link_text, link, target="_blank") }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endmacro %}
+
+{# ========== PAGE STRUCTURE MACROS ========== #}
+
+{# 
+Render the page introduction section with user personalization
+Parameters:
+- header_title: Main page title (required)
+- subtitle_text: Optional subtitle (optional)
+- user_email_display: User email to display (optional)
+- user_role_display: User role to display (optional)
+- groups_display: List of user groups to display (optional)
+#}
+{% macro render_page_intro(header_title, subtitle_text=None, user_email_display=None, user_role_display=None, groups_display=None) %}
+<section class="page-intro">
+  <h1>{{ header_title }}</h1>
+  {% if subtitle_text %}
+  <p class="page-intro__subtitle">{{ subtitle_text }}</p>
+  {% endif %}
+  {% if user_email_display %}
+  <p class="text-muted">{{ user_email_display }}{% if user_role_display %} ({{ user_role_display }}){% endif %}</p>
+  {% endif %}
+  {% if groups_display %}
+  <p class="text-muted">Groups: {{ groups_display|join(', ') }}</p>
+  {% endif %}
+</section>
+{% endmacro %}
+
+{# 
+Render breadcrumbs navigation
+Parameters:
+- items: List of breadcrumb items with "text" and "href" keys (required)
+- style_class: CSS class for styling, default "breadcrumbs-green" (optional)
+#}
+{% macro render_breadcrumbs(items, style_class="breadcrumbs-green") %}
+{% if items %}
+<section class="breadcrumbs {{ style_class }}">
+  <div class="breadcrumbs__inner">
+    <nav class="breadcrumbs__list" aria-label="breadcrumbs">
+      <ul>
+        {% for item in items %}
+        <li>
+          {% if item.href %}
+          <a href="{{ item.href }}">{{ item.text }}</a>
+          {% else %}
+          <span class="breadcrumbs__current">{{ item.text }}</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </nav>
+  </div>
+</section>
+{% endif %}
+{% endmacro %}
+
+{# ========== CONTENT SECTION MACROS ========== #}
+
+{# 
+Render an announcement card
+Parameters:
+- title: Announcement title (required)
+- date: Announcement date (required)
+- body_html: HTML content for the announcement body (required)
+- link: Optional link for "Read More" action (optional)
+- link_text: Text for the link, default "Read More" (optional)
+#}
+{% macro render_announcement_card(title, date, body_html, link=None, link_text="Read More") %}
+<div class="announce-card">
+  <h3 class="announce-card__header">{{ title }}</h3>
+  <div class="announce-card__date">{{ date }}</div>
+  <div class="announce-card__body">
+    {{ body_html|safe }}
+    {% if link %}
+    <a href="{{ link }}" class="announce-card__link">{{ link_text }}</a>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{# 
+Render a toolkit icon with yellow circle and arrow
+Parameters:
+- href: Link destination (required)
+- icon_src: Path to icon image (required)
+- title: Icon title text (required)
+- alt_text: Alt text for icon image, default "" (optional)
+- circle_fill: Circle fill color, default "#FFC72C" (optional)
+- arrow_stroke: Arrow stroke color, default "white" (optional)
+#}
+{% macro render_toolkit_icon(href, icon_src, title, alt_text="", circle_fill="#FFC72C", arrow_stroke="white") %}
+<a href="{{ href }}" class="icon">
+  <img class="icon__img" src="{{ icon_src }}" alt="{{ alt_text }}" onerror="this.style.display='none'">
+  <h3 class="icon__header">
+    <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="12" fill="{{ circle_fill }}"/>
+      <path d="M10.5 8.5L14 12L10.5 15.5" stroke="{{ arrow_stroke }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    {{ title }}
+  </h3>
+</a>
+{% endmacro %}
+
+{# 
+Render a complete icon toolkit section
+Parameters:
+- id_prefix: Unique ID prefix for the section (required)
+- section_title: Section title (required)
+- section_intro_html: HTML content for section introduction (required)
+- icon_links: List of icon link objects with href, icon_src, title, alt_text properties (required)
+- bottom_cta_text: Optional bottom CTA text (optional)
+- bottom_cta_href: Optional bottom CTA link (optional)
+#}
+{% macro render_icon_toolkit_section(id_prefix, section_title, section_intro_html, icon_links, bottom_cta_text=None, bottom_cta_href=None) %}
+<section class="i-link-list section" id="{{ id_prefix }}-toolkit">
+  <div class="i-link-list__inner">
+    <div class="i-link-list__top">
+      <h2 class="i-link-list__header section__header">{{ section_title }}</h2>
+      <div class="section__intro i-link-list__intro">{{ section_intro_html|safe }}</div>
+    </div>
+
+    <div class="i-link-list__icons">
+      {% for icon_link in icon_links %}
+      {{ render_toolkit_icon(
+        href=icon_link.href,
+        icon_src=icon_link.icon_src,
+        title=icon_link.title,
+        alt_text=icon_link.get('alt_text', ''),
+        circle_fill=icon_link.get('circle_fill', '#FFC72C'),
+        arrow_stroke=icon_link.get('arrow_stroke', 'white')
+      ) }}
+      {% endfor %}
+    </div>
+
+    {% if bottom_cta_text and bottom_cta_href %}
+    <div class="i-link-list__bottom">
+      {{ render_cta_button(bottom_cta_text, bottom_cta_href, target="_blank") }}
+    </div>
+    {% elif bottom_cta_text %}
+    <div class="i-link-list__bottom">
+      {{ bottom_cta_text|safe }}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endmacro %}
+
+{# ========== PHASE 3 COMPLEX CONTENT MACROS ========== #}
+
+{# 
+Render an image and links section (used in faculty_hr.html and student_academics.html)
+Parameters:
+- image_src: Path to the image (required)
+- image_alt: Alt text for the image (required)
+- section_title: Section header title (required)
+- intro_html: HTML content for the intro text (required)
+- cta_list: List of CTA button objects with text, href, target properties (required)
+#}
+{% macro render_image_and_links_section(image_src, image_alt, section_title, intro_html, cta_list) %}
+<section class="image-and-links section">
+  <div class="image-and-links__inner">
+    <div class="image-and-links__img">
+      <picture>
+        <source media='(min-width: 700px)' srcset='{{ image_src }}' />
+        <source media='(min-width: 1024px)' srcset='{{ image_src }}' />
+        <img src='{{ image_src }}' alt='{{ image_alt }}' />
+      </picture>
+    </div>
+
+    <div class="image-and-links__content">
+      <h2 class="image-and-links__header section__header">{{ section_title }}</h2>
+      <div class="image-and-links__intro">{{ intro_html|safe }}</div>
+      {% if cta_list %}
+      <div class="image-and-links__ctas">
+        {% for cta in cta_list %}
+        {{ render_cta_button(
+          text=cta.text,
+          href=cta.href,
+          target=cta.get('target', '_blank')
+        ) }}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endmacro %}
+
+{# 
+Render a document links column (used in faculty_hr.html)
+Parameters:
+- title: Column title (required)
+- items: List of document objects with title, href, description properties (required)
+- cta_button: Optional bottom CTA button object with text, href, target properties (optional)
+#}
+{% macro render_doc_links_column(title, items, cta_button=None) %}
+<div class="doc-and-links__col">
+  <h2 class="doc-and-links__header section__header">{{ title }}</h2>
+  
+  {% for item in items %}
+  <div class="doc">
+    <h3 class="doc__title"><a href="{{ item.href }}" target="_blank">{{ item.title }}</a></h3>
+    <p class="doc__desc">{{ item.description }}</p>
+  </div>
+  {% endfor %}
+
+  {% if cta_button %}
+  {{ render_cta_button(
+    text=cta_button.text,
+    href=cta_button.href,
+    target=cta_button.get('target', '_blank')
+  ) }}
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# 
+Render a quick links column (used in faculty_hr.html)
+Parameters:
+- title: Column title (required)
+- items: List of link objects with text, href, target properties (required)
+#}
+{% macro render_quick_links_column(title, items) %}
+<div class="doc-and-links__col">
+  <h2 class="doc-and-links__header section__header">{{ title }}</h2>
+  <ul class="links">
+    {% for item in items %}
+    <li><a href="{{ item.href }}" target="{{ item.get('target', '_blank') }}">{{ item.text }}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endmacro %}
+
+{# 
+Render a contact accordion item (used in faculty_hr.html and student_academics.html)
+Parameters:
+- id_suffix: Unique ID suffix for the accordion item (required)
+- title: Contact title/department name (required)
+- details_html: HTML content for address/details (required)
+- phone: Phone number with link (required)
+- email: Email address (required)
+- expanded: Whether the accordion starts expanded, default False (optional)
+#}
+{% macro render_contact_accordion_item(id_suffix, title, details_html, phone, email, expanded=False) %}
+<div class="acc">
+  <div class="acc__top">
+    <h3 id="acc-title-{{ id_suffix }}" class="acc__title">
+      {% if expanded %}<a href="#">{{ title }}</a>{% else %}{{ title }}{% endif %}
+    </h3>
+  </div>
+
+  <button class="acc__button" aria-labelledby="acc-title-{{ id_suffix }}" aria-expanded="{{ 'true' if expanded else 'false' }}"><span></span></button>
+  <div class="acc__dropdown" aria-hidden="{{ 'false' if expanded else 'true' }}" style="display: {{ 'block' if expanded else 'none' }};">
+    <p class="acc__details">{{ details_html|safe }}</p>
+    <a class="acc__phone" href="tel:{{ phone.replace('(', '').replace(')', '').replace(' ', '').replace('-', '') }}">{{ phone }}</a>
+    <a class="acc__email" href="mailto:{{ email }}">{{ email }}</a>
+  </div>
+</div>
+{% endmacro %}
+
+{# 
+Render a content card (used in student_academics.html carousel)
+Parameters:
+- image_src: Path to the card image (required)
+- title: Card title (required)
+- body_html: HTML content for the card body (required)
+- link: Link URL for the title (required)
+- link_text: Text for additional link, default "Learn More" (optional)
+#}
+{% macro render_content_card(image_src, title, body_html, link, link_text="Learn More") %}
+<div class="card">
+  <picture class="card__img">
+    <source media='(min-width: 700px)' srcset='{{ image_src }}' />
+    <source media='(min-width: 1024px)' srcset='{{ image_src }}' />
+    <img src='{{ image_src }}' alt='{{ title }}' />
+  </picture>
+  <h3 class="card__header"><a href="{{ link }}" target="_blank">{{ title }}</a></h3>
+  <p class="card__body">{{ body_html|safe }}</p>
+</div>
+{% endmacro %}
+
+{# 
+Render a deadlines/important dates section (used in student_homepage.html)
+Parameters:
+- title: Section title (required)
+- items: List of date objects with date, title, href (optional) properties (required)
+- cta_button: Optional bottom CTA button object with text, href, target properties (optional)
+#}
+{% macro render_deadlines_section(title, items, cta_button=None) %}
+<section class="deadlines section">
+  <div class="deadlines__inner">
+    <div class="deadlines__top">
+      <h2 class="deadlines__header section__header">{{ title }}</h2>
+    </div>
+
+    <ul class="deadlines__list">
+      {% for item in items %}
+      <li class="deadline">
+        <span class="deadline__date">{{ item.date }}</span>
+        <span class="deadline__title">
+          {% if item.get('href') %}
+          <a href="{{ item.href }}" target="_blank">{{ item.title }}</a>
+          {% else %}
+          {{ item.title }}
+          {% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+
+    {% if cta_button %}
+    {{ render_cta_button(
+      text=cta_button.text,
+      href=cta_button.href,
+      target=cta_button.get('target', '_blank')
+    ) }}
+    {% endif %}
+  </div>
+</section>
+{% endmacro %}
+
+{# 
+Render a fifty-fifty image and content section (used in student_homepage.html)
+Parameters:
+- image_src: Path to the section image (required)
+- image_alt: Alt text for the image (required)
+- title: Section title (required)
+- body_html: HTML content for the section body (required)
+- cta_list: List of CTA button objects with text, href, target properties (required)
+#}
+{% macro render_fifty_fifty_section(image_src, image_alt, title, body_html, cta_list) %}
+<section class="fifty-fifty section">
+  <div class="fifty-fifty__inner">
+    <div class="fifty-fifty__image">
+      <picture>
+        <source media='(min-width: 700px)' srcset='{{ image_src }}' />
+        <source media='(min-width: 1024px)' srcset='{{ image_src }}' />
+        <img src='{{ image_src }}' alt='{{ image_alt }}' />
+      </picture>
+    </div>
+    <div class="fifty-fifty__content">
+      <h2 class="fifty-fifty__title">{{ title }}</h2>
+      <div class="fifty-fifty__body">{{ body_html|safe }}</div>
+      {% for cta in cta_list %}
+      {{ render_cta_button(
+        text=cta.text,
+        href=cta.href,
+        target=cta.get('target', '_blank')
+      ) }}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endmacro %}
+
+{# 
+Render a link and summary list section (used in student_homepage.html)
+Parameters:
+- title: Section title (required)
+- intro_html: HTML content for section introduction (required)
+- items: List of service objects with title, body, href properties (required)
+- cta_button: Optional CTA button object with text, href, target, style properties (optional)
+- cta_mobile_button: Optional mobile CTA button object (optional)
+#}
+{% macro render_link_and_summary_list_section(title, intro_html, items, cta_button=None, cta_mobile_button=None) %}
+<section class="link-and-summary-list section">
+  <div class="link-and-summary-list__inner">
+    <div class="link-and-summary-list__top">
+      <h2 class="link-and-summary-list__header section__header">{{ title }}</h2>
+      <div class="link-and-summary-list__intro">{{ intro_html|safe }}</div>
+      {% if cta_button %}
+      {{ render_cta_button(
+        text=cta_button.text,
+        href=cta_button.href,
+        style=cta_button.get('style', 'button cta--desktop'),
+        target=cta_button.get('target', '_blank')
+      ) }}
+      {% endif %}
+    </div>
+
+    <div class="link-and-summary-list__content">
+      <ul>
+        {% for item in items %}
+        <li>
+          <h3 class="summary-list__header"><a href="{{ item.href }}" target="_blank">{{ item.title }}</a></h3>
+          <p class="summary-list__body">{{ item.body }}</p>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    {% if cta_mobile_button %}
+    {{ render_cta_button(
+      text=cta_mobile_button.text,
+      href=cta_mobile_button.href,
+      style=cta_mobile_button.get('style', 'button cta--mobile'),
+      target=cta_mobile_button.get('target', '_blank')
+    ) }}
+    {% endif %}
+  </div>
+</section>
+{% endmacro %}
+
+{# This file will be populated with macros in Phase 2 #} 

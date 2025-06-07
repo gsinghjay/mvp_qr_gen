@@ -1,7 +1,7 @@
 {
   "id": null,
-  "title": "QR Infrastructure Deep Dive",
-  "tags": ["qr-system", "infrastructure", "containers", "database"],
+  "title": "OPS - Infrastructure & Traffic Deep Dive",
+  "tags": ["operations", "infrastructure", "traffic", "deep-dive", "containers"],
   "style": "dark",
   "timezone": "browser",
   "refresh": "30s",
@@ -12,19 +12,27 @@
   "panels": [
     {
       "id": 1,
-      "title": "🏗️ Infrastructure Overview",
+      "title": "🚀 Infrastructure Deep Dive",
       "type": "text",
       "gridPos": {"h": 3, "w": 24, "x": 0, "y": 0},
       "options": {
         "mode": "markdown",
-        "content": "# Infrastructure Deep Dive Dashboard\n\n**Purpose**: Monitor container resources, database performance, and edge router metrics for comprehensive system visibility.\n\n📊 **Metrics Sources**: Traefik, Application, and Container metrics (cAdvisor/node_exporter when available)"
+        "content": "# Infrastructure & Traffic Deep Dive Dashboard\n\n**Audience**: Operations teams and site reliability engineers\n**Purpose**: Detailed monitoring of container resources, edge router performance, and traffic patterns for comprehensive infrastructure visibility\n\n🎯 **Focus Areas**: Container metrics, Traefik performance, database operations, and resource utilization trends"
       }
     },
     {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 3},
       "id": 2,
+      "panels": [],
+      "title": "Traefik Edge Router Performance",
+      "type": "row"
+    },
+    {
+      "id": 3,
       "title": "Traefik Request Distribution",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 3},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
       "targets": [
         {
           "expr": "sum(rate(traefik_service_requests_total{service=\"api-service@file\"}[5m])) * 60 or vector(0)",
@@ -49,10 +57,10 @@
       }
     },
     {
-      "id": 3,
+      "id": 4,
       "title": "Traefik Response Times",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 3},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{service=\"api-service@file\"}[1h])) by (le)) * 1000 or vector(0)",
@@ -82,10 +90,10 @@
       }
     },
     {
-      "id": 4,
+      "id": 5,
       "title": "Traefik Error Rates",
       "type": "stat",
-      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 11},
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 12},
       "targets": [
         {
           "expr": "sum(rate(traefik_service_requests_total{service=\"api-service@file\", code=~\"5..\"}[1h])) / sum(rate(traefik_service_requests_total{service=\"api-service@file\"}[1h])) * 100 or vector(0)",
@@ -111,10 +119,10 @@
       }
     },
     {
-      "id": 5,
+      "id": 6,
       "title": "Traefik Open Connections",
       "type": "stat",
-      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 11},
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 12},
       "targets": [
         {
           "expr": "sum(traefik_service_open_connections{service=\"api-service@file\"}) or vector(0)",
@@ -140,10 +148,10 @@
       }
     },
     {
-      "id": 6,
+      "id": 7,
       "title": "TLS Connections",
       "type": "stat",
-      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 11},
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 12},
       "targets": [
         {
           "expr": "sum(rate(traefik_service_requests_tls_total{service=\"api-service@file\"}[5m])) * 60 or vector(0)",
@@ -169,10 +177,18 @@
       }
     },
     {
-      "id": 7,
-      "title": "Container CPU Usage (Estimated)",
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18},
+      "id": 8,
+      "panels": [],
+      "title": "Container Resource Utilization",
+      "type": "row"
+    },
+    {
+      "id": 9,
+      "title": "Container CPU Usage",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 17},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 19},
       "targets": [
         {
           "expr": "sum(rate(container_cpu_usage_seconds_total{name=\"qr_generator_api\"}[5m])) by (name) * 100 or vector(0)",
@@ -188,6 +204,11 @@
           "expr": "sum(rate(container_cpu_usage_seconds_total{name=\"qr_generator_traefik\"}[5m])) by (name) * 100 or vector(0)",
           "legendFormat": "Traefik CPU %",
           "refId": "C"
+        },
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{name=\"qr_generator_prometheus\"}[5m])) by (name) * 100 or vector(0)",
+          "legendFormat": "Prometheus CPU %",
+          "refId": "D"
         }
       ],
       "fieldConfig": {
@@ -203,25 +224,30 @@
       }
     },
     {
-      "id": 8,
-      "title": "Container Memory Usage (Estimated)",
+      "id": 10,
+      "title": "Container Memory Usage",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 17},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 19},
       "targets": [
         {
           "expr": "container_memory_usage_bytes{name=\"qr_generator_api\"} / 1024 / 1024 or vector(0)",
-          "legendFormat": "API Container MB",
+          "legendFormat": "API Container (MB)",
           "refId": "A"
         },
         {
           "expr": "container_memory_usage_bytes{name=\"qr_generator_postgres\"} / 1024 / 1024 or vector(0)",
-          "legendFormat": "PostgreSQL MB",
+          "legendFormat": "PostgreSQL (MB)",
           "refId": "B"
         },
         {
           "expr": "container_memory_usage_bytes{name=\"qr_generator_traefik\"} / 1024 / 1024 or vector(0)",
-          "legendFormat": "Traefik MB",
+          "legendFormat": "Traefik (MB)",
           "refId": "C"
+        },
+        {
+          "expr": "container_memory_usage_bytes{name=\"qr_generator_prometheus\"} / 1024 / 1024 or vector(0)",
+          "legendFormat": "Prometheus (MB)",
+          "refId": "D"
         }
       ],
       "fieldConfig": {
@@ -236,10 +262,18 @@
       }
     },
     {
-      "id": 9,
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 27},
+      "id": 11,
+      "panels": [],
+      "title": "Database Performance Patterns",
+      "type": "row"
+    },
+    {
+      "id": 12,
       "title": "Database Connection Patterns",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 25},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
       "targets": [
         {
           "expr": "pg_stat_activity_count{datname=\"qrdb\", state=\"active\"} or vector(0)",
@@ -269,10 +303,10 @@
       }
     },
     {
-      "id": 10,
+      "id": 13,
       "title": "Database Performance Metrics",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 25},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
       "targets": [
         {
           "expr": "sum(rate(pg_stat_database_xact_commit{datname=\"qrdb\"}[5m]) + rate(pg_stat_database_xact_rollback{datname=\"qrdb\"}[5m])) or vector(0)",
@@ -307,30 +341,38 @@
       }
     },
     {
-      "id": 11,
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 36},
+      "id": 14,
+      "panels": [],
+      "title": "Application Runtime Metrics",
+      "type": "row"
+    },
+    {
+      "id": 15,
       "title": "Application Go Runtime Metrics",
       "type": "timeseries",
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 33},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 37},
       "targets": [
         {
           "expr": "go_memstats_alloc_bytes{job=\"qr-app\"} / 1024 / 1024 or vector(0)",
-          "legendFormat": "Allocated Memory MB",
+          "legendFormat": "Allocated Memory (MB)",
           "refId": "A"
         },
         {
           "expr": "go_memstats_sys_bytes{job=\"qr-app\"} / 1024 / 1024 or vector(0)",
-          "legendFormat": "System Memory MB",
+          "legendFormat": "System Memory (MB)",
           "refId": "B"
         },
         {
-          "expr": "rate(go_gc_duration_seconds_sum{job=\"qr-app\"}[5m]) * 1000 or vector(0)",
-          "legendFormat": "GC Duration ms/sec",
+          "expr": "go_goroutines{job=\"qr-app\"} or vector(0)",
+          "legendFormat": "Goroutines",
           "refId": "C"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "decbytes",
+          "unit": "short",
           "min": 0
         }
       },
@@ -340,10 +382,147 @@
       }
     },
     {
-      "id": 12,
+      "id": 16,
+      "title": "Garbage Collection Metrics",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 37},
+      "targets": [
+        {
+          "expr": "rate(go_gc_duration_seconds_sum{job=\"qr-app\"}[5m]) * 1000 or vector(0)",
+          "legendFormat": "GC Duration (ms/sec)",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(go_gc_duration_seconds_count{job=\"qr-app\"}[5m]) or vector(0)",
+          "legendFormat": "GC Frequency (GCs/sec)",
+          "refId": "B"
+        },
+        {
+          "expr": "go_memstats_gc_cpu_fraction{job=\"qr-app\"} * 100 or vector(0)",
+          "legendFormat": "GC CPU Usage %",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 45},
+      "id": 17,
+      "panels": [],
+      "title": "Log Analysis & Error Tracking",
+      "type": "row"
+    },
+    {
+      "id": 20,
+      "title": "Application Error Log Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 46},
+      "targets": [
+        {
+          "expr": "sum(rate({job=\"qr-app\"} |= \"ERROR\" [5m])) or vector(0)",
+          "legendFormat": "ERROR Log Rate",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate({job=\"qr-app\"} |= \"WARNING\" [5m])) or vector(0)",
+          "legendFormat": "WARNING Log Rate",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 21,
+      "title": "Recent Error Logs",
+      "type": "logs",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 46},
+      "targets": [
+        {
+          "expr": "{job=\"qr-app\"} |= \"ERROR\" | line_format \"{{.timestamp}} [{{.level}}] {{.message}}\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 54},
+      "id": 22,
+      "panels": [],
+      "title": "Network & I/O Performance",
+      "type": "row"
+    },
+    {
+      "id": 18,
+      "title": "Container Network I/O",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 55},
+      "targets": [
+        {
+          "expr": "rate(container_network_receive_bytes_total{name=\"qr_generator_api\"}[5m]) * 8 or vector(0)",
+          "legendFormat": "API RX (bits/sec)",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(container_network_transmit_bytes_total{name=\"qr_generator_api\"}[5m]) * 8 or vector(0)",
+          "legendFormat": "API TX (bits/sec)",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(container_network_receive_bytes_total{name=\"qr_generator_postgres\"}[5m]) * 8 or vector(0)",
+          "legendFormat": "PostgreSQL RX (bits/sec)",
+          "refId": "C"
+        },
+        {
+          "expr": "rate(container_network_transmit_bytes_total{name=\"qr_generator_postgres\"}[5m]) * 8 or vector(0)",
+          "legendFormat": "PostgreSQL TX (bits/sec)",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "min": 0
+        }
+      },
+      "options": {
+        "tooltip": {"mode": "multi"},
+        "legend": {"displayMode": "table", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 19,
       "title": "System Resource Summary",
       "type": "table",
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 33},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 55},
       "targets": [
         {
           "expr": "up{job=~\"prometheus|qr-app|traefik\"} or vector(0)",
@@ -392,13 +571,18 @@
   ],
   "links": [
     {
-      "title": "System Health",
-      "url": "/d/health/qr-system-health",
+      "title": "System Overview",
+      "url": "/d/ops-system-overview/ops-system-infrastructure-overview",
       "type": "dashboards"
     },
     {
-      "title": "Analytics Deep Dive",
-      "url": "/d/analytics/qr-analytics-deep-dive",
+      "title": "Database Health",
+      "url": "/d/dba-postgresql/dba-postgresql-performance-health",
+      "type": "dashboards"
+    },
+    {
+      "title": "Developer Deep Dive",
+      "url": "/d/dev-app-deep-dive/dev-qr-application-deep-dive-refactoring",
       "type": "dashboards"
     }
   ]

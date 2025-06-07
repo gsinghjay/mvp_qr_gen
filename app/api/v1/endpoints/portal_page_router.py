@@ -8,6 +8,12 @@ from datetime import datetime # For current_year in context
 
 from app.core.config import settings
 from app.core.exceptions import DatabaseError # Though not directly used, good for consistency if error handling evolves
+from app.utils.portal_data_loader import (
+    get_faculty_staff_data,
+    get_student_data,
+    get_hr_data,
+    get_academics_data
+)
 
 templates = Jinja2Templates(directory=str(settings.TEMPLATES_DIR))
 logger = logging.getLogger("app.portal_pages")
@@ -68,17 +74,21 @@ async def portal_demo_page(
         
         logger.info(f"Portal demo accessed by: email={x_forwarded_email}, user_name={user_name}, groups={groups_list}")
         
+        # Get structured data for the portal from JSON
+        portal_data = get_faculty_staff_data()
+        
         return templates.TemplateResponse(
             "pages/hccc_portal.html",
             {
                 "request": request,
                 "page_title": f"Portal Demo - {user_name}" if user_name else "Portal Navigation Demo",
                 "page_description": "Demonstration of the new HCCC portal template with ifactory navigation",
+                "page_header": f"Welcome, {user_name}!" if user_name else "Portal Navigation Demo",
                 "user_name": user_name or "Demo User",
                 "user_email": x_forwarded_email,
                 "preferred_username": x_forwarded_preferred_username,
                 "groups": groups_list,
-                "user_role": "Faculty" if any('faculty' in g.lower() for g in groups_list) else "Staff",
+                **portal_data,
             },
         )
     except Exception as e:
@@ -109,14 +119,10 @@ async def hccc_portal_page(
         if x_forwarded_groups:
             groups_list = [g.strip() for g in x_forwarded_groups.split(',') if g.strip()]
         
-        # Determine user role for content customization
-        user_role = "Faculty & Staff"
-        if any('faculty' in g.lower() for g in groups_list):
-            user_role = "Faculty"
-        elif any('staff' in g.lower() for g in groups_list):
-            user_role = "Staff"
+        logger.info(f"HCCC portal accessed by: email={x_forwarded_email}, user_name={user_name}, groups={groups_list}")
         
-        logger.info(f"HCCC portal accessed by: email={x_forwarded_email}, user_name={user_name}, role={user_role}")
+        # Get structured data for the portal from JSON
+        portal_data = get_faculty_staff_data()
         
         return templates.TemplateResponse(
             name="pages/hccc_portal.html",
@@ -127,9 +133,9 @@ async def hccc_portal_page(
                 "user_name": user_name,
                 "user_email": x_forwarded_email,
                 "preferred_username": x_forwarded_preferred_username,
-                "user_role": user_role,
                 "groups": groups_list,
                 "is_authenticated": True,
+                **portal_data,
             },
         )
     except Exception as e:
@@ -163,6 +169,9 @@ async def student_home_portal_page(
         
         logger.info(f"Student portal accessed by: email={x_forwarded_email}, user_name={user_name}, groups={groups_list}")
         
+        # Get structured data for the student portal from JSON
+        student_data = get_student_data()
+        
         return templates.TemplateResponse(
             name="pages/student_homepage.html",
             context={
@@ -174,6 +183,7 @@ async def student_home_portal_page(
                 "preferred_username": x_forwarded_preferred_username,
                 "groups": groups_list,
                 "is_authenticated": True,
+                **student_data,
             },
         )
     except Exception as e:
@@ -204,23 +214,23 @@ async def hr_portal_page(
         if x_forwarded_groups:
             groups_list = [g.strip() for g in x_forwarded_groups.split(',') if g.strip()]
         
-        # Determine if user has HR permissions
-        has_hr_permissions = any('hr' in g.lower() or 'admin' in g.lower() for g in groups_list)
+        logger.info(f"HR portal accessed by: email={x_forwarded_email}, user_name={user_name}, groups={groups_list}")
         
-        logger.info(f"HR portal accessed by: email={x_forwarded_email}, user_name={user_name}, hr_perms={has_hr_permissions}")
+        # Get structured data for the HR portal from JSON
+        hr_data = get_hr_data()
         
         return templates.TemplateResponse(
             name="pages/faculty_hr.html",
             context={
                 "request": request, 
-                "page_title": f"Human Resources - {user_name}" if user_name else "Human Resources Portal",
-                "page_header": f"Human Resources - {user_name}" if user_name else "Human Resources",
+                "page_title": f"HR Portal - {user_name}" if user_name else "HR Portal",
+                "page_header": f"Welcome to HR Portal, {user_name}!" if user_name else "HR Portal",
                 "user_name": user_name,
                 "user_email": x_forwarded_email,
                 "preferred_username": x_forwarded_preferred_username,
                 "groups": groups_list,
-                "has_hr_permissions": has_hr_permissions,
                 "is_authenticated": True,
+                **hr_data,
             },
         )
     except Exception as e:
@@ -251,23 +261,23 @@ async def student_academics_portal_page(
         if x_forwarded_groups:
             groups_list = [g.strip() for g in x_forwarded_groups.split(',') if g.strip()]
         
-        # Determine academic status
-        is_student = any('student' in g.lower() for g in groups_list)
+        logger.info(f"Student academics portal accessed by: email={x_forwarded_email}, user_name={user_name}, groups={groups_list}")
         
-        logger.info(f"Student academics portal accessed by: email={x_forwarded_email}, user_name={user_name}, is_student={is_student}")
+        # Get structured data for the student academics portal from JSON
+        academics_data = get_academics_data()
         
         return templates.TemplateResponse(
             name="pages/student_academics.html",
             context={
                 "request": request, 
-                "page_title": f"Student Academics - {user_name}" if user_name else "Student Academics Portal",
-                "page_header": f"Academic Resources - {user_name}" if user_name else "Academic Resources",
+                "page_title": f"Academic Portal - {user_name}" if user_name else "Academic Portal",
+                "page_header": f"Welcome to Your Academic Portal, {user_name}!" if user_name else "Academic Portal", 
                 "user_name": user_name,
                 "user_email": x_forwarded_email,
                 "preferred_username": x_forwarded_preferred_username,
                 "groups": groups_list,
-                "is_student": is_student,
                 "is_authenticated": True,
+                **academics_data,
             },
         )
     except Exception as e:

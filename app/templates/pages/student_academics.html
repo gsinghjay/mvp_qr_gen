@@ -1,267 +1,109 @@
 {% extends "base_hccc_portal.html" %}
+{% import "portal_macros.html" as portal_elements %}
 
 {% block title %}Student Academics - Student Portal{% endblock %}
 {% block page_title %}Student Academics{% endblock %}
 
 {% block content %}
 <!-- Page intro section -->
-<section class="page-intro">
-  <h1>{{ page_header|default('Academics') }}</h1>
-  {% if user_email %}
-  <p class="text-muted">{{ user_email }}{% if is_student %} (Student){% endif %}</p>
-  {% endif %}
-  {% if groups %}
-  <p class="text-muted">Groups: {{ groups|join(', ') }}</p>
-  {% endif %}
-</section>
+{{ portal_elements.render_page_intro(
+  header_title=page_header|default('Academics'),
+  user_email_display=user_email,
+  groups_display=groups
+) }}
 
 <!-- Breadcrumbs -->
-<section class="breadcrumbs breadcrumbs-green">
-  <div class="breadcrumbs__inner">
-    <nav class="breadcrumbs__list" aria-label="breadcrumbs">
-      <ul>
-        <li><a href="/student-portal">Home</a></li>
-        <li><a href="/student-academics">Academics</a></li>
-      </ul>
-    </nav>
-  </div>
-</section>
+{{ portal_elements.render_breadcrumbs([
+  {"text": "Home", "href": "/student-home"},
+  {"text": "Academics", "href": "/student-academics"}
+]) }}
 
 <!-- Academic Registration Banner -->
-<section class="banner section">
-  <div class="banner__inner">
-    <div class="banner__content">
-      <div class="banner__content__col">
-        <h2 class="banner__header section__header">Registration Reminder!</h2>
-        <div class="section__intro banner__intro">
-          <p>Registration for Spring 2024 classes begins Monday, November 6th. 
-            The FAFSA opens on October 1st. File your FAFSA to be considered for financial aid.</p>
-        </div>
-      </div>
-      <div class="banner__content__col">
-        <a class="cta cta--button" href="#" target="_blank">Learn More</a>
-      </div>
-    </div>
-  </div>
-</section>
+{{ portal_elements.render_alert_banner(
+  title="Registration Reminder!",
+  message="Registration for Spring 2024 classes begins Monday, November 6th. The FAFSA opens on October 1st. File your FAFSA to be considered for financial aid.",
+  link="#",
+  link_text="Learn More"
+) }}
 
 <!-- Enrollment Toolkit -->
-<section class="i-link-list section">
-  <div class="i-link-list__inner">
-    <div class="i-link-list__top">
-      <h2 class="i-link-list__header section__header">Enrollment Toolkit</h2>
-      <div class="section__intro i-link-list__intro">Use these resources to prepare for your classes and stay on top of your progress.</div>
-    </div>
-
-    <div class="i-link-list__icons">
-      <a href="#" class="icon" target="_blank">
-        <img class="icon__img" src="/static/portal_template/assets/icons/icon-link-list-icon-2.svg" alt="">
-        <h3 class="icon__header">
-          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="12" fill="#F4D03F"/>
-            <path d="M8 12L10.5 14.5L16 9" stroke="#2C3E50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Register For Classes
-        </h3>
-      </a>
-
-      <a href="#" class="icon" target="_blank">
-        <img class="icon__img" src="/static/portal_template/assets/icons/icon-link-list-icon-9.svg" alt="">
-        <h3 class="icon__header">
-          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="12" fill="#F4D03F"/>
-            <path d="M8 12L10.5 14.5L16 9" stroke="#2C3E50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          My Degree Progress
-        </h3>
-      </a>
-
-      <a href="#" class="icon" target="_blank">
-        <img class="icon__img" src="/static/portal_template/assets/icons/icon-link-list-icon-4.svg" alt="">
-        <h3 class="icon__header">
-          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="12" fill="#F4D03F"/>
-            <path d="M8 12L10.5 14.5L16 9" stroke="#2C3E50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          My Transcripts
-        </h3>
-      </a>
-
-      <a href="#" class="icon" target="_blank">
-        <img class="icon__img" src="/static/portal_template/assets/icons/icon-link-list-icon-10.svg" alt="">
-        <h3 class="icon__header">
-          <svg class="button-circle-yellow-carat" width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="12" fill="#F4D03F"/>
-            <path d="M8 12L10.5 14.5L16 9" stroke="#2C3E50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          View/Print My Schedule
-        </h3>
-      </a>
-    </div>
-
-    <div class="i-link-list__bottom">
-      <a class="cta cta--button" href="#" target="_blank">Visit Enrollment Page</a>
-    </div>
-  </div>
-</section>
+{% if enrollment_toolkit_links %}
+{{ portal_elements.render_icon_toolkit_section(
+  id_prefix="enrollment",
+  section_title="Enrollment Toolkit",
+  section_intro_html="Use these resources to prepare for your classes and stay on top of your progress.",
+  icon_links=enrollment_toolkit_links,
+  bottom_cta_text='Visit Enrollment Page',
+  bottom_cta_href="#"
+) }}
+{% endif %}
 
 <!-- Support Center Carousel -->
+{% if support_center_cards %}
 <section class="card-carousel section">
   <div class="card-carousel__inner">
     <div class="card-carousel__top">
       <h2 class="card-carousel__header section__header">Support Center</h2>
       <div class="section__intro card-carousel__intro">Access the support you need to succeed on your educational journey using these resources.</div>
-      <a class="cta cta--button" href="#" target="_blank">See All Support</a>
+      {{ portal_elements.render_cta_button("See All Support", "#", target="_blank") }}
     </div>
 
     <div class="card-carousel__slides">
-      <div class="card">
-        <picture class="card__img">
-          <source media='(min-width: 700px)' srcset='/static/portal_template/assets/img/card-carousel-1.png' />
-          <source media='(min-width: 1024px)' srcset='/static/portal_template/assets/img/card-carousel-1.png' />
-          <img src='/static/portal_template/assets/img/card-carousel-1.png' alt='Academic Advising' />
-        </picture>
-        <h3 class="card__header"><a href="#" target="_blank">Academic Advising</a></h3>
-        <p class="card__body">Talk to an advisor about your academic goals, course selection, and any concerns you have with your classes.</p>
-      </div>
-      
-      <div class="card">
-        <picture class="card__img">
-          <source media='(min-width: 700px)' srcset='/static/portal_template/assets/img/card-carousel-2.png' />
-          <source media='(min-width: 1024px)' srcset='/static/portal_template/assets/img/card-carousel-2.png' />
-          <img src='/static/portal_template/assets/img/card-carousel-2.png' alt='Tutoring Services' />
-        </picture>
-        <h3 class="card__header"><a href="#" target="_blank">Tutoring Services</a></h3>
-        <p class="card__body">Work with a tutor for help with your studies. Tutoring services are free and available online or in-person.</p>
-      </div>
-      
-      <div class="card">
-        <picture class="card__img">
-          <source media='(min-width: 700px)' srcset='/static/portal_template/assets/img/card-carousel-1.png' />
-          <source media='(min-width: 1024px)' srcset='/static/portal_template/assets/img/card-carousel-1.png' />
-          <img src='/static/portal_template/assets/img/card-carousel-1.png' alt='Career Services' />
-        </picture>
-        <h3 class="card__header"><a href="#" target="_blank">Career Services</a></h3>
-        <p class="card__body">Get help with resume building, job searches, and career planning to prepare for your future.</p>
-      </div>
-      
-      <div class="card">
-        <picture class="card__img">
-          <source media='(min-width: 700px)' srcset='/static/portal_template/assets/img/card-carousel-1.png' />
-          <source media='(min-width: 1024px)' srcset='/static/portal_template/assets/img/card-carousel-1.png' />
-          <img src='/static/portal_template/assets/img/card-carousel-1.png' alt='Financial Aid' />
-        </picture>
-        <h3 class="card__header"><a href="#" target="_blank">Financial Aid</a></h3>
-        <p class="card__body">Get assistance with FAFSA applications, scholarships, and understanding your financial aid options.</p>
-      </div>
-      
-      <div class="card">
-        <picture class="card__img">
-          <source media='(min-width: 700px)' srcset='/static/portal_template/assets/img/card-carousel-2.png' />
-          <source media='(min-width: 1024px)' srcset='/static/portal_template/assets/img/card-carousel-2.png' />
-          <img src='/static/portal_template/assets/img/card-carousel-2.png' alt='Disability Services' />
-        </picture>
-        <h3 class="card__header"><a href="#" target="_blank">Disability Services</a></h3>
-        <p class="card__body">Access accommodations and support services to help you succeed in your academic journey.</p>
-      </div>
-      
-      <div class="card">
-        <picture class="card__img">
-          <source media='(min-width: 700px)' srcset='/static/portal_template/assets/img/card-carousel-1.png' />
-          <source media='(min-width: 1024px)' srcset='/static/portal_template/assets/img/card-carousel-1.png' />
-          <img src='/static/portal_template/assets/img/card-carousel-1.png' alt='Library Services' />
-        </picture>
-        <h3 class="card__header"><a href="#" target="_blank">Library Services</a></h3>
-        <p class="card__body">Access research resources, study spaces, and librarian assistance for your academic projects.</p>
-      </div>
+      {% for card in support_center_cards %}
+      {{ portal_elements.render_content_card(
+        image_src=card.image_src,
+        title=card.title,
+        body_html=card.body_html,
+        link=card.link
+      ) }}
+      {% endfor %}
     </div>
   </div>
 </section>
+{% endif %}
 
 <!-- On-Campus Resources -->
-<section class="image-and-links section">
-  <div class="image-and-links__inner">
-    <div class="image-and-links__img">
-      <picture>
-        <source media='(min-width: 700px)' srcset='/static/portal_template/assets/img/image-and-links-01.png' />
-        <source media='(min-width: 1024px)' srcset='/static/portal_template/assets/img/image-and-links-01.png' />
-        <img src='/static/portal_template/assets/img/image-and-links-01.png' alt='On-campus resources and facilities' />
-      </picture>
-    </div>
-
-    <div class="image-and-links__content">
-      <h2 class="image-and-links__header section__header">On-Campus Resources</h2>
-      <div class="image-and-links__intro">Explore what's available on campus from the parking lot to the bookstore. Take a break in one of our student lounges. Use the tech in our computer labs. Or find a quiet area in the library to study.</div>
-      <div class="image-and-links__ctas">
-        <a class="cta cta--button" href="#" target="_blank">Bookstore</a>
-        <a class="cta cta--button" href="#" target="_blank">Campus Map</a>
-      </div>
-    </div>
-  </div>
-</section>
+{% if on_campus_resources %}
+{{ portal_elements.render_image_and_links_section(
+  image_src=on_campus_resources.image_src,
+  image_alt=on_campus_resources.image_alt,
+  section_title=on_campus_resources.title,
+  intro_html=on_campus_resources.intro_html,
+  cta_list=on_campus_resources.cta_buttons
+) }}
+{% endif %}
 
 <!-- Contact Information -->
 <section class="contact-accordion section">
   <div class="contact-accordion__inner">
+    {% if academic_contact_section %}
     <div class="contact-accordion__col">
-      <h2 class="contact-accordion__header section__header">Academic Support Contacts</h2>
-      <div class="section__intro contact-accordion__intro">Find the contact information you need for academic departments and support services.</div>
-      <a class="cta cta--button" href="#" target="_blank">All Academic Departments</a>
-      <a class="cta cta--button" href="#" target="_blank">Faculty Directory</a>
+      <h2 class="contact-accordion__header section__header">{{ academic_contact_section.title }}</h2>
+      <div class="section__intro contact-accordion__intro">{{ academic_contact_section.intro }}</div>
+      {% for cta in academic_contact_section.cta_buttons %}
+      {{ portal_elements.render_cta_button(
+        text=cta.text,
+        href=cta.href,
+        target=cta.target
+      ) }}
+      {% endfor %}
     </div>
+    {% endif %}
 
+    {% if academic_contact_accordion %}
     <div class="contact-accordion__col">
-      <div class="acc">
-        <div class="acc__top">
-          <h3 id="acc-title-1" class="acc__title"><a href="#">Registrar's Office</a></h3>
-        </div>
-
-        <button class="acc__button" aria-labelledby="acc-title-1" aria-expanded="true"><span></span></button>
-        <div class="acc__dropdown" aria-hidden="false" style="display: block;">
-          <p class="acc__details">
-            HCCC Enrollment Services<br/>
-            70 Sip Avenue - First Floor<br/>
-            Jersey City, NJ 07306
-          </p>
-          <a class="acc__phone" href="tel:+12017147200">(201) 714-7200</a>
-          <a class="acc__email" href="mailto:registrar@hccc.edu">registrar@hccc.edu</a>
-        </div>
-      </div>
-
-      <div class="acc">
-        <div class="acc__top">
-          <h3 id="acc-title-2" class="acc__title">Academic Advising</h3>
-        </div>
-
-        <button class="acc__button" aria-labelledby="acc-title-2" aria-expanded="false"><span></span></button>
-        <div class="acc__dropdown" aria-hidden="true" style="display: none;">
-          <p class="acc__details">
-            HCCC Student Success Center<br/>
-            70 Sip Avenue - Second Floor<br/>
-            Jersey City, NJ 07306
-          </p>
-          <a class="acc__phone" href="tel:+12017147300">(201) 714-7300</a>
-          <a class="acc__email" href="mailto:advising@hccc.edu">advising@hccc.edu</a>
-        </div>
-      </div>
-
-      <div class="acc">
-        <div class="acc__top">
-          <h3 id="acc-title-3" class="acc__title">Financial Aid</h3>
-        </div>
-
-        <button class="acc__button" aria-labelledby="acc-title-3" aria-expanded="false"><span></span></button>
-        <div class="acc__dropdown" aria-hidden="true" style="display: none;">
-          <p class="acc__details">
-            HCCC Financial Aid Office<br/>
-            70 Sip Avenue - First Floor<br/>
-            Jersey City, NJ 07306
-          </p>
-          <a class="acc__phone" href="tel:+12017147400">(201) 714-7400</a>
-          <a class="acc__email" href="mailto:financialaid@hccc.edu">financialaid@hccc.edu</a>
-        </div>
-      </div>
+      {% for contact in academic_contact_accordion %}
+      {{ portal_elements.render_contact_accordion_item(
+        id_suffix=contact.id_suffix,
+        title=contact.title,
+        details_html=contact.details_html,
+        phone=contact.phone,
+        email=contact.email,
+        expanded=contact.expanded
+      ) }}
+      {% endfor %}
     </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %} 
