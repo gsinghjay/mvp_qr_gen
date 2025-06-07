@@ -15,9 +15,9 @@ A production-grade QR code generation and management platform built with FastAPI
     -   User-agent analysis provides insights into device types, operating systems, and browsers.
     -   Interactive analytics dashboard with time-series charts and filterable data.
 -   **Observatory-First Monitoring**:
-    -   **10 Specialized Grafana Dashboards**: A comprehensive suite for monitoring system health, performance, user experience, database, infrastructure, and business KPIs.
+    -   **7 Streamlined Grafana Dashboards**: A role-specific suite for monitoring system health, performance, user experience, database, infrastructure, and business KPIs with enhanced linking and standardization.
     -   **Full-Stack Observability**: Real-time metrics via Prometheus, structured logging via Loki, and visualization via Grafana.
-    -   **Proactive Alerting**: 8 pre-configured alert rules for critical system events.
+    -   **Enhanced Navigation**: Dashboard linking and standardized design patterns for improved troubleshooting workflows.
     -   **Data-Driven Refactoring**: Custom metrics and circuit breaker monitoring to safely roll out new features.
 -   **Production-Ready Infrastructure**:
     -   **Docker & Traefik**: Deployed via Docker Compose with Traefik as a secure edge gateway.
